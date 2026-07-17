@@ -474,12 +474,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (wasStarter) {
             benchRounds = 0; // reset if played
           } else if (!isInjured) {
-            // Instead of counting up to 4, we use a random chance of 12% per round on the bench
-            // If they trigger the roll, we mark benchRounds as 999 to signal they are ready to demand a transfer!
-            if (Math.random() < 0.12) {
+            benchRounds += 1;
+            // Now it is rare: only 1.5% chance per round to request a transfer, and only if they've been on the bench for at least 2 rounds
+            if (benchRounds >= 2 && Math.random() < 0.015) {
               benchRounds = 999;
-            } else {
-              benchRounds = 1; // general marker that they are on bench
             }
           }
         }
