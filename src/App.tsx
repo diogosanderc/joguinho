@@ -16,7 +16,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, clearCurrentMatch,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
@@ -43,7 +43,8 @@ const AppContent: React.FC = () => {
   const [simScoreHome, setSimScoreHome] = useState(0);
   const [simScoreAway, setSimScoreAway] = useState(0);
   const [simEvents, setSimEvents] = useState<any[]>([]);
-  const simSpeed = 100; // ms per minute
+  const [simSpeedMode, setSimSpeedMode] = useState<'LENTO' | 'MEDIO' | 'RAPIDO'>('MEDIO');
+  const simSpeed = simSpeedMode === 'LENTO' ? 250 : simSpeedMode === 'MEDIO' ? 100 : 35;
   const [isSimPaused, setIsSimPaused] = useState(false);
   const [matchDone, setMatchDone] = useState(false);
 
@@ -74,6 +75,12 @@ const AppContent: React.FC = () => {
   // Squad management and dissatisfaction states
   const [selectedManagePlayerId, setSelectedManagePlayerId] = useState<string | null>(null);
   const [unhappyPlayer, setUnhappyPlayer] = useState<Player | null>(null);
+
+  // Incoming transfer proposal from other clubs for user's players
+  const [incomingProposal, setIncomingProposal] = useState<{ player: Player; buyerClub: Club; amount: number } | null>(null);
+  const [incomingNegResult, setIncomingNegResult] = useState<string | null>(null);
+  const [negOfferAmount, setNegOfferAmount] = useState<number>(0);
+
 
   // Auto-fill selectedSearchClubId when division or clubs list changes
   useEffect(() => {
@@ -357,6 +364,28 @@ const AppContent: React.FC = () => {
     }
   }, [currentRound, userClub, gameState]);
 
+  // Roll for incoming purchase proposal from other clubs for user's players after rounds
+  useEffect(() => {
+    if (userClub && gameState === 'PLAYING' && currentRound > 1) {
+      // 25% chance of receiving an offer for a player in the squad
+      if (Math.random() < 0.25) {
+        const potentialPlayers = userClub.squad.filter(p => !p.isInjured);
+        if (potentialPlayers.length > 0) {
+          const targetPlayer = potentialPlayers[Math.floor(Math.random() * potentialPlayers.length)];
+          const otherClubs = clubs.filter(c => c.id !== userClubId);
+          if (otherClubs.length > 0) {
+            const buyer = otherClubs[Math.floor(Math.random() * otherClubs.length)];
+            // Offer is around 85% to 115% of market value
+            const amount = Math.round(targetPlayer.value * (0.85 + Math.random() * 0.30));
+            setIncomingProposal({ player: targetPlayer, buyerClub: buyer, amount });
+            setNegOfferAmount(amount);
+            setIncomingNegResult(null);
+          }
+        }
+      }
+    }
+  }, [currentRound]);
+
   const handleSkipMatch = () => {
     if (!currentMatchResult) return;
     setSimMinute(90);
@@ -586,8 +615,40 @@ const AppContent: React.FC = () => {
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{!isHome ? userClub.name : opponent.name}</span>
           </div>
 
+          {/* Goal Scorers list for user match */}
+          {(() => {
+            const userGoals = simEvents.filter(e => e.type === 'GOAL');
+            if (userGoals.length === 0) return null;
+            return (
+              <div style={{ fontSize: '0.68rem', color: '#e8f5e9', textAlign: 'center', fontStyle: 'italic', marginBottom: '4px' }}>
+                ⚽ {userGoals.map(g => `${g.player} ${g.minute}'`).join(', ')}
+              </div>
+            );
+          })()}
+
           {/* Quick controls */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '8px' }}>
+              {(['LENTO', 'MEDIO', 'RAPIDO'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setSimSpeedMode(mode)}
+                  style={{
+                    fontSize: '0.62rem',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: simSpeedMode === mode ? 'var(--accent-green)' : 'transparent',
+                    color: simSpeedMode === mode ? 'black' : '#9ca3af',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            
             <button 
               onClick={() => setIsSimPaused(!isSimPaused)} 
               disabled={matchDone}
@@ -671,15 +732,8 @@ const AppContent: React.FC = () => {
 
                         {/* Stadium and Attendance below the score */}
                         <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#a5d6a7', marginTop: '4px', fontFamily: 'monospace', opacity: 0.9 }}>
-                          🏟️ {home.stadiumName} • {match.result?.attendance ? match.result.attendance.toLocaleString() : '0'} pagantes
+                          🏟️ {home.stadiumName} • {scorersText || 'Sem gols'}
                         </div>
-
-                        {/* Goal scorers below */}
-                        {liveGoals.length > 0 && (
-                          <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#e8f5e9', marginTop: '3px', padding: '0 8px', fontStyle: 'italic' }}>
-                            ⚽ {scorersText}
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -1080,6 +1134,90 @@ const AppContent: React.FC = () => {
                     {tac}
                   </button>
                 ))}
+              </div>
+
+              {/* Squad optimization buttons */}
+              <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1, padding: '6px 4px', fontSize: '0.7rem', borderRadius: '8px', border: '1px solid rgba(0, 230, 118, 0.2)', color: 'var(--accent-green)', background: 'rgba(0, 230, 118, 0.05)' }}
+                  onClick={() => {
+                    if (!userClub) return;
+                    // Helper logic to grab target tactic sizes
+                    let targetDF = 4, targetMF = 4, targetFW = 2;
+                    if (selectedTactic === '4-3-3') { targetDF = 4; targetMF = 3; targetFW = 3; }
+                    else if (selectedTactic === '3-5-2') { targetDF = 3; targetMF = 5; targetFW = 2; }
+                    else if (selectedTactic === '4-5-1') { targetDF = 4; targetMF = 5; targetFW = 1; }
+                    else if (selectedTactic === '5-3-2') { targetDF = 5; targetMF = 3; targetFW = 2; }
+
+                    const gks = userClub.squad.filter(p => p.position === 'GK' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+                    const dfs = userClub.squad.filter(p => p.position === 'DF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+                    const mfs = userClub.squad.filter(p => p.position === 'MF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+                    const fws = userClub.squad.filter(p => p.position === 'FW' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+
+                    const bestSelected: Player[] = [];
+                    if (gks[0]) bestSelected.push(gks[0]);
+                    for (let i = 0; i < Math.min(targetDF, dfs.length); i++) bestSelected.push(dfs[i]);
+                    for (let i = 0; i < Math.min(targetMF, mfs.length); i++) bestSelected.push(mfs[i]);
+                    for (let i = 0; i < Math.min(targetFW, fws.length); i++) bestSelected.push(fws[i]);
+
+                    // Fill to 11 if needed
+                    if (bestSelected.length < 11) {
+                      const ids = new Set(bestSelected.map(p => p.id));
+                      const rest = userClub.squad.filter(p => !p.isInjured && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
+                      for (let i = 0; i < Math.min(11 - bestSelected.length, rest.length); i++) bestSelected.push(rest[i]);
+                    }
+
+                    setStarters(bestSelected);
+                    setMidMatchStarters(bestSelected);
+                    setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: bestSelected }));
+                  }}
+                >
+                  ⚡ Escalar Melhores
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1, padding: '6px 4px', fontSize: '0.7rem', borderRadius: '8px', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)', background: 'rgba(255, 193, 7, 0.05)' }}
+                  onClick={() => {
+                    if (!userClub) return;
+                    // Rotate fatigued players: replace players with energy < 75 with best rested bench players
+                    let targetDF = 4, targetMF = 4, targetFW = 2;
+                    if (selectedTactic === '4-3-3') { targetDF = 4; targetMF = 3; targetFW = 3; }
+                    else if (selectedTactic === '3-5-2') { targetDF = 3; targetMF = 5; targetFW = 2; }
+                    else if (selectedTactic === '4-5-1') { targetDF = 4; targetMF = 5; targetFW = 1; }
+                    else if (selectedTactic === '5-3-2') { targetDF = 5; targetMF = 3; targetFW = 2; }
+
+                    // Sort all non-injured squad by energy level (higher energy first), then by rating
+                    const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.energy - a.energy || b.rating - a.rating);
+                    
+                    const selected: Player[] = [];
+                    // Force pick the gk with best energy
+                    const gks = pool.filter(p => p.position === 'GK');
+                    if (gks[0]) selected.push(gks[0]);
+
+                    const dfs = pool.filter(p => p.position === 'DF');
+                    for (let i = 0; i < Math.min(targetDF, dfs.length); i++) selected.push(dfs[i]);
+
+                    const mfs = pool.filter(p => p.position === 'MF');
+                    for (let i = 0; i < Math.min(targetMF, mfs.length); i++) selected.push(mfs[i]);
+
+                    const fws = pool.filter(p => p.position === 'FW');
+                    for (let i = 0; i < Math.min(targetFW, fws.length); i++) selected.push(fws[i]);
+
+                    // Fill to 11
+                    if (selected.length < 11) {
+                      const ids = new Set(selected.map(p => p.id));
+                      const rest = pool.filter(p => !ids.has(p.id));
+                      for (let i = 0; i < Math.min(11 - selected.length, rest.length); i++) selected.push(rest[i]);
+                    }
+
+                    setStarters(selected);
+                    setMidMatchStarters(selected);
+                    setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: selected }));
+                  }}
+                >
+                  💤 Poupar Cansados
+                </button>
               </div>
             </div>
 
@@ -1951,6 +2089,108 @@ const AppContent: React.FC = () => {
               >
                 Manter no Elenco
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INCOMING CLUB TRANSFER PROPOSAL MODAL */}
+      {incomingProposal && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
+            <span style={{ fontSize: '2.5rem' }}>💼</span>
+            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-green)' }}>Proposta Recebida!</h3>
+            <p style={{ fontSize: '0.82rem', color: '#9ca3af', lineHeight: '1.4', margin: '10px 0 16px 0' }}>
+              O **{incomingProposal.buyerClub.name}** enviou uma oferta oficial para comprar seu jogador **{incomingProposal.player.name}** ({incomingProposal.player.position}, Rating {incomingProposal.player.rating})!
+            </p>
+
+            {incomingNegResult ? (
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
+                {incomingNegResult}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Valor do Jogador: {formatCurrency(incomingProposal.player.value)}</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent-green)' }}>Valor Oferecido: {formatCurrency(incomingProposal.amount)}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!incomingNegResult && (
+                <>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      acceptIncomingProposal(incomingProposal.player, incomingProposal.buyerClub.id, incomingProposal.amount);
+                      setIncomingProposal(null);
+                    }}
+                  >
+                    🤝 Aceitar Oferta ({formatCurrency(incomingProposal.amount)})
+                  </button>
+                  
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ flex: 1, padding: '10px', fontSize: '0.8rem' }}
+                      onClick={() => {
+                        // Negotiation / Counter-offer: 40% chance the club accepts higher counter offer up to 25% extra, or gives response
+                        const extraPercent = 0.10 + Math.random() * 0.15;
+                        const counter = Math.round(incomingProposal.amount * (1 + extraPercent));
+                        const roll = Math.random();
+                        if (roll < 0.45) {
+                          setIncomingNegResult(`O ${incomingProposal.buyerClub.name} aceitou sua contraproposta! Vendido por ${formatCurrency(counter)}.`);
+                          setNegOfferAmount(counter);
+                        } else if (roll < 0.80) {
+                          const limit = Math.round(incomingProposal.amount * 1.05);
+                          setIncomingNegResult(`O ${incomingProposal.buyerClub.name} recusou os ${formatCurrency(counter)}, mas aceita pagar no máximo ${formatCurrency(limit)}.`);
+                          setNegOfferAmount(limit);
+                        } else {
+                          setIncomingNegResult(`O ${incomingProposal.buyerClub.name} achou a contraproposta muito alta e retirou o interesse na contratação!`);
+                          setNegOfferAmount(0);
+                        }
+                      }}
+                    >
+                      💬 Negociar Valor
+                    </button>
+                    
+                    <button
+                      className="btn btn-secondary"
+                      style={{ flex: 1, padding: '10px', fontSize: '0.8rem', background: 'rgba(255,23,68,0.1)', color: 'var(--accent-red)', border: '1px solid rgba(255,23,68,0.2)' }}
+                      onClick={() => {
+                        setIncomingProposal(null);
+                      }}
+                    >
+                      ❌ Recusar
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {incomingNegResult && (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {negOfferAmount > 0 ? (
+                    <button
+                      className="btn btn-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        acceptIncomingProposal(incomingProposal.player, incomingProposal.buyerClub.id, negOfferAmount);
+                        setIncomingProposal(null);
+                      }}
+                    >
+                      🤝 Fechar Negócio ({formatCurrency(negOfferAmount)})
+                    </button>
+                  ) : null}
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      setIncomingProposal(null);
+                    }}
+                  >
+                    Fechar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

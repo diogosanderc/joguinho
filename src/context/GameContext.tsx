@@ -83,8 +83,9 @@ interface GameContextType {
   makeBidForPlayer: (player: Player, _sellerClubId: string, bidAmount: number) => { status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number };
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
-  updateTicketPrice: (delta: number) => void;
   renewContract: (playerId: string, duration: '6M' | '1Y') => void;
+  acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
+  updateTicketPrice: (delta: number) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -400,9 +401,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             if (ev.type === 'INJURY') {
               isInjured = true;
-              injuryWeeks = Math.floor(Math.random() * 4) + 1; // 1 to 4 weeks
+              // 70% chance of a light 1-week injury, otherwise 2-4 weeks
+              injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
+              energy = 100; // recovers fatigue on injury!
             }
           });
+        }
+
+        // Random injury chance per round even without match events (older players are more prone)
+        if (!isInjured && club.id === userClubId) {
+          const ageFactor = player.age > 30 ? (player.age - 30) * 0.008 : 0.002;
+          // Very low chance per round, increasing with age
+          if (Math.random() < ageFactor) {
+            isInjured = true;
+            injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
+            energy = 100; // recovers fatigue on injury!
+          }
         }
 
         // Energy management
@@ -411,7 +425,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : getAutoStarters(club).some(p => p.id === player.id);
 
         if (isInjured) {
-          energy = Math.min(100, energy + 12);
+          energy = 100; // fully recovered when injured
           if (injuryWeeks > 1) {
             injuryWeeks--;
           } else {
@@ -420,9 +434,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else {
           if (wasStarter) {
-            energy = Math.max(30, energy - Math.floor(Math.random() * 8) - 8); // lose 8-16 energy
+            energy = Math.max(30, energy - Math.floor(Math.random() * 6) - 4); // lose 4-9 energy (softened)
           } else {
-            energy = Math.min(100, energy + 15); // recover energy on bench/rest
+            energy = Math.min(100, energy + 20); // recover energy faster on bench/rest (was 15)
           }
         }
 
@@ -950,13 +964,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Helper to sort squad by position GK, DF, MF, FW
+    const sortSquad = (squad: Player[]) => {
+      const order = { GK: 1, DF: 2, MF: 3, FW: 4 };
+      return [...squad].sort((a, b) => order[a.position] - order[b.position]);
+    };
+
     // Deduct cost and add player
     const updatedClubs = clubs.map(club => {
       if (club.id === userClubId) {
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: [...club.squad, player]
+          squad: sortSquad([...club.squad, player])
         };
       }
       return club;
@@ -1056,13 +1076,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    const sortSquad = (squad: Player[]) => {
+      const order = { GK: 1, DF: 2, MF: 3, FW: 4 };
+      return [...squad].sort((a, b) => order[a.position] - order[b.position]);
+    };
+
     const updatedClubs = clubs.map(club => {
       if (club.id === userClubId) {
         const newPlayer = { ...player, contractLocked: true };
         return {
           ...club,
           finances: club.finances - pricePaid,
-          squad: [...club.squad, newPlayer]
+          squad: sortSquad([...club.squad, newPlayer])
         };
       }
       if (club.id === sellerClubId) {
@@ -1295,6 +1320,55 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  // Accept an incoming purchase proposal from another club for a user's player
+  const acceptIncomingProposal = (player: Player, buyerClubId: string, amount: number) => {
+    if (!userClub) return;
+
+    if (userClub.squad.length <= 14) {
+      alert('Elenco muito reduzido! Você precisa de pelo menos 14 jogadores no elenco.');
+      return;
+    }
+
+    if (player.position === 'GK' && userClub.squad.filter(p => p.position === 'GK').length <= 1) {
+      alert('Impossível vender! Você precisa manter pelo menos 1 goleiro no elenco.');
+      return;
+    }
+
+    // Process the transfer
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return {
+          ...club,
+          finances: club.finances + amount,
+          squad: club.squad.filter(p => p.id !== player.id)
+        };
+      }
+      if (club.id === buyerClubId) {
+        // Add player to buyer club
+        const newP = { ...player, contractLocked: true, benchRounds: 0 };
+        return {
+          ...club,
+          finances: Math.max(0, club.finances - amount),
+          squad: [...club.squad, newP]
+        };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+
+    const buyerName = clubs.find(c => c.id === buyerClubId)?.name || 'Outro Clube';
+
+    setNews(prev => [...prev, {
+      id: `prop_sold_${Date.now()}`,
+      week: currentRound,
+      text: `Transferência! O ${buyerName} contratou ${player.name} do ${userClub.name} por ${formatCurrency(amount)} após aceitação da proposta!`,
+      type: 'TRANSFER'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
   const manualSave = () => {
     saveGame(gameState, managerName, currentYear, currentRound, clubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
     alert('Jogo salvo com sucesso!');
@@ -1343,7 +1417,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyPlayerFromClub,
       manualSave,
       updateTicketPrice,
-      renewContract
+      renewContract,
+      acceptIncomingProposal
     }}>
       {children}
     </GameContext.Provider>
