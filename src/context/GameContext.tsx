@@ -379,7 +379,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Update player physical energy & injuries
-      const clubMatch = roundMatches.find(m => m.homeId === club.id || m.awayId === club.id);
+      const clubMatch = updatedMatches.find(m => m.round === currentRound && (m.homeId === club.id || m.awayId === club.id));
       let squad = club.squad.map(player => {
         let energy = player.energy;
         let isInjured = player.isInjured;
