@@ -347,10 +347,10 @@ const AppContent: React.FC = () => {
     }
   }, [simMinute, gameState]);
 
-  // Detect unhappy players who haven't played for 4+ rounds
+  // Detect unhappy players who triggered the randomized dissatisfaction roll (benchRounds === 999)
   useEffect(() => {
     if (userClub && gameState === 'PLAYING') {
-      const unhappy = userClub.squad.find(p => p.benchRounds && p.benchRounds >= 4);
+      const unhappy = userClub.squad.find(p => p.benchRounds === 999);
       if (unhappy) {
         setUnhappyPlayer(unhappy);
       }
@@ -462,15 +462,17 @@ const AppContent: React.FC = () => {
   const standings = getStandingsData();
   const currentStandings = standings[standingsTab];
 
-  // Top scorers calculation
+  // Top scorers calculation by division
   const getTopScorers = () => {
     const list: { name: string; club: string; division: string; goals: number }[] = [];
     clubs.forEach(c => {
-      c.squad.forEach(p => {
-        if (p.goals > 0) {
-          list.push({ name: p.name, club: c.name, division: c.division, goals: p.goals });
-        }
-      });
+      if (c.division === standingsTab) {
+        c.squad.forEach(p => {
+          if (p.goals > 0) {
+            list.push({ name: p.name, club: c.name, division: c.division, goals: p.goals });
+          }
+        });
+      }
     });
     return list.sort((a, b) => b.goals - a.goals).slice(0, 10);
   };
@@ -1847,27 +1849,45 @@ const AppContent: React.FC = () => {
             )}
 
             {statsView === 'STATS' && (
-              <div className="card">
-                <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Artilheiros do Campeonato</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {topScorers.length === 0 ? (
-                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Nenhum gol marcado ainda nesta temporada.</p>
-                  ) : (
-                    topScorers.map((sc, idx) => (
-                      <div 
-                        key={idx}
-                        style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#121316', borderRadius: '12px' }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{idx + 1}. {sc.name}</span>
-                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{sc.club} (Série {sc.division})</span>
-                        </div>
-                        <span style={{ fontWeight: 800, color: 'var(--accent-green)', display: 'flex', alignItems: 'center' }}>⚽ {sc.goals}</span>
-                      </div>
-                    ))
-                  )}
+              <>
+                {/* Division selectors */}
+                <div className="sub-tabs" style={{ padding: '0 0 12px 0' }}>
+                  {(['A', 'B', 'C', 'D'] as const).map(div => (
+                    <button
+                      key={div}
+                      onClick={() => setStandingsTab(div)}
+                      className={`sub-tab-btn ${standingsTab === div ? 'active' : ''}`}
+                      style={{ flex: 1 }}
+                    >
+                      Série {div}
+                    </button>
+                  ))}
                 </div>
-              </div>
+
+                <div className="card">
+                  <div className="card-title">
+                    <Trophy size={18} color="var(--accent-gold)" /> Artilheiros - Série {standingsTab}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {topScorers.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Nenhum gol marcado ainda nesta temporada nesta série.</p>
+                    ) : (
+                      topScorers.map((sc, idx) => (
+                        <div 
+                          key={idx}
+                          style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#121316', borderRadius: '12px' }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{idx + 1}. {sc.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{sc.club} (Série {sc.division})</span>
+                          </div>
+                          <span style={{ fontWeight: 800, color: 'var(--accent-green)', display: 'flex', alignItems: 'center' }}>⚽ {sc.goals}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
             )}
 
             {statsView === 'HISTORY' && (
@@ -1909,7 +1929,7 @@ const AppContent: React.FC = () => {
             <span style={{ fontSize: '2.5rem' }}>😠</span>
             <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Jogador Insatisfeito</h3>
             <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 20px 0' }}>
-              O jogador **{unhappyPlayer.name}** ({unhappyPlayer.position}) está insatisfeito por estar no banco de reservas há {unhappyPlayer.benchRounds} rodadas seguidas e solicitou ser vendido!
+              O jogador **{unhappyPlayer.name}** ({unhappyPlayer.position}) está se sentindo inferior no elenco por não estar jogando e solicitou ser vendido para outro clube!
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button

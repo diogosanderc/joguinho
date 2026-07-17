@@ -122,7 +122,7 @@ export const simulateMatch = (
   const yellowCards: Record<string, number> = {};
   const redCarded = new Set<string>();
 
-  // Helper to choose a player for an event (weighted by rating)
+  // Helper to choose a player for an event (weighted by rating and star status)
   const choosePlayer = (players: Player[], posFilter?: string[]) => {
     const list = posFilter 
       ? players.filter(p => posFilter.includes(p.position) && !redCarded.has(p.id))
@@ -130,11 +130,12 @@ export const simulateMatch = (
     
     if (list.length === 0) return players[Math.floor(Math.random() * players.length)];
     
-    // Weighted selection
-    const totalRating = list.reduce((sum, p) => sum + p.rating, 0);
-    let rand = Math.random() * totalRating;
+    // Weighted selection (stars get double weight)
+    const getWeight = (p: Player) => p.isStar ? p.rating * 2.0 : p.rating;
+    const totalWeight = list.reduce((sum, p) => sum + getWeight(p), 0);
+    let rand = Math.random() * totalWeight;
     for (const p of list) {
-      rand -= p.rating;
+      rand -= getWeight(p);
       if (rand <= 0) return p;
     }
     return list[list.length - 1];
@@ -173,7 +174,7 @@ export const simulateMatch = (
         
         // Let's decide if it's a Goal, Saved, or Miss
         const attackRoll = Math.random();
-        if (attackRoll < attackChance * 0.15) { // Goal!
+        if (attackRoll < attackChance * 0.23) { // Goal!
           homeScore++;
           const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
           events.push({
@@ -209,7 +210,7 @@ export const simulateMatch = (
         const attackChance = awayAtt / (awayAtt + homeDef);
         
         const attackRoll = Math.random();
-        if (attackRoll < attackChance * 0.15) { // Goal!
+        if (attackRoll < attackChance * 0.23) { // Goal!
           awayScore++;
           const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
           events.push({
@@ -304,6 +305,36 @@ export const simulateMatch = (
         player: injuredPlayer.name,
         clubId: targetClub.id,
         description: `Lesão! ${injuredPlayer.name} cai sentindo dores musculares e precisa deixar o campo.`
+      });
+    }
+  }
+
+  // Increase goal conversion rate by giving extra goal chances or converting draws
+  // If still a draw, apply a 50% chance to break the tie, resulting in 75% decisive results (wins/losses) and 25% draws
+  if (homeScore === awayScore && Math.random() < 0.50) {
+    const homeOverall = homeForces.overall * homeAdvantage;
+    const awayOverall = awayForces.overall;
+    const homeWinChance = homeOverall / (homeOverall + awayOverall);
+    
+    if (Math.random() < homeWinChance) {
+      homeScore++;
+      const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
+      events.push({
+        minute: 89,
+        type: 'GOAL',
+        player: scorer.name,
+        clubId: homeClub.id,
+        description: `Gol de desempate do ${homeClub.name}! ${scorer.name} aproveita cruzamento no apagar das luzes!`
+      });
+    } else {
+      awayScore++;
+      const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
+      events.push({
+        minute: 89,
+        type: 'GOAL',
+        player: scorer.name,
+        clubId: awayClub.id,
+        description: `Gol no finalzinho do ${awayClub.name}! ${scorer.name} escapa no contra-ataque e define o placar!`
       });
     }
   }

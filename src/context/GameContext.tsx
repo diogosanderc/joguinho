@@ -468,15 +468,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           contractWeeks = Math.max(0, contractWeeks - 1);
         }
 
-        // --- Dissatisfaction (bench rounds tracking) ---
+        // --- Dissatisfaction (bench rounds tracking - randomized) ---
         let benchRounds = player.benchRounds ?? 0;
         if (club.id === userClubId) {
           if (wasStarter) {
             benchRounds = 0; // reset if played
-          } else {
-            // only increment dissatisfaction if player is not injured
-            if (!isInjured) {
-              benchRounds += 1;
+          } else if (!isInjured) {
+            // Instead of counting up to 4, we use a random chance of 12% per round on the bench
+            // If they trigger the roll, we mark benchRounds as 999 to signal they are ready to demand a transfer!
+            if (Math.random() < 0.12) {
+              benchRounds = 999;
+            } else {
+              benchRounds = 1; // general marker that they are on bench
             }
           }
         }
@@ -684,6 +687,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return 0;
     };
 
+    // 2.5 Find top scorers per division to award/keep Star status
+    const divisionTopScorers: Record<string, { playerName: string; goals: number }[]> = { A: [], B: [], C: [], D: [] };
+    currentClubs.forEach(c => {
+      c.squad.forEach(p => {
+        if (p.goals > 0) {
+          const divList = divisionTopScorers[c.division];
+          if (divList.length === 0 || p.goals > divList[0].goals) {
+            divisionTopScorers[c.division] = [{ playerName: p.name, goals: p.goals }];
+          } else if (p.goals === divList[0].goals) {
+            divList.push({ playerName: p.name, goals: p.goals });
+          }
+        }
+      });
+    });
+
     // 3. Move clubs to their new divisions & pay prizes
     const finalClubs = currentClubs.map(club => {
       let div = club.division;
@@ -712,7 +730,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isMF_FW = p.position === 'MF' || p.position === 'FW';
         let isStar = p.isStar;
 
-        if (p.isStar) {
+        // Check if player was a top scorer in their division this season
+        const wasTopScorer = (divisionTopScorers[club.division] || []).some(ts => ts.playerName === p.name);
+
+        if (wasTopScorer) {
+          isStar = true; // Artilheiro ganha estrela garantida
+        } else if (p.isStar) {
           // Maintenance check
           if (isMF_FW) {
             // Must score at least 5 goals to keep star
