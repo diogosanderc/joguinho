@@ -1,0 +1,1974 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { GameProvider, useGame } from './context/GameContext';
+import type { Sponsor } from './context/GameContext';
+import { CLUB_DEFINITIONS, formatCurrency } from './data/database';
+import type { Player, Club } from './data/database';
+import { calculateTeamForces } from './utils/matchEngine';
+import { 
+  Home, Users, TrendingUp, DollarSign, Trophy, 
+  Play, Shield, AlertTriangle, Activity, CheckCircle
+} from 'lucide-react';
+
+// Wrapper to enable context access
+const AppContent: React.FC = () => {
+  const {
+    gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
+    schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
+    currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
+    upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, clearCurrentMatch,
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract
+  } = useGame();
+
+  const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
+  
+  // Starting state states
+  const [inputName, setInputName] = useState('');
+  const [selectedStartClubId, setSelectedStartClubId] = useState('');
+
+  // Squad selection states
+  const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '4-3-3' | '3-5-2' | '4-5-1' | '5-3-2'>('4-4-2');
+  const [starters, setStarters] = useState<Player[]>([]);
+  const [subModalOpen, setSubModalOpen] = useState(false);
+  const [subslotIndex, setSubslotIndex] = useState<number | null>(null);
+
+  // Standings filter states
+  const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C' | 'D'>('D');
+  const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'HISTORY'>('TABLE');
+
+  // Market filter states
+  const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | 'GK' | 'DF' | 'MF' | 'FW'>('ALL');
+
+  // Match Simulation variables
+  const [simMinute, setSimMinute] = useState(0);
+  const [simScoreHome, setSimScoreHome] = useState(0);
+  const [simScoreAway, setSimScoreAway] = useState(0);
+  const [simEvents, setSimEvents] = useState<any[]>([]);
+  const simSpeed = 100; // ms per minute
+  const [isSimPaused, setIsSimPaused] = useState(false);
+  const [matchDone, setMatchDone] = useState(false);
+
+  // Mid-match substitution variables
+  const [midMatchSubModal, setMidMatchSubModal] = useState(false);
+  const [midMatchStarters, setMidMatchStarters] = useState<Player[]>([]);
+
+  // Half-time and red-card modals
+  const [halftimeModalOpen, setHalftimeModalOpen] = useState(false);
+  const [halftimeShown, setHalftimeShown] = useState(false);
+  const [redCardModalOpen, setRedCardModalOpen] = useState(false);
+  const [lastRedCardMinute, setLastRedCardMinute] = useState(-1);
+
+  // Sponsors list generator (deterministic based on club reputation)
+  const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
+
+  // Market Search & Negotiation states
+  const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS'>('FREE_AGENTS');
+  const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C' | 'D'>('A');
+  const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
+  const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
+  const [negotiatingClubId, setNegotiatingClubId] = useState<string>('');
+  const [offerAmount, setOfferAmount] = useState<number>(0);
+  const [negotiationResult, setNegotiationResult] = useState<{ status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number } | null>(null);
+  const [negotiationStage, setNegotiationStage] = useState<'OFFER' | 'RESULT'>('OFFER');
+  const [purchaseConfirmData, setPurchaseConfirmData] = useState<{ player: Player; clubName: string; price: number; onConfirm: () => void } | null>(null);
+  
+  // Squad management and dissatisfaction states
+  const [selectedManagePlayerId, setSelectedManagePlayerId] = useState<string | null>(null);
+  const [unhappyPlayer, setUnhappyPlayer] = useState<Player | null>(null);
+
+  // Auto-fill selectedSearchClubId when division or clubs list changes
+  useEffect(() => {
+    if (clubs.length > 0) {
+      const divClubs = clubs.filter(c => c.division === selectedSearchDiv && c.id !== userClubId);
+      if (divClubs.length > 0) {
+        setSelectedSearchClubId(divClubs[0].id);
+      }
+    }
+  }, [selectedSearchDiv, clubs, userClubId]);
+  const getContrastColor = (hexcolor?: string) => {
+    if (!hexcolor || hexcolor.length < 6) return 'white';
+    const hex = hexcolor.replace('#', '');
+    const r = parseInt(hex.substr(0,2),16);
+    const g = parseInt(hex.substr(2,2),16);
+    const b = parseInt(hex.substr(4,2),16);
+    const yiq = ((r*299)+(g*587)+(b*114))/1000;
+    return (yiq >= 128) ? '#111827' : '#ffffff';
+  };
+
+  const [startersPerTactic, setStartersPerTactic] = useState<Record<string, Player[]>>({});
+  const [lastUserClubId, setLastUserClubId] = useState('');
+
+  useEffect(() => {
+    if (userClubId !== lastUserClubId) {
+      setStartersPerTactic({});
+      setLastUserClubId(userClubId);
+    }
+  }, [userClubId, lastUserClubId]);
+
+  // Load or pick starters when tactic changes — preserves current starters by position
+  useEffect(() => {
+    if (userClub) {
+      const getTacticNeeds = (tactic: string) => {
+        let targetDF = 4, targetMF = 4, targetFW = 2;
+        if (tactic === '4-3-3') { targetDF = 4; targetMF = 3; targetFW = 3; }
+        else if (tactic === '3-5-2') { targetDF = 3; targetMF = 5; targetFW = 2; }
+        else if (tactic === '4-5-1') { targetDF = 4; targetMF = 5; targetFW = 1; }
+        else if (tactic === '5-3-2') { targetDF = 5; targetMF = 3; targetFW = 2; }
+        return { targetDF, targetMF, targetFW };
+      };
+
+      if (startersPerTactic[selectedTactic] && startersPerTactic[selectedTactic].length > 0) {
+        // Saved lineup for this tactic — validate (injures / sold players)
+        const saved = startersPerTactic[selectedTactic];
+        const validated = saved.map(p => {
+          const found = userClub.squad.find(s => s.id === p.id);
+          if (!found || found.isInjured) {
+            const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !saved.some(x => x.id === s.id));
+            return replacement || userClub.squad.find(s => !s.isInjured && !saved.some(x => x.id === s.id)) || p;
+          }
+          return found;
+        });
+        setStarters(validated);
+        setMidMatchStarters(validated);
+      } else if (starters.length > 0) {
+        // Carry over current starters mapping them to the new formation's slots
+        const { targetDF, targetMF, targetFW } = getTacticNeeds(selectedTactic);
+        const posMap: Record<string, Player[]> = { GK: [], DF: [], MF: [], FW: [] };
+        starters.forEach(p => { if (posMap[p.position]) posMap[p.position].push(p); });
+
+        // Helper: get best available player for a position, preferring current starters
+        const used = new Set<string>();
+        const pick = (pos: string, count: number): Player[] => {
+          const result: Player[] = [];
+          // First use current starters in that position
+          for (const p of posMap[pos]) {
+            if (result.length >= count) break;
+            const live = userClub.squad.find(s => s.id === p.id && !s.isInjured);
+            if (live && !used.has(live.id)) { result.push(live); used.add(live.id); }
+          }
+          // Then fill from best bench players at that position
+          if (result.length < count) {
+            const bench = userClub.squad
+              .filter(s => s.position === pos && !s.isInjured && !used.has(s.id))
+              .sort((a, b) => b.rating - a.rating);
+            for (const p of bench) {
+              if (result.length >= count) break;
+              result.push(p); used.add(p.id);
+            }
+          }
+          return result;
+        };
+
+        const selected: Player[] = [
+          ...pick('GK', 1),
+          ...pick('DF', targetDF),
+          ...pick('MF', targetMF),
+          ...pick('FW', targetFW),
+        ];
+
+        // Fill to 11 if still short
+        if (selected.length < 11) {
+          const rest = userClub.squad.filter(s => !s.isInjured && !used.has(s.id)).sort((a, b) => b.rating - a.rating);
+          for (let i = 0; i < Math.min(11 - selected.length, rest.length); i++) selected.push(rest[i]);
+        }
+
+        setStarters(selected);
+        setMidMatchStarters(selected);
+        setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: selected }));
+      } else {
+        // Cold start — auto-pick best 11
+        const { targetDF, targetMF, targetFW } = getTacticNeeds(selectedTactic);
+        const gks = userClub.squad.filter(p => p.position === 'GK' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+        const dfs = userClub.squad.filter(p => p.position === 'DF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+        const mfs = userClub.squad.filter(p => p.position === 'MF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+        const fws = userClub.squad.filter(p => p.position === 'FW' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+
+        const selected: Player[] = [];
+        if (gks[0]) selected.push(gks[0]);
+        for (let i = 0; i < Math.min(targetDF, dfs.length); i++) selected.push(dfs[i]);
+        for (let i = 0; i < Math.min(targetMF, mfs.length); i++) selected.push(mfs[i]);
+        for (let i = 0; i < Math.min(targetFW, fws.length); i++) selected.push(fws[i]);
+
+        if (selected.length < 11) {
+          const ids = new Set(selected.map(p => p.id));
+          const rest = userClub.squad.filter(p => !p.isInjured && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
+          for (let i = 0; i < Math.min(11 - selected.length, rest.length); i++) selected.push(rest[i]);
+        }
+        setStarters(selected);
+        setMidMatchStarters(selected);
+        setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: selected }));
+      }
+    }
+  }, [userClubId, selectedTactic]);
+
+  // Sync starters and check injuries when club squad changes
+  useEffect(() => {
+    if (userClub && starters.length > 0) {
+      let changed = false;
+      const nextS = starters.map(p => {
+        const found = userClub.squad.find(s => s.id === p.id);
+        if (!found || found.isInjured) {
+          changed = true;
+          const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !starters.some(x => x.id === s.id));
+          return replacement || userClub.squad.find(s => !s.isInjured && !starters.some(x => x.id === s.id)) || p;
+        }
+        if (found.rating !== p.rating || found.energy !== p.energy) {
+          changed = true;
+          return found;
+        }
+        return p;
+      });
+      if (changed) {
+        setStarters(nextS);
+        setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: nextS }));
+      }
+    }
+  }, [userClub]);
+
+  // Generate sponsors proposal when tab is loaded
+  useEffect(() => {
+    if (userClub && activeTab === 3) {
+      const rep = userClub.reputation;
+      const div = userClub.division;
+      const divMultiplier = div === 'A' ? 5.0 : div === 'B' ? 2.0 : div === 'C' ? 0.8 : 0.3;
+      
+      const sponsors: Sponsor[] = [
+        {
+          id: 'sp_master',
+          name: 'PixBet Master',
+          type: 'MASTER',
+          signingBonus: Math.round(rep * rep * 250 * divMultiplier),
+          weeklyPayment: Math.round(rep * 120 * divMultiplier),
+          contractWeeks: 38
+        },
+        {
+          id: 'sp_costas',
+          name: 'SuperBet Costas',
+          type: 'COSTAS',
+          signingBonus: Math.round(rep * rep * 130 * divMultiplier),
+          weeklyPayment: Math.round(rep * 60 * divMultiplier),
+          contractWeeks: 38
+        },
+        {
+          id: 'sp_mangas',
+          name: 'CredFácil Mangas',
+          type: 'MANGAS',
+          signingBonus: Math.round(rep * rep * 70 * divMultiplier),
+          weeklyPayment: Math.round(rep * 30 * divMultiplier),
+          contractWeeks: 38
+        }
+      ];
+      setSponsorProposals(sponsors);
+    }
+  }, [activeTab, userClub]);
+
+  // Live match simulator runner
+  const feedEndRef = useRef<HTMLDivElement>(null);
+  const userMatchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (gameState === 'MATCH_DAY' && currentMatchResult) {
+      setSimMinute(0);
+      setSimScoreHome(0);
+      setSimScoreAway(0);
+      setSimEvents([]);
+      setMatchDone(false);
+      setIsSimPaused(false);
+      setHalftimeShown(false);
+      setHalftimeModalOpen(false);
+      setRedCardModalOpen(false);
+      setLastRedCardMinute(-1);
+    }
+  }, [gameState, currentMatchResult]);
+
+  // Auto-open half-time substitution modal at minute 45
+  useEffect(() => {
+    if (gameState === 'MATCH_DAY' && simMinute === 45 && !halftimeShown && !matchDone && !isSimPaused) {
+      setHalftimeModalOpen(true);
+      setHalftimeShown(true);
+      setIsSimPaused(true);
+    }
+  }, [simMinute, halftimeShown, matchDone, isSimPaused, gameState]);
+
+  // Auto-open red-card modal when a red card event fires in user's match
+  useEffect(() => {
+    if (gameState !== 'MATCH_DAY' || !currentMatchResult || matchDone) return;
+    const userRedCards = simEvents.filter(
+      e => e.type === 'RED' && e.clubId === userClubId && e.minute > lastRedCardMinute
+    );
+    if (userRedCards.length > 0) {
+      const latest = userRedCards[userRedCards.length - 1];
+      setLastRedCardMinute(latest.minute);
+      setRedCardModalOpen(true);
+      setIsSimPaused(true);
+    }
+  }, [simEvents, userClubId, lastRedCardMinute, gameState, currentMatchResult, matchDone]);
+
+
+  useEffect(() => {
+    if (gameState !== 'MATCH_DAY' || !currentMatchResult || isSimPaused || matchDone) return;
+
+    const timer = setTimeout(() => {
+      if (simMinute < 90) {
+        const nextMin = simMinute + 1;
+        setSimMinute(nextMin);
+
+        // Find events that happened in this minute
+        const eventsInMin = currentMatchResult.events.filter(e => e.minute === nextMin);
+        if (eventsInMin.length > 0) {
+          setSimEvents(prev => [...prev, ...eventsInMin]);
+          
+          // Update score in real time
+          eventsInMin.forEach(ev => {
+            if (ev.type === 'GOAL') {
+              const isHomeGoal = ev.clubId === currentMatch?.homeId;
+              if (isHomeGoal) {
+                setSimScoreHome(prev => prev + 1);
+              } else {
+                setSimScoreAway(prev => prev + 1);
+              }
+            }
+          });
+        }
+
+        // Scroll to bottom of events feed
+        feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        setMatchDone(true);
+      }
+    }, simSpeed);
+
+    return () => clearTimeout(timer);
+  }, [simMinute, isSimPaused, matchDone, gameState, currentMatchResult, simSpeed]);
+
+  // Auto-scroll to user's match row at minute 1 (start of match)
+  useEffect(() => {
+    if (gameState === 'MATCH_DAY' && simMinute === 1) {
+      userMatchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [simMinute, gameState]);
+
+  // Detect unhappy players who haven't played for 4+ rounds
+  useEffect(() => {
+    if (userClub && gameState === 'PLAYING') {
+      const unhappy = userClub.squad.find(p => p.benchRounds && p.benchRounds >= 4);
+      if (unhappy) {
+        setUnhappyPlayer(unhappy);
+      }
+    }
+  }, [currentRound, userClub, gameState]);
+
+  const handleSkipMatch = () => {
+    if (!currentMatchResult) return;
+    setSimMinute(90);
+    setSimScoreHome(currentMatchResult.homeScore);
+    setSimScoreAway(currentMatchResult.awayScore);
+    setSimEvents(currentMatchResult.events);
+    setMatchDone(true);
+  };
+
+  // Helper to make substitution in current match
+  const handleMidMatchSub = (inPlayer: Player, outPlayer: Player) => {
+    if (!currentMatch || !currentMatchResult) return;
+    
+    // Replace in starters
+    const nextStarters = midMatchStarters.map(p => p.id === outPlayer.id ? inPlayer : p);
+    setMidMatchStarters(nextStarters);
+    setMidMatchSubModal(false);
+
+    // Append sub news/event
+    const subEvent = {
+      minute: simMinute,
+      type: 'INFO',
+      clubId: userClubId,
+      description: `Substituição no ${userClub?.name}: sai ${outPlayer.name}, entra ${inPlayer.name}.`
+    };
+    setSimEvents(prev => [...prev, subEvent]);
+  };
+
+  const getStandingsData = () => {
+    const list: Record<'A' | 'B' | 'C' | 'D', { clubId: string; clubName: string; points: number; played: number; wins: number; draws: number; losses: number; gf: number; ga: number; gd: number }[]> = {
+      A: [], B: [], C: [], D: []
+    };
+
+    const initStandings = (club: Club) => ({
+      clubId: club.id,
+      clubName: club.name,
+      points: 0,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0
+    });
+
+    clubs.forEach(c => {
+      list[c.division].push(initStandings(c));
+    });
+
+    schedule.forEach(match => {
+      if (match.simulated && match.result) {
+        const homeEntry = list[match.division].find(e => e.clubId === match.homeId);
+        const awayEntry = list[match.division].find(e => e.clubId === match.awayId);
+
+        if (homeEntry && awayEntry) {
+          const hgf = match.result.homeScore;
+          const agf = match.result.awayScore;
+
+          homeEntry.played++;
+          awayEntry.played++;
+          homeEntry.gf += hgf;
+          homeEntry.ga += agf;
+          awayEntry.gf += agf;
+          awayEntry.ga += hgf;
+          homeEntry.gd = homeEntry.gf - homeEntry.ga;
+          awayEntry.gd = awayEntry.gf - awayEntry.ga;
+
+          if (hgf > agf) {
+            homeEntry.points += 3;
+            homeEntry.wins++;
+            awayEntry.losses++;
+          } else if (hgf === agf) {
+            homeEntry.points += 1;
+            awayEntry.points += 1;
+            homeEntry.draws++;
+            awayEntry.draws++;
+          } else {
+            awayEntry.points += 3;
+            awayEntry.wins++;
+            homeEntry.losses++;
+          }
+        }
+      }
+    });
+
+    const sortStandings = (a: any, b: any) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      return b.gf - a.gf;
+    };
+
+    list.A.sort(sortStandings);
+    list.B.sort(sortStandings);
+    list.C.sort(sortStandings);
+    list.D.sort(sortStandings);
+
+    return list;
+  };
+
+  // UI calculations
+  const standings = getStandingsData();
+  const currentStandings = standings[standingsTab];
+
+  // Top scorers calculation
+  const getTopScorers = () => {
+    const list: { name: string; club: string; division: string; goals: number }[] = [];
+    clubs.forEach(c => {
+      c.squad.forEach(p => {
+        if (p.goals > 0) {
+          list.push({ name: p.name, club: c.name, division: c.division, goals: p.goals });
+        }
+      });
+    });
+    return list.sort((a, b) => b.goals - a.goals).slice(0, 10);
+  };
+
+  const topScorers = getTopScorers();
+
+  // --- START SCREEN RENDER ---
+  if (gameState === 'START') {
+    const dClubs = CLUB_DEFINITIONS.filter(c => c.division === 'D');
+
+    return (
+      <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>ELIFOOT 2026</h1>
+          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
+        </div>
+
+        <div className="card" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <h3 style={{ marginBottom: '12px', fontWeight: 700 }}>1. Nome do Dirigente</h3>
+          <input 
+            type="text" 
+            placeholder="Seu nome..." 
+            value={inputName} 
+            onChange={(e) => setInputName(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              background: '#121316',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'white',
+              fontSize: '1rem',
+              outline: 'none',
+              fontWeight: 600
+            }}
+          />
+        </div>
+
+        <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', flex: 0.8, overflow: 'hidden' }}>
+          <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube (Série D)</h3>
+          <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', gap: '8px', display: 'flex', flexDirection: 'column' }}>
+            {dClubs.map(club => (
+              <div 
+                key={club.id}
+                onClick={() => setSelectedStartClubId(club.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: selectedStartClubId === club.id ? 'rgba(0, 230, 118, 0.1)' : '#121316',
+                  border: selectedStartClubId === club.id ? '2px solid var(--accent-green)' : '1px solid rgba(255,255,255,0.05)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="club-badge-mini" style={{ backgroundColor: club.primaryColor, border: `1.5px solid ${club.secondaryColor}`, width: '18px', height: '18px' }} />
+                  <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{club.name}</span>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
+                  Estádio: {(club.stadiumCapacity/1000).toFixed(0)}k
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button 
+          className="btn btn-primary" 
+          disabled={!inputName.trim() || !selectedStartClubId}
+          onClick={() => startGame(inputName, selectedStartClubId)}
+          style={{ marginTop: '16px', height: '52px', fontSize: '1rem' }}
+        >
+          Iniciar Carreira
+        </button>
+      </div>
+    );
+  }
+
+  // Guard safety
+  if (!userClub) return null;
+
+  // Calculate team stats
+  const startersForces = calculateTeamForces(starters);
+
+  // --- LIVE MATCH SIMULATOR OVERLAY ---
+  if (gameState === 'MATCH_DAY' && currentMatch) {
+    const isHome = currentMatch.homeId === userClubId;
+    const opponent = clubs.find(c => c.id === (isHome ? currentMatch.awayId : currentMatch.homeId))!;
+    const roundToDisplay = currentRound - 1;
+    const roundMatches = schedule.filter(m => m.round === roundToDisplay);
+
+    return (
+      <div className="live-match-overlay">
+        {/* TOP USER GAME CONTROL BANNER */}
+        <div className="match-scoreboard" style={{ padding: '14px 16px', gap: '8px', zIndex: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700 }}>
+            <span>SEU JOGO • SÉRIE {userClub.division}</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}>
+              {simMinute}' - {simMinute <= 45 ? '1º Tempo' : simMinute < 90 ? '2º Tempo' : 'Fim de Jogo'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px', margin: '4px 0' }}>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{isHome ? userClub.name : opponent.name}</span>
+            <span style={{ fontSize: '1.6rem', fontWeight: 900, letterSpacing: '2px', color: 'var(--accent-gold)' }}>
+              {simScoreHome} - {simScoreAway}
+            </span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{!isHome ? userClub.name : opponent.name}</span>
+          </div>
+
+          {/* Quick controls */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => setIsSimPaused(!isSimPaused)} 
+              disabled={matchDone}
+              className="btn btn-secondary"
+              style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
+            >
+              {isSimPaused ? 'Retomar' : 'Pausar'}
+            </button>
+            <button 
+              onClick={handleSkipMatch} 
+              disabled={matchDone}
+              className="btn btn-primary"
+              style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
+            >
+              Pular
+            </button>
+            {!matchDone && (
+              <button 
+                onClick={() => setMidMatchSubModal(true)}
+                className="btn btn-secondary"
+                style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)' }}
+              >
+                Substituir
+              </button>
+            )}
+          </div>
+
+          {/* Latest 2 Events of user's match */}
+          {simEvents.length > 0 && (
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.7rem', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {simEvents.slice(-2).map((ev, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '6px', color: ev.type === 'GOAL' ? 'var(--accent-green)' : '#d1d5db' }}>
+                  <span style={{ fontWeight: 800 }}>{ev.minute}'</span>
+                  <span>{ev.type === 'GOAL' ? '⚽' : ev.type === 'YELLOW' ? '🟨' : ev.type === 'RED' ? '🟥' : '🚑'} {ev.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* CLASSIC SIMULTANEOUS DIVISION BOARD */}
+        <div className="classic-board-container" style={{ scrollBehavior: 'smooth' }}>
+          {(['A', 'B', 'C', 'D'] as const).map(div => {
+            const divMatches = roundMatches.filter(m => m.division === div);
+            
+            return (
+              <div key={div}>
+                <div className="classic-board-header">
+                  Brasileirão - Série {div} - {roundToDisplay}ª Rodada
+                </div>
+                <div className="classic-board-table">
+                  {divMatches.map(match => {
+                    const home = clubs.find(c => c.id === match.homeId)!;
+                    const away = clubs.find(c => c.id === match.awayId)!;
+                    
+                    const matchEvents = match.result?.events || [];
+                    const homeScore = matchEvents.filter(e => e.type === 'GOAL' && e.clubId === match.homeId && e.minute <= simMinute).length;
+                    const awayScore = matchEvents.filter(e => e.type === 'GOAL' && e.clubId === match.awayId && e.minute <= simMinute).length;
+                    
+                    const liveGoals = matchEvents.filter(e => e.type === 'GOAL' && e.minute <= simMinute);
+                    const scorersText = liveGoals.map(g => {
+                      const tempo = g.minute <= 45 ? '1º' : '2º';
+                      return `${g.player} ${g.minute}' (${tempo})`;
+                    }).join(', ');
+
+                    const isUserMatch = match.homeId === userClubId || match.awayId === userClubId;
+
+                    return (
+                      <div ref={isUserMatch ? userMatchRef : undefined} key={match.homeId} className={`classic-match-row-wrapper ${isUserMatch ? 'highlighted' : ''}`}>
+                        {/* Main Row: Teams and Scores */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <div className="classic-team-box" style={{ backgroundColor: home.primaryColor, color: getContrastColor(home.primaryColor) }}>
+                            <span className="classic-team-name">{home.name}</span>
+                          </div>
+                          <div className="classic-score-box">{homeScore}</div>
+                          <div className="classic-score-box">{awayScore}</div>
+                          <div className="classic-team-box" style={{ backgroundColor: away.primaryColor, color: getContrastColor(away.primaryColor) }}>
+                            <span className="classic-team-name">{away.name}</span>
+                          </div>
+                        </div>
+
+                        {/* Stadium and Attendance below the score */}
+                        <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#a5d6a7', marginTop: '4px', fontFamily: 'monospace', opacity: 0.9 }}>
+                          🏟️ {home.stadiumName} • {match.result?.attendance ? match.result.attendance.toLocaleString() : '0'} pagantes
+                        </div>
+
+                        {/* Goal scorers below */}
+                        {liveGoals.length > 0 && (
+                          <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#e8f5e9', marginTop: '3px', padding: '0 8px', fontStyle: 'italic' }}>
+                            ⚽ {scorersText}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {matchDone && (
+          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', background: '#16181c', flexShrink: 0 }}>
+            <button className="btn btn-primary" onClick={clearCurrentMatch} style={{ height: '44px' }}>
+              Fim de Rodada (Continuar)
+            </button>
+          </div>
+        )}
+
+        {/* HALF-TIME MODAL (auto-opens at 45') */}
+        {halftimeModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '2rem' }}>⏸️</span>
+                <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-gold)' }}>Intervalo — 45'</h3>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>O árbitro apita o fim do primeiro tempo. Deseja fazer alguma substituição?</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)' }}
+                  onClick={() => { setHalftimeModalOpen(false); setMidMatchSubModal(true); }}
+                >
+                  🔄 Fazer Substituição
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setHalftimeModalOpen(false); setIsSimPaused(false); }}
+                >
+                  ▶️ Continuar Segundo Tempo
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RED CARD MODAL (auto-opens when user's team gets a red card) */}
+        {redCardModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '2rem' }}>🟥</span>
+                <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-red)' }}>Cartão Vermelho!</h3>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Seu time ficou com um jogador a menos. Deseja reorganizar a tática ou fazer uma substituição?</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)' }}
+                  onClick={() => { setRedCardModalOpen(false); setMidMatchSubModal(true); }}
+                >
+                  🔄 Fazer Substituição / Reorganizar
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setRedCardModalOpen(false); setIsSimPaused(false); }}
+                >
+                  ▶️ Continuar Jogo
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MID-MATCH SUB MODAL */}
+        {midMatchSubModal && (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontWeight: 800 }}>Fazer Substituição</h3>
+                <button onClick={() => { setMidMatchSubModal(false); setIsSimPaused(false); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '10px' }}>Escolha um jogador de campo para sair e seu respectivo reserva:</p>
+                
+                <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: '#9ca3af' }}>Titulares em campo:</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', marginBottom: '14px' }}>
+                  {midMatchStarters.map(star => (
+                    <div 
+                      key={star.id} 
+                      style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#1e2126', borderRadius: '8px', fontSize: '0.85rem' }}
+                    >
+                      <span>{star.position} - {star.name}</span>
+                      <button 
+                        onClick={() => {
+                          setSubslotIndex(midMatchStarters.indexOf(star));
+                        }}
+                        style={{ background: 'var(--accent-red)', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                      >
+                        Substituir
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {subslotIndex !== null && (
+                  <>
+                    <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: '#9ca3af' }}>Reservas disponíveis (Banco):</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                      {userClub.squad
+                        .filter(p => !midMatchStarters.some(s => s.id === p.id) && !p.isInjured)
+                        .map(bench => (
+                          <div 
+                            key={bench.id} 
+                            style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#1e2126', borderRadius: '8px', fontSize: '0.85rem' }}
+                          >
+                            <span>{bench.position} - {bench.name} (R: {bench.rating})</span>
+                            <button 
+                              onClick={() => {
+                                const outP = midMatchStarters[subslotIndex];
+                                handleMidMatchSub(bench, outP);
+                                setSubslotIndex(null);
+                                setIsSimPaused(false);
+                              }}
+                              style={{ background: 'var(--accent-green)', color: 'black', border: 'none', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                            >
+                              Entrar
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- SEASON END OVERLAY ---
+  if (gameState === 'SEASON_END') {
+    const isSacked = userClub.confidence <= 0;
+    
+    return (
+      <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px', gap: '16px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Trophy size={48} color="var(--accent-gold)" style={{ margin: '0 auto 12px auto' }} />
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Resumo da Temporada</h2>
+          <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Ano de {currentYear} Finalizado</p>
+        </div>
+
+        {isSacked ? (
+          <div className="card" style={{ border: '1px solid var(--accent-red)', background: 'rgba(255,23,68,0.05)' }}>
+            <h3 style={{ color: 'var(--accent-red)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <AlertTriangle size={18} /> Você foi Demitido!
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#d1d5db' }}>
+              A diretoria e a torcida perderam a paciência com o desempenho pífio do time. Você foi dispensado de suas funções.
+            </p>
+          </div>
+        ) : (
+          <div className="card" style={{ border: '1px solid var(--accent-green)', background: 'rgba(0,230,118,0.05)' }}>
+            <h3 style={{ color: 'var(--accent-green)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle size={18} /> Temporada Concluída!
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#d1d5db' }}>
+              Você encerrou a temporada no comando do **{userClub.name}**. A diretoria está satisfeita com seu trabalho!
+            </p>
+          </div>
+        )}
+
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+            {isSacked ? 'Propostas de Recomeço (Série D)' : 'Propostas Disponíveis'}
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+            {offers.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Nenhum clube interessado no momento.</p>
+            ) : (
+              offers.map((off, idx) => (
+                <div 
+                  key={idx}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#121316', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{off.clubName}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Série {off.division} • Salário: +{off.salaryBonus}%</span>
+                  </div>
+                  <button 
+                    onClick={() => acceptJobOffer(off.clubId)}
+                    className="btn btn-primary"
+                    style={{ padding: '6px 12px', width: 'auto', borderRadius: '8px', fontSize: '0.8rem' }}
+                  >
+                    Aceitar
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {!isSacked && (
+          <button 
+            className="btn btn-secondary" 
+            onClick={stayAtClub}
+            style={{ height: '48px' }}
+          >
+            Permanecer no {userClub.name}
+          </button>
+        )}
+
+        <button 
+          className="btn btn-danger" 
+          onClick={resetGame}
+          style={{ height: '44px', background: 'none', border: '1px solid rgba(255,23,68,0.2)', color: 'var(--accent-red)' }}
+        >
+          Reiniciar Carreira
+        </button>
+      </div>
+    );
+  }
+
+  // --- MAIN LAYOUT RENDER ---
+  return (
+    <div className="mobile-wrapper">
+      {/* HEADER STATUS */}
+      <div className="header-bar">
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="club-pill">
+            <span className="club-badge-mini" style={{ backgroundColor: userClub.primaryColor, border: `1px solid ${userClub.secondaryColor}` }} />
+            <span>{userClub.name}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', marginLeft: '4px' }}>Série {userClub.division}</span>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontWeight: 800, color: 'var(--accent-green)', fontSize: '1rem' }}>
+            {formatCurrency(userClub.finances)}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600 }}>
+            {managerName} • Ano {currentYear}
+          </div>
+        </div>
+      </div>
+
+      {/* RENDER TABS CONTENT */}
+      <div className="scrollable">
+        
+        {/* --- TAB 0: ESCRITÓRIO --- */}
+        {activeTab === 0 && (
+          <>
+            {/* Save / Delete campaign buttons */}
+            <div style={{ display: 'flex', gap: '8px', margin: '0 0 2px 0' }}>
+              <button
+                onClick={manualSave}
+                style={{
+                  flex: 1,
+                  background: 'rgba(0, 230, 118, 0.1)',
+                  border: '1px solid rgba(0, 230, 118, 0.35)',
+                  color: 'var(--accent-green)',
+                  borderRadius: '10px',
+                  padding: '9px 0',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'background 0.2s'
+                }}
+              >
+                💾 Salvar Jogo
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm('Tem certeza que deseja excluir esta campanha? Você voltará à tela inicial.')) {
+                    resetGame();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255, 23, 68, 0.07)',
+                  border: '1px solid rgba(255, 23, 68, 0.25)',
+                  color: 'var(--accent-red)',
+                  borderRadius: '10px',
+                  padding: '9px 0',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'background 0.2s'
+                }}
+              >
+                🗑️ Excluir Campanha
+              </button>
+            </div>
+
+            {/* Round info */}
+            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(22, 24, 28, 0.9) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid var(--accent-green-glow)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 700, textTransform: 'uppercase' }}>Campeonato Brasileiro</span>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Rodada {currentRound} de 38</h2>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', textAlign: 'center' }}>
+                  <span style={{ display: 'block', fontSize: '0.6rem', color: '#9ca3af' }}>Confiança</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: userClub.confidence > 50 ? 'var(--accent-green)' : userClub.confidence > 25 ? 'var(--accent-gold)' : 'var(--accent-red)' }}>
+                    {userClub.confidence}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Match preview */}
+              {(() => {
+                const roundMatches = schedule.filter(m => m.round === currentRound);
+                const pMatch = roundMatches.find(m => m.homeId === userClubId || m.awayId === userClubId);
+                if (!pMatch) return <p>Fim da temporada.</p>;
+                
+                const isHome = pMatch.homeId === userClubId;
+                const oppId = isHome ? pMatch.awayId : pMatch.homeId;
+                const opponent = clubs.find(c => c.id === oppId)!;
+                
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHome ? 'Casa' : 'Fora'})</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                      <span>Força: {opponent.reputation}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <button 
+                className="btn btn-primary" 
+                onClick={() => nextRound(starters)}
+                style={{ marginTop: '16px', height: '48px' }}
+              >
+                <Play size={18} fill="#000" /> Iniciar Partida
+              </button>
+            </div>
+
+            {/* News feed */}
+            <div className="card-title"><Activity size={18} color="var(--accent-green)" /> Feed de Notícias</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+              {news.slice().reverse().map((n) => (
+                <div 
+                  key={n.id}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    background: '#121316',
+                    borderLeft: `3px solid ${n.type === 'BOARD' ? 'var(--accent-red)' : n.type === 'TRANSFER' ? 'var(--accent-blue)' : n.type === 'OFFER' ? 'var(--accent-gold)' : 'var(--accent-gray)'}`,
+                    fontSize: '0.8rem',
+                    lineHeight: '1.4'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#6b7280', marginBottom: '2px', fontWeight: 700 }}>
+                    <span>{n.type.toUpperCase()}</span>
+                    <span>RODADA {n.week}</span>
+                  </div>
+                  <span style={{ color: '#d1d5db' }}>{n.text}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* --- TAB 1: ELENCO & TÁTICA --- */}
+        {activeTab === 1 && (
+          <>
+            {/* Tactic dropdown and Force summary */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>Esquema Tático</span>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-green)' }}>
+                  Força do Time: DEF {startersForces.defense} | ATA {startersForces.attack}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {(['4-4-2', '4-3-3', '3-5-2', '4-5-1', '5-3-2'] as const).map(tac => (
+                  <button
+                    key={tac}
+                    onClick={() => setSelectedTactic(tac)}
+                    className={`sub-tab-btn ${selectedTactic === tac ? 'active' : ''}`}
+                    style={{ flex: 1, padding: '8px 2px', fontSize: '0.75rem', minWidth: '45px', textAlign: 'center' }}
+                  >
+                    {tac}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Soccer pitch representation */}
+            <div className="pitch-container">
+              <div className="pitch-line pitch-center-circle" />
+              <div className="pitch-line pitch-midline" />
+              <div className="pitch-line pitch-penalty-area-top" />
+              <div className="pitch-line pitch-penalty-area-bottom" />
+
+              <div className="tactical-grid">
+                {/* Forwards row */}
+                <div className="tactical-row">
+                  {starters.filter(p => p.position === 'FW').map(p => (
+                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
+                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-red)' }}>{p.rating}</div>
+                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Midfielders row */}
+                <div className="tactical-row">
+                  {starters.filter(p => p.position === 'MF').map(p => (
+                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
+                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-green)' }}>{p.rating}</div>
+                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Defenders row */}
+                <div className="tactical-row">
+                  {starters.filter(p => p.position === 'DF').map(p => (
+                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
+                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-blue)' }}>{p.rating}</div>
+                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Goalkeeper row */}
+                <div className="tactical-row">
+                  {starters.filter(p => p.position === 'GK').map(p => (
+                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
+                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : '#ffa726' }}>{p.rating}</div>
+                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* List of squad players */}
+            <div className="card-title"><Users size={18} color="var(--accent-green)" /> Todos os Jogadores ({userClub.squad.length}/22)</div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {userClub.squad.map(player => {
+                const isStarter = starters.some(s => s.id === player.id);
+                const isExpanded = selectedManagePlayerId === player.id;
+                const remainingWeeks = player.contractWeeks ?? 38;
+                
+                return (
+                  <div key={player.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div 
+                      className={`player-row ${player.isInjured ? 'injured' : ''}`}
+                      onClick={() => setSelectedManagePlayerId(isExpanded ? null : player.id)}
+                      style={{
+                        borderLeft: isStarter ? '3px solid var(--accent-green)' : '3px solid transparent',
+                        background: isStarter ? 'rgba(0, 230, 118, 0.03)' : '',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          {player.isInjured && <span style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>DM ({player.injuryWeeks}s)</span>}
+                          {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • R$ {(player.value/1000).toFixed(0)}k</span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-green)' }}>E: {player.energy}%</span>
+                        <span className={`rating-badge ${player.rating >= 80 ? 'gold' : player.rating >= 70 ? 'silver' : ''}`}>{player.rating}</span>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div style={{
+                        background: '#121316',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        marginTop: '-2px',
+                        marginBottom: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        fontSize: '0.8rem'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9ca3af' }}>
+                          <span>Contrato restante: <strong style={{ color: 'white' }}>{remainingWeeks} rodadas</strong></span>
+                          <span>Salário: <strong style={{ color: 'white' }}>{formatCurrency(player.salary)}/sem</strong></span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => { renewContract(player.id, '6M'); setSelectedManagePlayerId(null); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)' }}
+                          >
+                            📝 Renovar 6M (+19s)
+                          </button>
+                          <button
+                            onClick={() => { renewContract(player.id, '1Y'); setSelectedManagePlayerId(null); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)', color: 'var(--accent-gold)' }}
+                          >
+                            📝 Renovar 1 Ano (+38s)
+                          </button>
+                          <button
+                            onClick={() => { sellPlayer(player); setSelectedManagePlayerId(null); }}
+                            className="btn btn-danger"
+                            style={{ flex: 1.2, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 23, 68, 0.1)', border: '1px solid rgba(255, 23, 68, 0.2)', color: 'var(--accent-red)' }}
+                          >
+                            💰 Vender ({formatCurrency(Math.round(player.value * 0.9))})
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SQUAD SUBSTITUTION MODAL */}
+            {subModalOpen && subslotIndex !== null && (
+              <div className="modal-overlay">
+                <div className="modal-content">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontWeight: 800 }}>Escalar Jogador</h3>
+                    <button onClick={() => { setSubModalOpen(false); setSubslotIndex(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                      Substituindo titular: **{starters[subslotIndex]?.name}** ({starters[subslotIndex]?.position})
+                    </p>
+                    {userClub.squad
+                      .filter(p => !starters.some(s => s.id === p.id) && !p.isInjured && p.position === starters[subslotIndex]?.position)
+                      .map(p => (
+                        <div 
+                          key={p.id}
+                          onClick={() => {
+                            const nextS = [...starters];
+                            nextS[subslotIndex] = p;
+                            setStarters(nextS);
+                            setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: nextS }));
+                            setSubModalOpen(false);
+                            setSubslotIndex(null);
+                          }}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '10px 14px',
+                            background: '#121316',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            borderRadius: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{p.isStar ? '⭐ ' : ''}{p.name}</span>
+                          <span className="rating-badge">{p.rating}</span>
+                        </div>
+                      ))}
+                      {userClub.squad.filter(p => !starters.some(s => s.id === p.id) && !p.isInjured && p.position === starters[subslotIndex]?.position).length === 0 && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--accent-red)', textAlign: 'center' }}>Nenhum reserva saudável disponível para esta posição.</p>
+                      )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* --- TAB 2: MERCADO --- */}
+        {activeTab === 2 && (
+          <>
+            {/* View Mode Toggle */}
+            <div className="card" style={{ padding: '8px', marginBottom: '14px', display: 'flex', gap: '8px' }}>
+              <button
+                className={`btn ${marketViewMode === 'FREE_AGENTS' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                onClick={() => setMarketViewMode('FREE_AGENTS')}
+              >
+                Jogadores Livres
+              </button>
+              <button
+                className={`btn ${marketViewMode === 'CLUBS' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                onClick={() => setMarketViewMode('CLUBS')}
+              >
+                Comprar de Clubes
+              </button>
+            </div>
+
+            {marketViewMode === 'FREE_AGENTS' ? (
+              <>
+                {/* Filter buttons */}
+                <div className="sub-tabs" style={{ marginBottom: '12px' }}>
+                  {(['ALL', 'GK', 'DF', 'MF', 'FW'] as const).map(pos => (
+                    <button
+                      key={pos}
+                      onClick={() => setMarketPosFilter(pos)}
+                      className={`sub-tab-btn ${marketPosFilter === pos ? 'active' : ''}`}
+                    >
+                      {pos === 'ALL' ? 'Todos' : pos}
+                    </button>
+                  ))}
+                </div>
+
+                {/* BUY LIST */}
+                <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Comprar Jogadores (Transferências)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+                  {marketPlayers
+                    .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
+                    .map(player => (
+                      <div key={player.id} className="player-row">
+                        <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Salário: {formatCurrency(player.salary)}/sem</span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="rating-badge">{player.rating}</span>
+                          <button 
+                            onClick={() => {
+                              setPurchaseConfirmData({
+                                player,
+                                clubName: 'Sem Clube (Livre)',
+                                price: player.value,
+                                onConfirm: () => buyPlayer(player)
+                              });
+                            }}
+                            className="btn btn-primary"
+                            style={{ padding: '6px 12px', width: 'auto', borderRadius: '8px', fontSize: '0.8rem' }}
+                          >
+                            {formatCurrency(player.value)}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {(['A', 'B', 'C', 'D'] as const).map(div => (
+                    <button
+                      key={div}
+                      className={`sub-tab-btn ${selectedSearchDiv === div ? 'active' : ''}`}
+                      style={{ flex: 1 }}
+                      onClick={() => setSelectedSearchDiv(div)}
+                    >
+                      Série {div}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Club selector dropdown */}
+                <select
+                  value={selectedSearchClubId}
+                  onChange={(e) => setSelectedSearchClubId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    background: '#121316',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '0.85rem',
+                    marginBottom: '10px'
+                  }}
+                >
+                  <option value="" disabled>Escolha um clube...</option>
+                  {clubs
+                    .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
+                    .map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                </select>
+
+                {(() => {
+                  const searchedClub = clubs.find(c => c.id === selectedSearchClubId);
+                  if (!searchedClub) return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Selecione um clube para visualizar o elenco.</p>;
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+                      <div className="card-title">Elenco do {searchedClub.name}</div>
+                      {searchedClub.squad.map(player => (
+                        <div key={player.id} className="player-row">
+                          <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Valor: {formatCurrency(player.value)}</span>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="rating-badge">{player.rating}</span>
+                            {player.contractLocked ? (
+                              <span style={{ fontSize: '0.7rem', color: '#9ca3af', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                🔒 1 ano
+                              </span>
+                            ) : (
+                              <button
+                                className="btn btn-primary"
+                                style={{ padding: '6px 10px', fontSize: '0.75rem', width: 'auto', borderRadius: '8px' }}
+                                onClick={() => {
+                                  setNegotiatingPlayer(player);
+                                  setNegotiatingClubId(searchedClub.id);
+                                  setOfferAmount(player.value);
+                                  setNegotiationStage('OFFER');
+                                  setNegotiationResult(null);
+                                }}
+                              >
+                                Negociar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* NEGOTIATION MODAL */}
+            {negotiatingPlayer && (
+              <div className="modal-overlay">
+                <div className="modal-content" style={{ maxWidth: '380px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ fontWeight: 800 }}>Negociar Contratação</h3>
+                    <button 
+                      onClick={() => { setNegotiatingPlayer(null); setNegotiationResult(null); }} 
+                      style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  {negotiationStage === 'OFFER' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div className="player-row" style={{ background: 'rgba(255,255,255,0.02)', border: 'none', padding: '10px' }}>
+                        <span className={`pos-badge ${negotiatingPlayer.position}`}>{negotiatingPlayer.position}</span>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{negotiatingPlayer.isStar ? '⭐ ' : ''}{negotiatingPlayer.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {negotiatingPlayer.age} anos • Força: {negotiatingPlayer.rating}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#9ca3af' }}>
+                        <div>
+                          <span>Valor de Mercado: </span>
+                          <span style={{ fontWeight: 700, color: 'white' }}>{formatCurrency(negotiatingPlayer.value)}</span>
+                        </div>
+                        <div>
+                          <span>Caixa Disponível: </span>
+                          <span style={{ fontWeight: 700, color: 'var(--accent-green)' }}>{formatCurrency(userClub?.finances || 0)}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Sua Oferta (R$):</label>
+                        <input 
+                          type="number"
+                          value={offerAmount}
+                          onChange={(e) => setOfferAmount(Number(e.target.value))}
+                          style={{
+                            padding: '10px',
+                            background: '#121316',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '8px',
+                            color: 'white',
+                            fontSize: '0.85rem',
+                            fontWeight: 700
+                          }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 600 }}>
+                          Valor Digitado: {formatCurrency(offerAmount)}
+                        </span>
+                      </div>
+
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                          const res = makeBidForPlayer(negotiatingPlayer, negotiatingClubId, offerAmount);
+                          setNegotiationResult(res);
+                          setNegotiationStage('RESULT');
+                        }}
+                      >
+                        Enviar Proposta
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center', padding: '10px 0' }}>
+                      {negotiationResult?.status === 'ACCEPTED' && (
+                        <>
+                          <div style={{ fontSize: '2.5rem' }}>🎉</div>
+                          <h4 style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Proposta Aceita!</h4>
+                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                            O clube e o jogador aceitaram a sua oferta de **{formatCurrency(offerAmount)}**! O contrato de 1 ano foi assinado.
+                          </p>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                              const sellerClubName = clubs.find(c => c.id === negotiatingClubId)?.name || 'Outro Clube';
+                              setPurchaseConfirmData({
+                                player: negotiatingPlayer,
+                                clubName: sellerClubName,
+                                price: offerAmount,
+                                onConfirm: () => {
+                                  buyPlayerFromClub(negotiatingPlayer, negotiatingClubId, offerAmount);
+                                  setNegotiatingPlayer(null);
+                                  setNegotiationResult(null);
+                                }
+                              });
+                            }}
+                          >
+                            Finalizar Contratação
+                          </button>
+                        </>
+                      )}
+
+                      {negotiationResult?.status === 'REJECTED' && (
+                        <>
+                          <div style={{ fontSize: '2.5rem' }}>❌</div>
+                          <h4 style={{ color: 'var(--accent-red)', fontWeight: 700 }}>Proposta Recusada!</h4>
+                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                            O clube e o jogador recusaram sua oferta de **{formatCurrency(offerAmount)}** por estar abaixo do valor de mercado. Eles consideraram a oferta inaceitável.
+                          </p>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              setNegotiatingPlayer(null);
+                              setNegotiationResult(null);
+                            }}
+                          >
+                            Fechar
+                          </button>
+                        </>
+                      )}
+
+                      {negotiationResult?.status === 'COUNTER' && (
+                        <>
+                          <div style={{ fontSize: '2.5rem' }}>🤝</div>
+                          <h4 style={{ color: 'var(--accent-gold)', fontWeight: 700 }}>Contraproposta Recebida!</h4>
+                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                            O clube recusou sua oferta inicial de **{formatCurrency(offerAmount)}**, mas fez uma contraproposta de **{formatCurrency(negotiationResult.counterAmount || 0)}** para fechar negócio hoje.
+                          </p>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="btn btn-primary"
+                              onClick={() => {
+                                const sellerClubName = clubs.find(c => c.id === negotiatingClubId)?.name || 'Outro Clube';
+                                const counterPrice = negotiationResult.counterAmount || 0;
+                                setPurchaseConfirmData({
+                                  player: negotiatingPlayer,
+                                  clubName: sellerClubName,
+                                  price: counterPrice,
+                                  onConfirm: () => {
+                                    buyPlayerFromClub(negotiatingPlayer, negotiatingClubId, counterPrice);
+                                    setNegotiatingPlayer(null);
+                                    setNegotiationResult(null);
+                                  }
+                                });
+                              }}
+                              style={{ flex: 1 }}
+                            >
+                              Aceitar ({formatCurrency(negotiationResult.counterAmount || 0)})
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                setNegotiatingPlayer(null);
+                                setNegotiationResult(null);
+                              }}
+                              style={{ flex: 1 }}
+                            >
+                              Recusar
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+
+
+            {/* PURCHASE CONFIRMATION MODAL */}
+            {purchaseConfirmData && (
+              <div className="modal-overlay" style={{ zIndex: 1100 }}>
+                <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+                  <h3 style={{ fontWeight: 800, marginBottom: '12px' }}>Confirmar Contratação</h3>
+                  <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', marginBottom: '20px' }}>
+                    Tem certeza que deseja comprar o jogador **{purchaseConfirmData.player.name}** ({purchaseConfirmData.player.position}), do time **{purchaseConfirmData.clubName}**, por **{formatCurrency(purchaseConfirmData.price)}**?
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      className="btn btn-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        purchaseConfirmData.onConfirm();
+                        setPurchaseConfirmData(null);
+                      }}
+                    >
+                      Sim, Comprar
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ flex: 1 }}
+                      onClick={() => setPurchaseConfirmData(null)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* --- TAB 3: FINANÇAS & ESTÁDIO --- */}
+        {activeTab === 3 && (
+          <>
+            {/* Financial summaries */}
+            <div className="card">
+              <div className="card-title"><DollarSign size={18} color="var(--accent-green)" /> Balanço Semanal Estimado</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>Salários de Jogadores:</span>
+                  <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                    -{formatCurrency(userClub.squad.reduce((sum, p) => sum + p.salary, 0))}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>Patrocínios Ativos:</span>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
+                    +{formatCurrency(Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0))}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                  <span style={{ color: '#9ca3af' }}>Público Estimado (Bilheteria):</span>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
+                    ~{formatCurrency(Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice))}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                  <span>Saldo Semanal (Projetado):</span>
+                  {(() => {
+                    const balance = Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0) + 
+                                    Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice) - 
+                                    userClub.squad.reduce((sum, p) => sum + p.salary, 0);
+                    return (
+                      <span style={{ color: balance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                        {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Stadium expand */}
+            <div className="card">
+              <div className="card-title"><Shield size={18} color="var(--accent-green)" /> Estádio: {userClub.stadiumName}</div>
+              <div className="stat-grid" style={{ marginBottom: '12px' }}>
+                <div className="stat-box">
+                  <span className="stat-label">Capacidade Atual</span>
+                  <span className="stat-value">{userClub.stadiumCapacity.toLocaleString()}</span>
+                </div>
+                <div className="stat-box">
+                  <span className="stat-label">Preço do Ingresso</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <button
+                      onClick={() => updateTicketPrice(-10)}
+                      style={{ background: 'rgba(255,23,68,0.15)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >-</button>
+                    <span className="stat-value" style={{ minWidth: '60px', textAlign: 'center' }}>{formatCurrency(userClub.ticketPrice)}</span>
+                    <button
+                      onClick={() => updateTicketPrice(10)}
+                      style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.3)', color: 'var(--accent-green)', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >+</button>
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: '12px', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                {userClub.confidence >= 95
+                  ? '🔥 Confiança máxima! A torcida apoia independente do preço do ingresso.'
+                  : '💡 Preços altos afastam torcedores. Com confiança ≥ 95%, a torcida paga qualquer preço.'}
+              </div>
+
+              {stadiumUpgrade ? (
+                <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--accent-gold)', marginBottom: '14px' }}>
+                  🚧 Obras em andamento: +{stadiumUpgrade.capacityAdded.toLocaleString()} assentos ({stadiumUpgrade.weeksLeft} rodadas restantes).
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={() => upgradeStadium(5000)}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.8rem', padding: '10px' }}
+                  >
+                    Ampliar +5.000 (Cost: {formatCurrency(5000*350)})
+                  </button>
+                  <button 
+                    onClick={() => upgradeStadium(10000)}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.8rem', padding: '10px' }}
+                  >
+                    Ampliar +10.000 (Cost: {formatCurrency(10000*350)})
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Sponsors */}
+            <div className="card">
+              <div className="card-title"><DollarSign size={18} color="var(--accent-green)" /> Contratos de Patrocínio (Anual)</div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(['MASTER', 'COSTAS', 'MANGAS'] as const).map(type => {
+                  const active = activeSponsors[type];
+                  const offer = sponsorProposals.find(sp => sp.type === type);
+                  
+                  return (
+                    <div 
+                      key={type}
+                      style={{ padding: '12px', background: '#121316', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', fontSize: '0.85rem' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontWeight: 700 }}>
+                        <span style={{ color: '#9ca3af' }}>{type === 'MASTER' ? 'Patrocínio Master' : type === 'COSTAS' ? 'Patrocínio Costas' : 'Patrocínio Mangas'}</span>
+                        {active ? (
+                          <span style={{ color: 'var(--accent-green)' }}>Ativo ({active.contractWeeks}s)</span>
+                        ) : (
+                          <span style={{ color: 'var(--accent-gold)' }}>Disponível</span>
+                        )}
+                      </div>
+
+                      {active ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                          <span>{active.name}</span>
+                          <span>+{formatCurrency(active.weeklyPayment)}/sem</span>
+                        </div>
+                      ) : offer ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>
+                            <span>{offer.name}</span>
+                            <span style={{ color: '#9ca3af' }}>Luvas: {formatCurrency(offer.signingBonus)} • {formatCurrency(offer.weeklyPayment)}/sem</span>
+                          </div>
+                          <button 
+                            onClick={() => signSponsor(offer)}
+                            className="btn btn-primary"
+                            style={{ padding: '4px 10px', width: 'auto', borderRadius: '6px', fontSize: '0.75rem' }}
+                          >
+                            Assinar
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* --- TAB 4: CLASSIFICAÇÃO & HISTÓRICO --- */}
+        {activeTab === 4 && (
+          <>
+            {/* View selectors */}
+            <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px 0' }}>
+              <button 
+                onClick={() => setStatsView('TABLE')}
+                className={`sub-tab-btn ${statsView === 'TABLE' ? 'active' : ''}`}
+                style={{ flex: 1 }}
+              >
+                Tabela
+              </button>
+              <button 
+                onClick={() => setStatsView('STATS')}
+                className={`sub-tab-btn ${statsView === 'STATS' ? 'active' : ''}`}
+                style={{ flex: 1 }}
+              >
+                Artilharia
+              </button>
+              <button 
+                onClick={() => setStatsView('HISTORY')}
+                className={`sub-tab-btn ${statsView === 'HISTORY' ? 'active' : ''}`}
+                style={{ flex: 1 }}
+              >
+                Histórico
+              </button>
+            </div>
+
+            {statsView === 'TABLE' && (
+              <>
+                {/* Division selectors */}
+                <div className="sub-tabs" style={{ padding: '0 0 12px 0' }}>
+                  {(['A', 'B', 'C', 'D'] as const).map(div => (
+                    <button
+                      key={div}
+                      onClick={() => setStandingsTab(div)}
+                      className={`sub-tab-btn ${standingsTab === div ? 'active' : ''}`}
+                      style={{ flex: 1 }}
+                    >
+                      Série {div}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="card" style={{ padding: '0px', overflow: 'hidden' }}>
+                  <div className="table-header">
+                    <span>#</span>
+                    <span>Time</span>
+                    <span>J</span>
+                    <span>V</span>
+                    <span>SG</span>
+                    <span>Pts</span>
+                  </div>
+
+                  {currentStandings.map((entry, idx) => {
+                    const isUser = entry.clubId === userClubId;
+                    
+                    // Highlight colors
+                    let highlightClass = '';
+                    if (idx < 4) highlightClass = 'pos-green-highlight'; // Promotion
+                    else if (idx >= 16 && standingsTab !== 'D') highlightClass = 'pos-red-highlight'; // Relegation
+
+                    return (
+                      <div 
+                        key={entry.clubId}
+                        className={`table-row ${isUser ? 'highlighted' : highlightClass}`}
+                      >
+                        <span style={{ fontWeight: 800 }}>{idx + 1}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="club-badge-mini" style={{ backgroundColor: clubs.find(c=>c.id===entry.clubId)?.primaryColor }} />
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.clubName}</span>
+                        </div>
+                        <span>{entry.played}</span>
+                        <span>{entry.wins}</span>
+                        <span style={{ color: entry.gd > 0 ? 'var(--accent-green)' : entry.gd < 0 ? 'var(--accent-red)' : '' }}>
+                          {entry.gd > 0 ? '+' : ''}{entry.gd}
+                        </span>
+                        <span style={{ fontWeight: 800 }}>{entry.points}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {statsView === 'STATS' && (
+              <div className="card">
+                <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Artilheiros do Campeonato</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {topScorers.length === 0 ? (
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Nenhum gol marcado ainda nesta temporada.</p>
+                  ) : (
+                    topScorers.map((sc, idx) => (
+                      <div 
+                        key={idx}
+                        style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#121316', borderRadius: '12px' }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{idx + 1}. {sc.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{sc.club} (Série {sc.division})</span>
+                        </div>
+                        <span style={{ fontWeight: 800, color: 'var(--accent-green)', display: 'flex', alignItems: 'center' }}>⚽ {sc.goals}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {statsView === 'HISTORY' && (
+              <div className="card">
+                <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Histórico da Carreira</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {history.length === 0 ? (
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Nenhum histórico registrado. Conclua uma temporada primeiro!</p>
+                  ) : (
+                    history.map((hist, idx) => (
+                      <div 
+                        key={idx}
+                        style={{ padding: '12px', background: '#121316', borderRadius: '12px', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.04)' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>
+                          <span>Temporada {hist.year}</span>
+                          <span>{hist.userClub} (Série {hist.userDivision} - #{hist.userFinish})</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', color: '#9ca3af' }}>
+                          <span>🏆 Campeão Série A: **{hist.champions.A}**</span>
+                          <span>🏆 Campeão Série B: **{hist.champions.B}**</span>
+                          <span>🏆 Campeão Série C: **{hist.champions.C}**</span>
+                          <span>🏆 Campeão Série D: **{hist.champions.D}**</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* UNHAPPY PLAYER DISSATISFACTION MODAL */}
+      {unhappyPlayer && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+            <span style={{ fontSize: '2.5rem' }}>😠</span>
+            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Jogador Insatisfeito</h3>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 20px 0' }}>
+              O jogador **{unhappyPlayer.name}** ({unhappyPlayer.position}) está insatisfeito por estar no banco de reservas há {unhappyPlayer.benchRounds} rodadas seguidas e solicitou ser vendido!
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  sellPlayer(unhappyPlayer);
+                  setUnhappyPlayer(null);
+                }}
+              >
+                💰 Vender por {formatCurrency(Math.round(unhappyPlayer.value * 0.9))}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  // user ignores or closes, but reset dissatisfaction counters slightly to not prompt on every click
+                  // Or let them resolve it by putting him in next match
+                  setUnhappyPlayer(null);
+                }}
+              >
+                Manter no Elenco
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM NAVIGATION TABS */}
+      <div className="bottom-nav">
+        <button className={`nav-item ${activeTab === 0 ? 'active' : ''}`} onClick={() => setActiveTab(0)}>
+          <Home />
+          <span>Escritório</span>
+        </button>
+        <button className={`nav-item ${activeTab === 1 ? 'active' : ''}`} onClick={() => setActiveTab(1)}>
+          <Users />
+          <span>Elenco</span>
+        </button>
+        <button className={`nav-item ${activeTab === 2 ? 'active' : ''}`} onClick={() => setActiveTab(2)}>
+          <TrendingUp />
+          <span>Mercado</span>
+        </button>
+        <button className={`nav-item ${activeTab === 3 ? 'active' : ''}`} onClick={() => setActiveTab(3)}>
+          <DollarSign />
+          <span>Finanças</span>
+        </button>
+        <button className={`nav-item ${activeTab === 4 ? 'active' : ''}`} onClick={() => setActiveTab(4)}>
+          <Trophy />
+          <span>Classif.</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <GameProvider>
+      <AppContent />
+    </GameProvider>
+  );
+};
+
+export default App;
