@@ -611,6 +611,36 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }]);
     }
 
+    // --- MID-SEASON OFFERS FROM HIGHER DIVISION BOTS IN CRISIS ---
+    // If player club is doing very well (confidence > 75) and there's a club in a higher division in crisis (confidence < 35)
+    if (userClub && userClub.confidence >= 75 && Math.random() < 0.18) {
+      const playerDiv = userClub.division;
+      const targetDiv = playerDiv === 'C' ? 'B' : playerDiv === 'B' ? 'A' : null;
+      if (targetDiv) {
+        // Find higher division clubs in crisis
+        const crisisClubs = finalClubs.filter(c => c.division === targetDiv && c.confidence < 35 && c.id !== userClubId);
+        if (crisisClubs.length > 0) {
+          const selectedCrisis = crisisClubs[Math.floor(Math.random() * crisisClubs.length)];
+          const offerExists = nextOffers.some(o => o.clubId === selectedCrisis.id);
+          if (!offerExists) {
+            nextOffers = [...nextOffers, {
+              clubId: selectedCrisis.id,
+              clubName: selectedCrisis.name,
+              division: targetDiv,
+              salaryBonus: 15
+            }];
+
+            setNews(prev => [...prev, {
+              id: `mid_offer_${Date.now()}`,
+              week: currentRound,
+              text: `ESPECULAÇÃO: O ${selectedCrisis.name} (Série ${targetDiv}) está em crise e monitora a contratação do técnico ${managerName}!`,
+              type: 'OFFER'
+            }]);
+          }
+        }
+      }
+    }
+
     // Refresh transfer market occasionally
     let nextMarket = marketPlayers;
     if (Math.random() < 0.25) {
