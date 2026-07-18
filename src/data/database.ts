@@ -16,6 +16,8 @@ export interface Player {
   contractLocked: boolean;
   contractWeeks?: number;
   benchRounds?: number;
+  contractLockYears?: number; // Number of years contract is locked
+  performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
 }
 
 export interface Club {
@@ -2508,13 +2510,13 @@ export const initializeClubs = (): Club[] => {
 };
 
 export const formatCurrency = (value: number): string => {
-  if (value >= 1000000) {
-    const val = value / 1000000;
-    return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} M`;
-  }
   if (value >= 1000) {
-    const val = value / 1000;
-    return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} K`;
+    const val = value / 1000000;
+    // If it's less than 1M, show decimals like 0.25M, else show like 2.5M or 2M
+    if (val < 1) {
+      return `R$ ${val.toFixed(2)} M`;
+    }
+    return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} M`;
   }
   return `R$ ${value}`;
 };

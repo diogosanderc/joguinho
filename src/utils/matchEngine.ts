@@ -81,23 +81,21 @@ export const simulateMatch = (
   const homeStarters = homeStartersInput || getAutoStarters(homeClub);
   const awayStarters = awayStartersInput || getAutoStarters(awayClub);
 
-  let homeForces = calculateTeamForces(homeStarters);
-  let awayForces = calculateTeamForces(awayStarters);
+  const homeForces = calculateTeamForces(homeStarters);
+  const awayForces = calculateTeamForces(awayStarters);
 
-  // 1. --- STOCHASTIC ZEBRAS & RANDOMNESS ---
-  // Base luck variation between 0.75 and 1.25 (+/- 25%)
+  // Base luck variation between 0.8 and 1.2 (+/- 20%)
   let homeLuck = 0.8 + Math.random() * 0.4;
   let awayLuck = 0.8 + Math.random() * 0.4;
 
-  // "Dia Ruim" (Bad Day) - 7% chance for a favorite to perform terribly (e.g. fatigue, bad luck)
+  // "Dia Ruim" (Bad Day) - 7% chance for a favorite to perform terribly
   if (homeForces.overall > awayForces.overall + 8 && Math.random() < 0.07) {
-    homeLuck *= 0.7; // Major penalty to the strong home team
+    homeLuck *= 0.7;
   }
   if (awayForces.overall > homeForces.overall + 8 && Math.random() < 0.07) {
-    awayLuck *= 0.7; // Major penalty to the strong away team
+    awayLuck *= 0.7;
   }
 
-  // Home advantage factor (standard in football: around +5% force booster)
   // Home advantage factor depends on stadium occupancy
   const performanceRep = homeClub.confidence / 100;
   const occupancyRate = Math.max(0.0, Math.min(1.0, 0.3 + (homeClub.reputation / 100) * 0.5 + performanceRep * 0.2));
@@ -110,6 +108,26 @@ export const simulateMatch = (
   let awayAtt = awayForces.attack * awayLuck;
   let awayMid = awayForces.midfield * awayLuck;
   let awayDef = awayForces.defense * awayLuck;
+
+  // 2. --- STANDINGS / RANK BOOST ---
+  // Boost favorites / top placed teams chances.
+  // We can look at reputation and confidence as proxies for standings.
+  const homeStandingsAdv = homeClub.reputation + homeClub.confidence * 0.2;
+  const awayStandingsAdv = awayClub.reputation + awayClub.confidence * 0.2;
+  
+  if (homeStandingsAdv > awayStandingsAdv + 10) {
+    homeAtt *= 1.15;
+    homeMid *= 1.15;
+  } else if (awayStandingsAdv > homeStandingsAdv + 10) {
+    awayAtt *= 1.15;
+    awayMid *= 1.15;
+  }
+
+  // Star players boost: count star attackers/midfielders to boost attack forces
+  const homeStarBoost = homeStarters.filter(p => p.isStar && (p.position === 'FW' || p.position === 'MF')).length;
+  const awayStarBoost = awayStarters.filter(p => p.isStar && (p.position === 'FW' || p.position === 'MF')).length;
+  homeAtt *= (1.0 + homeStarBoost * 0.06);
+  awayAtt *= (1.0 + awayStarBoost * 0.06);
 
   let homeScore = 0;
   let awayScore = 0;
@@ -130,8 +148,8 @@ export const simulateMatch = (
     
     if (list.length === 0) return players[Math.floor(Math.random() * players.length)];
     
-    // Weighted selection (stars get double weight)
-    const getWeight = (p: Player) => p.isStar ? p.rating * 2.0 : p.rating;
+    // Weighted selection (stars get double weight + additional boost)
+    const getWeight = (p: Player) => p.isStar ? p.rating * 3.5 : p.rating;
     const totalWeight = list.reduce((sum, p) => sum + getWeight(p), 0);
     let rand = Math.random() * totalWeight;
     for (const p of list) {
@@ -144,15 +162,18 @@ export const simulateMatch = (
   // Red card penalty handler
   const applyRedCardPenalty = (isHome: boolean) => {
     if (isHome) {
-      homeDef *= 0.85;
-      homeMid *= 0.85;
-      homeAtt *= 0.85;
+      homeDef *= 0.82;
+      homeMid *= 0.82;
+      homeAtt *= 0.82;
     } else {
-      awayDef *= 0.85;
-      awayMid *= 0.85;
-      awayAtt *= 0.85;
+      awayDef *= 0.82;
+      awayMid *= 0.82;
+      awayAtt *= 0.82;
     }
   };
+
+  // Blowout / Goleada chance check (5% chance to trigger extra attack strength if one team takes a 2-goal lead)
+  let blowoutTriggered = false;
 
   // Match Simulation Loop (90 minutes)
   for (let min = 1; min <= 90; min++) {
@@ -161,6 +182,16 @@ export const simulateMatch = (
     const currentPossession = Math.round((homeMid / midSum) * 100 + (Math.random() * 10 - 5));
     homeStats.possession = Math.max(25, Math.min(75, Math.round((homeStats.possession * (min - 1) + currentPossession) / min)));
     awayStats.possession = 100 - homeStats.possession;
+
+    // Apply blowout booster if not already triggered
+    if (!blowoutTriggered && Math.abs(homeScore - awayScore) >= 2 && Math.random() < 0.20) {
+      blowoutTriggered = true;
+      if (homeScore > awayScore) {
+        homeAtt *= 1.30; // Home is dominating, give them chance for a blowout (goleada)
+      } else {
+        awayAtt *= 1.30;
+      }
+    }
 
     // Standard event check (approx 6-8 events per match)
     if (Math.random() < 0.08) {
@@ -243,7 +274,7 @@ export const simulateMatch = (
       }
     }
 
-    // Fouls and Cards (approx 3% chance per minute)
+    // Fouls and Cards (approx 3.5% chance per minute)
     if (Math.random() < 0.035) {
       const isHomeFoul = Math.random() > 0.5;
       const offendingClub = isHomeFoul ? homeClub : awayClub;
@@ -309,32 +340,33 @@ export const simulateMatch = (
     }
   }
 
-  // Increase goal conversion rate by giving extra goal chances or converting draws
-  // If still a draw, apply a 50% chance to break the tie, resulting in 75% decisive results (wins/losses) and 25% draws
+  // Decisive result enforcer (75% Decisive / 25% Draw)
   if (homeScore === awayScore && Math.random() < 0.50) {
     const homeOverall = homeForces.overall * homeAdvantage;
     const awayOverall = awayForces.overall;
     const homeWinChance = homeOverall / (homeOverall + awayOverall);
     
+    // Distribute the goal across a random minute in the second half rather than always at 89'
+    const randomSecondHalfMin = Math.floor(Math.random() * 40) + 46;
     if (Math.random() < homeWinChance) {
       homeScore++;
       const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
       events.push({
-        minute: 89,
+        minute: randomSecondHalfMin,
         type: 'GOAL',
         player: scorer.name,
         clubId: homeClub.id,
-        description: `Gol de desempate do ${homeClub.name}! ${scorer.name} aproveita cruzamento no apagar das luzes!`
+        description: `Gol decisivo do ${homeClub.name}! ${scorer.name} aproveita cruzamento aos ${randomSecondHalfMin} minutos do segundo tempo!`
       });
     } else {
       awayScore++;
       const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
       events.push({
-        minute: 89,
+        minute: randomSecondHalfMin,
         type: 'GOAL',
         player: scorer.name,
         clubId: awayClub.id,
-        description: `Gol no finalzinho do ${awayClub.name}! ${scorer.name} escapa no contra-ataque e define o placar!`
+        description: `Gol importante do ${awayClub.name}! ${scorer.name} escapa no contra-ataque e define a vitória aos ${randomSecondHalfMin} minutos!`
       });
     }
   }

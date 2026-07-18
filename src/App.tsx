@@ -16,7 +16,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, clearCurrentMatch,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
@@ -57,6 +57,7 @@ const AppContent: React.FC = () => {
   const [halftimeShown, setHalftimeShown] = useState(false);
   const [redCardModalOpen, setRedCardModalOpen] = useState(false);
   const [lastRedCardMinute, setLastRedCardMinute] = useState(-1);
+  const [redCardPlayer, setRedCardPlayer] = useState<Player | null>(null);
 
   // Sponsors list generator (deterministic based on club reputation)
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
@@ -305,10 +306,14 @@ const AppContent: React.FC = () => {
     if (userRedCards.length > 0) {
       const latest = userRedCards[userRedCards.length - 1];
       setLastRedCardMinute(latest.minute);
+      if (userClub && latest.player) {
+        const pObj = userClub.squad.find(x => x.name === latest.player);
+        if (pObj) setRedCardPlayer(pObj);
+      }
       setRedCardModalOpen(true);
       setIsSimPaused(true);
     }
-  }, [simEvents, userClubId, lastRedCardMinute, gameState, currentMatchResult, matchDone]);
+  }, [simEvents, userClubId, lastRedCardMinute, gameState, currentMatchResult, matchDone, userClub]);
 
 
   useEffect(() => {
@@ -367,16 +372,17 @@ const AppContent: React.FC = () => {
   // Roll for incoming purchase proposal from other clubs for user's players after rounds
   useEffect(() => {
     if (userClub && gameState === 'PLAYING' && currentRound > 1) {
-      // 25% chance of receiving an offer for a player in the squad
-      if (Math.random() < 0.25) {
-        const potentialPlayers = userClub.squad.filter(p => !p.isInjured);
+      // 22% chance of receiving an offer for a player in the squad
+      if (Math.random() < 0.22) {
+        // Only target players who are not locked and are either Star profile, or highly rated (Rating >= 75), or high goals scorers
+        const potentialPlayers = userClub.squad.filter(p => !p.isInjured && !p.contractLocked && (p.isStar || p.rating >= 75 || p.goals >= 3));
         if (potentialPlayers.length > 0) {
           const targetPlayer = potentialPlayers[Math.floor(Math.random() * potentialPlayers.length)];
           const otherClubs = clubs.filter(c => c.id !== userClubId);
           if (otherClubs.length > 0) {
             const buyer = otherClubs[Math.floor(Math.random() * otherClubs.length)];
-            // Offer is around 85% to 115% of market value
-            const amount = Math.round(targetPlayer.value * (0.85 + Math.random() * 0.30));
+            // Offer is around 90% to 125% of market value
+            const amount = Math.round(targetPlayer.value * (0.90 + Math.random() * 0.35));
             setIncomingProposal({ player: targetPlayer, buyerClub: buyer, amount });
             setNegOfferAmount(amount);
             setIncomingNegResult(null);
@@ -675,17 +681,7 @@ const AppContent: React.FC = () => {
             )}
           </div>
 
-          {/* Latest 2 Events of user's match */}
-          {simEvents.length > 0 && (
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.7rem', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {simEvents.slice(-2).map((ev, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '6px', color: ev.type === 'GOAL' ? 'var(--accent-green)' : '#d1d5db' }}>
-                  <span style={{ fontWeight: 800 }}>{ev.minute}'</span>
-                  <span>{ev.type === 'GOAL' ? '⚽' : ev.type === 'YELLOW' ? '🟨' : ev.type === 'RED' ? '🟥' : '🚑'} {ev.description}</span>
-                </div>
-              ))}
-            </div>
-          )}
+
         </div>
 
         {/* CLASSIC SIMULTANEOUS DIVISION BOARD */}
@@ -781,19 +777,24 @@ const AppContent: React.FC = () => {
         {/* RED CARD MODAL (auto-opens when user's team gets a red card) */}
         {redCardModalOpen && (
           <div className="modal-overlay">
-            <div className="modal-content">
+            <div className="modal-content" style={{ padding: '20px', maxWidth: '340px' }}>
               <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                <span style={{ fontSize: '2rem' }}>🟥</span>
-                <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-red)' }}>Cartão Vermelho!</h3>
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Seu time ficou com um jogador a menos. Deseja reorganizar a tática ou fazer uma substituição?</p>
+                <span style={{ fontSize: '2.4rem' }}>🟥</span>
+                <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-red)' }}>Expulsão no Time!</h3>
+                {redCardPlayer && (
+                  <div style={{ background: 'rgba(255,23,68,0.08)', border: '1px solid rgba(255,23,68,0.2)', borderRadius: '8px', padding: '8px', margin: '8px 0', fontSize: '0.8rem' }}>
+                    Jogador: <strong>{redCardPlayer.name}</strong> ({redCardPlayer.position})
+                  </div>
+                )}
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Seu jogador foi expulso e deixou o time desfalcado. O que deseja fazer?</p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
                 <button
                   className="btn btn-secondary"
-                  style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)' }}
+                  style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', fontWeight: 700 }}
                   onClick={() => { setRedCardModalOpen(false); setMidMatchSubModal(true); }}
                 >
-                  🔄 Fazer Substituição / Reorganizar
+                  🔄 Substituir / Reorganizar
                 </button>
                 <button
                   className="btn btn-primary"
@@ -809,60 +810,82 @@ const AppContent: React.FC = () => {
         {/* MID-MATCH SUB MODAL */}
         {midMatchSubModal && (
           <div className="modal-overlay">
-            <div className="modal-content" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontWeight: 800 }}>Fazer Substituição</h3>
+            <div className="modal-content" style={{ maxHeight: '85vh', overflowY: 'auto', width: '380px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h3 style={{ fontWeight: 800 }}>Mudar Formação / Substituir</h3>
                 <button onClick={() => { setMidMatchSubModal(false); setIsSimPaused(false); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
               </div>
 
               <div>
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '10px' }}>Escolha um jogador de campo para sair e seu respectivo reserva:</p>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '12px' }}>Ajuste seus titulares. Substitua jogadores cansados ou taticamente inviáveis.</p>
                 
-                <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: '#9ca3af' }}>Titulares em campo:</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', marginBottom: '14px' }}>
-                  {midMatchStarters.map(star => (
-                    <div 
-                      key={star.id} 
-                      style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#1e2126', borderRadius: '8px', fontSize: '0.85rem' }}
-                    >
-                      <span>{star.position} - {star.name}</span>
-                      <button 
-                        onClick={() => {
-                          setSubslotIndex(midMatchStarters.indexOf(star));
-                        }}
-                        style={{ background: 'var(--accent-red)', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo:</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', marginBottom: '14px' }}>
+                  {midMatchStarters.map(star => {
+                    const trend = star.performanceTrend || 'NEUTRAL';
+                    const trendSymbol = trend === 'UP' ? '🟢 ↗️' : trend === 'DOWN' ? '🔴 ↘️' : '🟡 ➡️';
+                    
+                    return (
+                      <div 
+                        key={star.id} 
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#1e2126', borderRadius: '8px', fontSize: '0.8rem', border: star.redCards > 0 ? '1px solid var(--accent-red)' : 'none' }}
                       >
-                        Substituir
-                      </button>
-                    </div>
-                  ))}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className={`pos-badge ${star.position}`} style={{ padding: '2px 4px', fontSize: '0.65rem' }}>{star.position}</span>
+                          <span style={{ fontWeight: 700 }}>{star.isStar ? '⭐ ' : ''}{star.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>({star.rating})</span>
+                          <span style={{ fontSize: '0.75rem' }} title="Rendimento">{trendSymbol}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', color: star.energy < 50 ? 'var(--accent-red)' : '#9ca3af' }}>⚡{star.energy}%</span>
+                          <button 
+                            onClick={() => {
+                              setSubslotIndex(midMatchStarters.indexOf(star));
+                            }}
+                            style={{ background: 'var(--accent-red)', color: 'white', border: 'none', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Mudar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {subslotIndex !== null && (
                   <>
-                    <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: '#9ca3af' }}>Reservas disponíveis (Banco):</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                    <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-green)', fontWeight: 700 }}>Escolha o Substituto do Banco:</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
                       {userClub.squad
                         .filter(p => !midMatchStarters.some(s => s.id === p.id) && !p.isInjured)
-                        .map(bench => (
-                          <div 
-                            key={bench.id} 
-                            style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#1e2126', borderRadius: '8px', fontSize: '0.85rem' }}
-                          >
-                            <span>{bench.position} - {bench.name} (R: {bench.rating})</span>
-                            <button 
-                              onClick={() => {
-                                const outP = midMatchStarters[subslotIndex];
-                                handleMidMatchSub(bench, outP);
-                                setSubslotIndex(null);
-                                setIsSimPaused(false);
-                              }}
-                              style={{ background: 'var(--accent-green)', color: 'black', border: 'none', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                        .map(bench => {
+                          const trend = bench.performanceTrend || 'NEUTRAL';
+                          const trendSymbol = trend === 'UP' ? '🟢 ↗️' : trend === 'DOWN' ? '🔴 ↘️' : '🟡 ➡️';
+                          return (
+                            <div 
+                              key={bench.id} 
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#1e2126', borderRadius: '8px', fontSize: '0.8rem' }}
                             >
-                              Entrar
-                            </button>
-                          </div>
-                        ))}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span className={`pos-badge ${bench.position}`} style={{ padding: '2px 4px', fontSize: '0.65rem' }}>{bench.position}</span>
+                                <span style={{ fontWeight: 700 }}>{bench.isStar ? '⭐ ' : ''}{bench.name}</span>
+                                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>({bench.rating})</span>
+                                <span style={{ fontSize: '0.75rem' }}>{trendSymbol}</span>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  const outP = midMatchStarters[subslotIndex];
+                                  handleMidMatchSub(bench, outP);
+                                  setSubslotIndex(null);
+                                  setIsSimPaused(false);
+                                }}
+                                style={{ background: 'var(--accent-green)', color: 'black', border: 'none', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Entrar
+                              </button>
+                            </div>
+                          );
+                        })}
                     </div>
                   </>
                 )}
@@ -987,8 +1010,71 @@ const AppContent: React.FC = () => {
         {/* --- TAB 0: ESCRITÓRIO --- */}
         {activeTab === 0 && (
           <>
+            {/* Multi-Save / Load Slots Box */}
+            <div className="card" style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 14px', marginBottom: '14px' }}>
+              <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-gold)', marginBottom: '8px', textTransform: 'uppercase' }}>💾 Slots de Campanha (Saves)</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                {[1, 2, 3, 4].map(slot => {
+                  const saveKey = `elifoot_2026_save_slot_${slot}`;
+                  const slotExists = !!localStorage.getItem(saveKey);
+                  let slotInfo = 'Vazio';
+                  if (slotExists) {
+                    try {
+                      const data = JSON.parse(localStorage.getItem(saveKey) || '');
+                      slotInfo = `${data.managerName} (${data.clubs.find((c: any) => c.isPlayerClub)?.name || 'Time'}, R:${data.currentRound})`;
+                    } catch (e) {
+                      slotInfo = 'Slot Ocupado';
+                    }
+                  }
+
+                  return (
+                    <div key={slot} style={{ background: '#121316', border: '1px solid rgba(255,255,255,0.05)', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: 700 }}>Slot {slot}</span>
+                      <span style={{ fontSize: '0.62rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={slotInfo}>
+                        {slotInfo}
+                      </span>
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+                        <button
+                          onClick={() => {
+                            const dataToSave = JSON.parse(localStorage.getItem('elifoot_2026_save') || '{}');
+                            if (Object.keys(dataToSave).length > 0) {
+                              localStorage.setItem(saveKey, JSON.stringify(dataToSave));
+                              alert(`Salvo com sucesso no Slot ${slot}!`);
+                              setSelectedManagePlayerId(null); // Force reload view state
+                            } else {
+                              alert('Nenhuma campanha ativa para salvar.');
+                            }
+                          }}
+                          style={{ flex: 1, fontSize: '0.62rem', padding: '3px 0', borderRadius: '4px', background: 'rgba(0,230,118,0.1)', color: 'var(--accent-green)', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Salvar
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!slotExists) {
+                              alert('Slot vazio!');
+                              return;
+                            }
+                            if (confirm(`Deseja carregar a campanha do Slot ${slot}? O progresso não salvo desta tela será perdido.`)) {
+                              const loadedData = JSON.parse(localStorage.getItem(saveKey) || '{}');
+                              loadGame(loadedData);
+                              localStorage.setItem('elifoot_2026_save', JSON.stringify(loadedData));
+                              alert(`Slot ${slot} carregado com sucesso!`);
+                            }
+                          }}
+                          style={{ flex: 1, fontSize: '0.62rem', padding: '3px 0', borderRadius: '4px', background: slotExists ? 'rgba(255,193,7,0.1)' : '#23252a', color: slotExists ? 'var(--accent-gold)' : '#9ca3af', border: 'none', cursor: slotExists ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+                        >
+                          Carregar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Save / Delete campaign buttons */}
-            <div style={{ display: 'flex', gap: '8px', margin: '0 0 2px 0' }}>
+            <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
               <button
                 onClick={manualSave}
                 style={{
@@ -1008,7 +1094,7 @@ const AppContent: React.FC = () => {
                   transition: 'background 0.2s'
                 }}
               >
-                💾 Salvar Jogo
+                💾 Salvar Rápido
               </button>
               <button
                 onClick={() => {
@@ -1279,6 +1365,9 @@ const AppContent: React.FC = () => {
                 const isExpanded = selectedManagePlayerId === player.id;
                 const remainingWeeks = player.contractWeeks ?? 38;
                 
+                const trend = player.performanceTrend || 'NEUTRAL';
+                const trendSymbol = trend === 'UP' ? '🟢 ↗️' : trend === 'DOWN' ? '🔴 ↘️' : '🟡 ➡️';
+                
                 return (
                   <div key={player.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <div 
@@ -1294,10 +1383,11 @@ const AppContent: React.FC = () => {
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          {player.contractLocked && <span style={{ fontSize: '0.75rem' }} title="Contrato Trancado">🔒</span>}
                           {player.isInjured && <span style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>DM ({player.injuryWeeks}s)</span>}
                           {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
                         </div>
-                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • R$ {(player.value/1000).toFixed(0)}k</span>
+                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • {formatCurrency(player.value)} • Rendimento: {trendSymbol}</span>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1320,30 +1410,39 @@ const AppContent: React.FC = () => {
                         fontSize: '0.8rem'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9ca3af' }}>
-                          <span>Contrato restante: <strong style={{ color: 'white' }}>{remainingWeeks} rodadas</strong></span>
+                          <span>Contrato restante: <strong style={{ color: 'white' }}>{remainingWeeks} rodadas {player.contractLockYears ? `(${player.contractLockYears} Anos Trancado)` : ''}</strong></span>
                           <span>Salário: <strong style={{ color: 'white' }}>{formatCurrency(player.salary)}/sem</strong></span>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => { renewContract(player.id, '6M'); setSelectedManagePlayerId(null); }}
                             className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)' }}
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)', minWidth: '100px' }}
                           >
                             📝 Renovar 6M (+19s)
                           </button>
                           <button
                             onClick={() => { renewContract(player.id, '1Y'); setSelectedManagePlayerId(null); }}
                             className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)', color: 'var(--accent-gold)' }}
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)', color: 'var(--accent-gold)', minWidth: '100px' }}
                           >
                             📝 Renovar 1 Ano (+38s)
                           </button>
                           <button
-                            onClick={() => { sellPlayer(player); setSelectedManagePlayerId(null); }}
-                            className="btn btn-danger"
-                            style={{ flex: 1.2, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 23, 68, 0.1)', border: '1px solid rgba(255, 23, 68, 0.2)', color: 'var(--accent-red)' }}
+                            onClick={() => { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.15)', border: '1px solid rgba(255, 193, 7, 0.4)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            title="Renova o contrato por 2 anos e tranca o jogador"
                           >
-                            💰 Vender ({formatCurrency(Math.round(player.value * 0.9))})
+                            🔒 Trancar 2 Anos
+                          </button>
+                          <button
+                            onClick={() => { if (!player.contractLocked) { sellPlayer(player); setSelectedManagePlayerId(null); } }}
+                            disabled={player.contractLocked}
+                            className="btn btn-danger"
+                            style={{ flex: 1.2, padding: '6px', fontSize: '0.72rem', background: player.contractLocked ? '#2e191b' : 'rgba(255, 23, 68, 0.1)', border: player.contractLocked ? '1px solid #4a1c20' : '1px solid rgba(255, 23, 68, 0.2)', color: player.contractLocked ? '#9ca3af' : 'var(--accent-red)', minWidth: '100px', cursor: player.contractLocked ? 'not-allowed' : 'pointer' }}
+                          >
+                            {player.contractLocked ? '🔒 Trancado' : `💰 Vender (${formatCurrency(Math.round(player.value * 0.9))})`}
                           </button>
                         </div>
                       </div>
@@ -1873,9 +1972,18 @@ const AppContent: React.FC = () => {
                       </div>
 
                       {active ? (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                          <span>{active.name}</span>
-                          <span>+{formatCurrency(active.weeklyPayment)}/sem</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span>{active.name}</span>
+                            <span style={{ color: '#9ca3af' }}>+{formatCurrency(active.weeklyPayment)}/sem</span>
+                          </div>
+                          <button
+                            onClick={() => cancelSponsor(type)}
+                            className="btn btn-danger"
+                            style={{ padding: '3px 8px', width: 'auto', borderRadius: '6px', fontSize: '0.7rem', background: 'rgba(255, 23, 68, 0.08)', border: '1px solid rgba(255, 23, 68, 0.2)', color: 'var(--accent-red)' }}
+                          >
+                            Rescindir
+                          </button>
                         </div>
                       ) : offer ? (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

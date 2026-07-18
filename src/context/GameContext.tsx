@@ -83,9 +83,11 @@ interface GameContextType {
   makeBidForPlayer: (player: Player, _sellerClubId: string, bidAmount: number) => { status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number };
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
-  renewContract: (playerId: string, duration: '6M' | '1Y') => void;
+  renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y') => void;
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
   updateTicketPrice: (delta: number) => void;
+  loadGame: (saveData: any) => void;
+  cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -466,6 +468,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        let performanceTrend: 'UP' | 'DOWN' | 'NEUTRAL' = player.performanceTrend || 'NEUTRAL';
+        if (rating > player.rating) {
+          performanceTrend = 'UP';
+        } else if (rating < player.rating) {
+          performanceTrend = 'DOWN';
+        } else if (Math.random() < 0.08) {
+          // Occasional random shift to neutral
+          performanceTrend = 'NEUTRAL';
+        }
+
         let value = player.value;
         let salary = player.salary;
         if (rating !== player.rating) {
@@ -478,8 +490,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // --- Contract weeks management ---
         let contractWeeks = player.contractWeeks ?? 38;
+        let contractLocked = player.contractLocked;
+        let contractLockYears = player.contractLockYears;
+
         if (club.id === userClubId) {
           contractWeeks = Math.max(0, contractWeeks - 1);
+          // If contract weeks expires or is low, contractLocked might automatically release, or decrement years
+          if (contractWeeks % 38 === 0 && contractLockYears && contractLockYears > 0) {
+            contractLockYears--;
+            if (contractLockYears === 0) {
+              contractLocked = false;
+            }
+          }
         }
 
         // --- Dissatisfaction (bench rounds tracking - randomized) ---
@@ -489,14 +511,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             benchRounds = 0; // reset if played
           } else if (!isInjured) {
             benchRounds += 1;
-            // Now it is rare: only 1.5% chance per round to request a transfer, and only if they've been on the bench for at least 2 rounds
-            if (benchRounds >= 2 && Math.random() < 0.015) {
+            // A contractLocked player CANNOT request to leave (cannot get dissatisfied)
+            if (!contractLocked && benchRounds >= 2 && Math.random() < 0.015) {
               benchRounds = 999;
             }
           }
         }
 
-        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds };
+        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend };
       });
 
       return { ...club, finances, confidence, squad };
@@ -1121,6 +1143,42 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, nextSponsors);
   };
 
+  // Cancel sponsor contract with penalty (costs 2 weeks of payment)
+  const cancelSponsor = (type: 'MASTER' | 'COSTAS' | 'MANGAS') => {
+    if (!userClub) return;
+    const active = activeSponsors[type];
+    if (!active) return;
+
+    const penalty = active.weeklyPayment * 2;
+    if (userClub.finances < penalty) {
+      alert('Finanças insuficientes para pagar a multa rescisória!');
+      return;
+    }
+
+    const nextSponsors = { ...activeSponsors };
+    nextSponsors[type] = null;
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances - penalty };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+    setActiveSponsors(nextSponsors);
+
+    setNews(prev => [...prev, {
+      id: `spon_cancel_${Date.now()}`,
+      week: currentRound,
+      text: `Rescisão! O ${userClub.name} rescindiu o patrocínio da ${active.name} pagando R$ ${penalty.toLocaleString()} de multa.`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, nextSponsors);
+    alert('Contrato de patrocínio rescindido!');
+  };
+
   // Stadium seating upgrade
   const upgradeStadium = (capacityAdded: number) => {
     if (!userClub) return;
@@ -1282,9 +1340,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Renew player contract
-  const renewContract = (playerId: string, duration: '6M' | '1Y') => {
+  const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y') => {
     if (!userClubId) return;
-    const addedWeeks = duration === '6M' ? 19 : 38;
+    const addedWeeks = duration === '6M' ? 19 : duration === '1Y' ? 38 : 76;
+    const lockContract = duration === '2Y';
+    const lockYears = duration === '2Y' ? 2 : undefined;
     setClubs(prev => prev.map(c => {
       if (c.id !== userClubId) return c;
       const updatedSquad = c.squad.map(p => {
@@ -1292,7 +1352,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentW = p.contractWeeks ?? 38;
         return {
           ...p,
-          contractWeeks: currentW + addedWeeks
+          contractWeeks: currentW + addedWeeks,
+          contractLocked: lockContract ? true : p.contractLocked,
+          contractLockYears: lockYears ? lockYears : p.contractLockYears
         };
       });
       return { ...c, squad: updatedSquad };
@@ -1363,6 +1425,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  const loadGame = (data: any) => {
+    if (!data) return;
+    setGameState(data.gameState);
+    setManagerName(data.managerName);
+    setCurrentYear(data.currentYear);
+    setCurrentRound(data.currentRound);
+    setClubs(data.clubs);
+    setUserClubId(data.userClubId);
+    setSchedule(data.schedule);
+    setMarketPlayers(data.marketPlayers);
+    setOffers(data.offers);
+    setNews(data.news);
+    setHistory(data.history);
+    setStadiumUpgrade(data.stadiumUpgrade);
+    setActiveSponsors(data.activeSponsors);
+  };
+
   return (
     <GameContext.Provider value={{
       gameState,
@@ -1397,7 +1476,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       manualSave,
       updateTicketPrice,
       renewContract,
-      acceptIncomingProposal
+      acceptIncomingProposal,
+      loadGame,
+      cancelSponsor
     }}>
       {children}
     </GameContext.Provider>
