@@ -138,53 +138,8 @@ const AppContent: React.FC = () => {
         });
         setStarters(validated);
         setMidMatchStarters(validated);
-      } else if (starters.length > 0) {
-        // Carry over current starters mapping them to the new formation's slots
-        const { targetDF, targetMF, targetFW } = getTacticNeeds(selectedTactic);
-        const posMap: Record<string, Player[]> = { GK: [], DF: [], MF: [], FW: [] };
-        starters.forEach(p => { if (posMap[p.position]) posMap[p.position].push(p); });
-
-        // Helper: get best available player for a position, preferring current starters
-        const used = new Set<string>();
-        const pick = (pos: string, count: number): Player[] => {
-          const result: Player[] = [];
-          // First use current starters in that position
-          for (const p of posMap[pos]) {
-            if (result.length >= count) break;
-            const live = userClub.squad.find(s => s.id === p.id && !s.isInjured);
-            if (live && !used.has(live.id)) { result.push(live); used.add(live.id); }
-          }
-          // Then fill from best bench players at that position
-          if (result.length < count) {
-            const bench = userClub.squad
-              .filter(s => s.position === pos && !s.isInjured && !used.has(s.id))
-              .sort((a, b) => b.rating - a.rating);
-            for (const p of bench) {
-              if (result.length >= count) break;
-              result.push(p); used.add(p.id);
-            }
-          }
-          return result;
-        };
-
-        const selected: Player[] = [
-          ...pick('GK', 1),
-          ...pick('DF', targetDF),
-          ...pick('MF', targetMF),
-          ...pick('FW', targetFW),
-        ];
-
-        // Fill to 11 if still short
-        if (selected.length < 11) {
-          const rest = userClub.squad.filter(s => !s.isInjured && !used.has(s.id)).sort((a, b) => b.rating - a.rating);
-          for (let i = 0; i < Math.min(11 - selected.length, rest.length); i++) selected.push(rest[i]);
-        }
-
-        setStarters(selected);
-        setMidMatchStarters(selected);
-        setStartersPerTactic(prev => ({ ...prev, [selectedTactic]: selected }));
       } else {
-        // Cold start — auto-pick best 11
+        // Auto-pick best 11 matching the new scheme criteria
         const { targetDF, targetMF, targetFW } = getTacticNeeds(selectedTactic);
         const gks = userClub.squad.filter(p => p.position === 'GK' && !p.isInjured).sort((a, b) => b.rating - a.rating);
         const dfs = userClub.squad.filter(p => p.position === 'DF' && !p.isInjured).sort((a, b) => b.rating - a.rating);

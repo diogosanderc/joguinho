@@ -2433,15 +2433,13 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
     usedPositions[star.position]++;
   });
 
-  const positionTargets = { GK: 2, DF: 6, MF: 6, FW: 4 };
+  const positionTargets = { GK: 2, DF: 6, MF: 6, FW: 6 };
 
   (Object.keys(positionTargets) as ('GK' | 'DF' | 'MF' | 'FW')[]).forEach(pos => {
     const current = usedPositions[pos];
-    
-    // Only generate if we don't have at least 1 goalkeeper, 3 defenders, 3 midfielders, 2 forwards
-    const absoluteMin = pos === 'GK' ? 1 : pos === 'DF' ? 4 : pos === 'MF' ? 4 : 2;
-    if (current < absoluteMin) {
-      for (let i = current; i < absoluteMin; i++) {
+    const targetMin = positionTargets[pos];
+    if (current < targetMin) {
+      for (let i = current; i < targetMin; i++) {
         let firstName = FIRST_NAMES[randomRange(0, FIRST_NAMES.length - 1)];
         let lastName = LAST_NAMES[randomRange(0, LAST_NAMES.length - 1)];
         let name = `${firstName} ${lastName}`;
