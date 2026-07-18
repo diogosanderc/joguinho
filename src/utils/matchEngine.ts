@@ -62,8 +62,8 @@ export const calculateTeamForces = (starters: Player[]) => {
   const avgMid = mfs.length > 0 ? mfs.reduce((acc, p) => acc + p.rating, 0) / mfs.length : 40;
   const avgAtt = fws.length > 0 ? fws.reduce((acc, p) => acc + p.rating, 0) / fws.length : 40;
 
-  // Defense force is weighted between GK and DFs
-  const defense = Math.round(gkRating * 0.4 + avgDef * 0.6);
+  // Defense force is weighted between GK and DFs (GK: 25%, DF: 75%)
+  const defense = Math.round(gkRating * 0.25 + avgDef * 0.75);
   const midfield = Math.round(avgMid);
   const attack = Math.round(avgAtt);
   const overall = Math.round((defense + midfield + attack) / 3);
@@ -88,12 +88,12 @@ export const simulateMatch = (
   let homeLuck = 0.8 + Math.random() * 0.4;
   let awayLuck = 0.8 + Math.random() * 0.4;
 
-  // "Dia Ruim" (Bad Day) - 7% chance for a favorite to perform terribly
+  // "Dia Ruim" (Bad Day) - 7% chance for a favorite to perform terribly (reduced impact to 0.82)
   if (homeForces.overall > awayForces.overall + 8 && Math.random() < 0.07) {
-    homeLuck *= 0.7;
+    homeLuck *= 0.82;
   }
   if (awayForces.overall > homeForces.overall + 8 && Math.random() < 0.07) {
-    awayLuck *= 0.7;
+    awayLuck *= 0.82;
   }
 
   // Home advantage factor depends on stadium occupancy
