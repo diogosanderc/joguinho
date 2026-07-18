@@ -18,6 +18,7 @@ export interface Player {
   benchRounds?: number;
   contractLockYears?: number; // Number of years contract is locked
   performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
+  subPosition?: 'GK' | 'ZAG' | 'LE' | 'LD' | 'MF' | 'FW';
 }
 
 export interface Club {
@@ -2472,6 +2473,20 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
         });
       }
     }
+  });
+
+  // Post-process to assign subPositions (LE, LD, ZAG for DF; GK, MF, FW for others)
+  const dfs = squad.filter(p => p.position === 'DF');
+  dfs.forEach((p, idx) => {
+    // Distribute subPositions evenly among defenders
+    if (idx % 3 === 0) p.subPosition = 'LE';
+    else if (idx % 3 === 1) p.subPosition = 'LD';
+    else p.subPosition = 'ZAG';
+  });
+  squad.forEach(p => {
+    if (p.position === 'GK') p.subPosition = 'GK';
+    else if (p.position === 'MF') p.subPosition = 'MF';
+    else if (p.position === 'FW') p.subPosition = 'FW';
   });
 
   const posOrder = { GK: 0, DF: 1, MF: 2, FW: 3 };

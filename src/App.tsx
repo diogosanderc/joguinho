@@ -1268,17 +1268,19 @@ const AppContent: React.FC = () => {
                   {(() => {
                     const dfs = starters.filter(p => p.position === 'DF');
                     return dfs.map((p, idx) => {
-                      // Dynamically label LD, LE, ZAG based on their index in the row
-                      let sideLabel = 'ZAG';
-                      if (dfs.length === 3) {
-                        if (idx === 0) sideLabel = 'LE';
-                        if (idx === 2) sideLabel = 'LD';
-                      } else if (dfs.length === 4) {
-                        if (idx === 0) sideLabel = 'LE';
-                        if (idx === 3) sideLabel = 'LD';
-                      } else if (dfs.length === 5) {
-                        if (idx === 0) sideLabel = 'LE';
-                        if (idx === 4) sideLabel = 'LD';
+                      // Use assigned subPosition or fallback dynamically to index label
+                      let sideLabel = p.subPosition || 'ZAG';
+                      if (!p.subPosition) {
+                        if (dfs.length === 3) {
+                          if (idx === 0) sideLabel = 'LE';
+                          if (idx === 2) sideLabel = 'LD';
+                        } else if (dfs.length === 4) {
+                          if (idx === 0) sideLabel = 'LE';
+                          if (idx === 3) sideLabel = 'LD';
+                        } else if (dfs.length === 5) {
+                          if (idx === 0) sideLabel = 'LE';
+                          if (idx === 4) sideLabel = 'LD';
+                        }
                       }
                       
                       return (
@@ -1329,7 +1331,7 @@ const AppContent: React.FC = () => {
                         cursor: 'pointer'
                       }}
                     >
-                      <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                      <span className={`pos-badge ${player.position}`}>{player.subPosition || player.position}</span>
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
