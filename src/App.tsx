@@ -1429,6 +1429,22 @@ const AppContent: React.FC = () => {
                             📝 Renovar 1 Ano (+38s)
                           </button>
                           <button
+                            onClick={() => { renewContract(player.id, 'LOCK_6M'); setSelectedManagePlayerId(null); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.12)', border: '1px solid rgba(255, 193, 7, 0.35)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            title="Renova o contrato por 6 meses e tranca o jogador"
+                          >
+                            🔒 Trancar 6 Meses
+                          </button>
+                          <button
+                            onClick={() => { renewContract(player.id, 'LOCK_1Y'); setSelectedManagePlayerId(null); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.12)', border: '1px solid rgba(255, 193, 7, 0.35)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            title="Renova o contrato por 1 ano e tranca o jogador"
+                          >
+                            🔒 Trancar 1 Ano
+                          </button>
+                          <button
                             onClick={() => { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); }}
                             className="btn btn-secondary"
                             style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.15)', border: '1px solid rgba(255, 193, 7, 0.4)', color: 'var(--accent-gold)', minWidth: '100px' }}

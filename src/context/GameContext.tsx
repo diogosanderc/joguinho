@@ -83,7 +83,7 @@ interface GameContextType {
   makeBidForPlayer: (player: Player, _sellerClubId: string, bidAmount: number) => { status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number };
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
-  renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y') => void;
+  renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y' | 'LOCK_6M' | 'LOCK_1Y') => void;
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
   updateTicketPrice: (delta: number) => void;
   loadGame: (saveData: any) => void;
@@ -1340,11 +1340,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Renew player contract
-  const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y') => {
+  const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y' | 'LOCK_6M' | 'LOCK_1Y') => {
     if (!userClubId) return;
-    const addedWeeks = duration === '6M' ? 19 : duration === '1Y' ? 38 : 76;
-    const lockContract = duration === '2Y';
-    const lockYears = duration === '2Y' ? 2 : undefined;
+    const addedWeeks = (duration === '6M' || duration === 'LOCK_6M') ? 19 : (duration === '1Y' || duration === 'LOCK_1Y') ? 38 : 76;
+    const lockContract = duration === '2Y' || duration === 'LOCK_6M' || duration === 'LOCK_1Y';
+    const lockYears = duration === '2Y' ? 2 : (duration === 'LOCK_1Y' ? 1 : duration === 'LOCK_6M' ? 0.5 : undefined);
     setClubs(prev => prev.map(c => {
       if (c.id !== userClubId) return c;
       const updatedSquad = c.squad.map(p => {
