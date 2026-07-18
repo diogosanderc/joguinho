@@ -2476,15 +2476,22 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
   });
 
   // Post-process to assign subPositions (LE, LD, ZAG for DF; GK, MF, FW for others)
-  // Mapping lists based on real Serie A fullbacks and common names
+  // Mapping lists based on real Serie A and Serie B fullbacks and common names
   const REAL_LE_NAMES = [
+    // Serie A
     'Ayrton Lucas', 'Alex Sandro', 'Joaquín Piquerez', 'Jefté', 'Arthur Gabriel', 'Enzo Díaz', 'Wendell', 
     'Matheus Bidu', 'Hugo', 'Fabrizio Angileri', 'Alex Telles', 'Fernando Marçal', 'Jhoan Hernández', 'Caio Roque', 'Paulinho',
-    'Reinaldo', 'Renan Lodi', 'Marlon', 'Guilherme Arana', 'Rubens', 'Piquerez', 'Wellington', 'Cuiabano', 'Marçal',
-    'Renê', 'Bernabei', 'Samuel Xavier', 'Marcelo', 'Diogo Barbosa', 'Piton', 'Lucas Piton', 'Victor Luis'
+    'Reinaldo', 'Renan Lodi', 'Marlon', 'Guilherme Arana', 'Rubens', 'Wellington', 'Cuiabano', 'Marçal',
+    'Renê', 'Bernabei', 'Samuel Xavier', 'Marcelo', 'Diogo Barbosa', 'Piton', 'Lucas Piton', 'Victor Luis',
+    'Dalbert', 'Tobias Ostchega', 'Carlinhos', 'Kaiki', 'Egídio',
+    // Serie B
+    'Emerson Barbosa', 'Renan Castro', 'Kevyson', 'Danilo Barcelos', 'Diego Porfírio', 'Felipinho', 'Davi Gabriel', 
+    'Rafinha', 'Edson Lucas', 'Felipe Jonatan', 'João Almeida', 'Bruno Melo', 'Luiz Paulo', 'Igor Fernandes', 
+    'Léo Jance', 'Djalma Silva', 'Sánchez', 'Fernando', 'Yuri', 'Ramon'
   ];
 
   const REAL_LD_NAMES = [
+    // Serie A
     'Varela', 'Guillermo Varela', 'Emerson Royal', 'Agustín Giay', 'Khellven', 'João Moreira', 'Lucas Ramon', 
     'Maik', 'Igor Felisberto', 'Aurélio Buta', 'Matheuzinho', 'Pedro Milans', 'Vitinho', 'Mateo Ponte', 'Igor Vinícius',
     'William', 'Fagner', 'Marcos Rocha', 'Mayke', 'Guga', 'Samuel Xavier', 'Wesley', 'Calegari', 'Bustos', 
