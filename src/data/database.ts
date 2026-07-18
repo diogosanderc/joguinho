@@ -21,7 +21,7 @@ export interface Player {
 export interface Club {
   id: string;
   name: string;
-  division: 'A' | 'B' | 'C' | 'D';
+  division: 'A' | 'B' | 'C';
   primaryColor: string;
   secondaryColor: string;
   textColor: string; // Light or dark text compatibility
@@ -38,7 +38,7 @@ export interface Club {
 export interface ClubDefinition {
   id: string;
   name: string;
-  division: 'A' | 'B' | 'C' | 'D';
+  division: 'A' | 'B' | 'C';
   primaryColor: string;
   secondaryColor: string;
   textColor: string;
@@ -745,70 +745,216 @@ export const CLUB_DEFINITIONS: ClubDefinition[] = [
   { id: 'vitoria', name: 'Vitoria', division: 'A', primaryColor: '#D32F2F', secondaryColor: '#212121', textColor: '#FFFFFF', stadiumCapacity: 35000, stadiumName: 'Barradão', reputation: 75, stars: STAR_PLAYERS.vitoria },
 
   // --- SERIE B ---
-  { id: 'america_mg', name: 'America-MG', division: 'B', primaryColor: '#008000', secondaryColor: '#121212', textColor: '#FFFFFF', stadiumCapacity: 23000, stadiumName: 'Independencia', reputation: 75, stars: [] },
-  { id: 'athletic_mg', name: 'Athletic Club', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Arena Unimed', reputation: 65, stars: [] },
-  { id: 'atletico_go', name: 'Atletico-GO', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 12000, stadiumName: 'Accioly', reputation: 73, stars: [] },
-  { id: 'avai', name: 'Avai', division: 'B', primaryColor: '#1976D2', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 17800, stadiumName: 'Ressacada', reputation: 70, stars: [] },
-  { id: 'botafogo_sp', name: 'Botafogo-SP', division: 'B', primaryColor: '#C2185B', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 28000, stadiumName: 'Santa Cruz', reputation: 66, stars: [] },
-  { id: 'ceara', name: 'Ceara', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 63000, stadiumName: 'Castelao', reputation: 76, stars: [] },
-  { id: 'crb', name: 'CRB', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Rei Pele', reputation: 67, stars: [] },
-  { id: 'criciuma', name: 'Criciuma', division: 'B', primaryColor: '#FBC02D', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 19000, stadiumName: 'Heriberto Hulse', reputation: 72, stars: [] },
-  { id: 'cuiaba', name: 'Cuiaba', division: 'B', primaryColor: '#388E3C', secondaryColor: '#FBC02D', textColor: '#FFFFFF', stadiumCapacity: 41000, stadiumName: 'Arena Pantanal', reputation: 74, stars: [] },
-  { id: 'fortaleza', name: 'Fortaleza', division: 'B', primaryColor: '#1976D2', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 63000, stadiumName: 'Castelao', reputation: 81, stars: STAR_PLAYERS.fortaleza },
-  { id: 'goias', name: 'Goias', division: 'B', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 14000, stadiumName: 'Serrinha', reputation: 74, stars: [] },
-  { id: 'juventude', name: 'Juventude', division: 'B', primaryColor: '#2E7D32', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19000, stadiumName: 'Alfredo Jaconi', reputation: 72, stars: [] },
-  { id: 'londrina', name: 'Londrina', division: 'B', primaryColor: '#03A9F4', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 30000, stadiumName: 'Estadio do Cafe', reputation: 66, stars: [] },
-  { id: 'nautico', name: 'Nautico', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Aflitos', reputation: 69, stars: [] },
-  { id: 'novorizontino', name: 'Novorizontino', division: 'B', primaryColor: '#FFD54F', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 16000, stadiumName: 'Jorjao', reputation: 70, stars: [] },
-  { id: 'operario_pr', name: 'Operario-PR', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Germano Kruger', reputation: 65, stars: [] },
-  { id: 'ponte_preta', name: 'Ponte Preta', division: 'B', primaryColor: '#FFFFFF', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 17000, stadiumName: 'Majestoso', reputation: 69, stars: [] },
-  { id: 'sao_bernardo', name: 'Sao Bernardo', division: 'B', primaryColor: '#FFC107', secondaryColor: '#1B5E20', textColor: '#000000', stadiumCapacity: 12000, stadiumName: 'Primeiro de Maio', reputation: 64, stars: [] },
-  { id: 'sport', name: 'Sport Recife', division: 'B', primaryColor: '#C62828', secondaryColor: '#E65100', textColor: '#FFFFFF', stadiumCapacity: 32000, stadiumName: 'Ilha do Retiro', reputation: 76, stars: [] },
-  { id: 'vila_nova', name: 'Vila Nova', division: 'B', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 11000, stadiumName: 'OBA', reputation: 68, stars: [] },
+  { id: 'america_mg', name: 'America-MG', division: 'B', primaryColor: '#008000', secondaryColor: '#121212', textColor: '#FFFFFF', stadiumCapacity: 23000, stadiumName: 'Independencia', reputation: 75, stars: [
+    { name: "Dalbert", position: "DF", rating: 74 },
+    { name: "Ricardo Silva", position: "DF", rating: 73 },
+    { name: "Alê", position: "MF", rating: 74 },
+    { name: "Mastriani", position: "FW", rating: 76 },
+    { name: "Segovinha", position: "FW", rating: 74 }
+  ] },
+  { id: 'athletic_mg', name: 'Athletic Club', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Arena Unimed', reputation: 65, stars: [
+    { name: "Danilo Cardoso", position: "DF", rating: 66 },
+    { name: "Wallisson", position: "MF", rating: 68 },
+    { name: "Welinton Torrao", position: "FW", rating: 67 }
+  ] },
+  { id: 'atletico_go', name: 'Atletico-GO', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 12000, stadiumName: 'Accioly', reputation: 73, stars: [
+    { name: "Ronaldo", position: "GK", rating: 73 },
+    { name: "Alix Vinicius", position: "DF", rating: 74 },
+    { name: "Shaylon", position: "MF", rating: 75 },
+    { name: "Luiz Fernando", position: "FW", rating: 75 }
+  ] },
+  { id: 'avai', name: 'Avai', division: 'B', primaryColor: '#1976D2', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 17800, stadiumName: 'Ressacada', reputation: 70, stars: [
+    { name: "Cesar Augusto", position: "GK", rating: 70 },
+    { name: "Tiago Pagnussat", position: "DF", rating: 70 },
+    { name: "Giovanni", position: "MF", rating: 72 },
+    { name: "Mauricio Garcez", position: "FW", rating: 71 }
+  ] },
+  { id: 'botafogo_sp', name: 'Botafogo-SP', division: 'B', primaryColor: '#C2185B', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 28000, stadiumName: 'Santa Cruz', reputation: 66, stars: [
+    { name: "Matheus Costa", position: "DF", rating: 67 },
+    { name: "Gustavo Bochecha", position: "MF", rating: 68 },
+    { name: "Alex Sandro", position: "FW", rating: 67 }
+  ] },
+  { id: 'ceara', name: 'Ceara', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 63000, stadiumName: 'Castelao', reputation: 76, stars: [
+    { name: "Richard", position: "GK", rating: 74 },
+    { name: "Luiz Otávio", position: "DF", rating: 73 },
+    { name: "Vina", position: "MF", rating: 75 },
+    { name: "Matheus Bahia", position: "DF", rating: 72 },
+    { name: "Wendel Silva", position: "FW", rating: 74 }
+  ] },
+  { id: 'crb', name: 'CRB', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Rei Pele', reputation: 67, stars: [
+    { name: "Matheus Albino", position: "GK", rating: 69 },
+    { name: "Fabio Alemao", position: "DF", rating: 68 },
+    { name: "Gegê", position: "MF", rating: 71 },
+    { name: "Anselmo Ramon", position: "FW", rating: 73 }
+  ] },
+  { id: 'criciuma', name: 'Criciuma', division: 'B', primaryColor: '#FBC02D', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 19000, stadiumName: 'Heriberto Hulse', reputation: 72, stars: [
+    { name: "Marcelo Hermes", position: "DF", rating: 73 },
+    { name: "Fellipe Mateus", position: "MF", rating: 73 },
+    { name: "Sandry", position: "MF", rating: 74 },
+    { name: "Rómulo Otero", position: "FW", rating: 74 }
+  ] },
+  { id: 'cuiaba', name: 'Cuiaba', division: 'B', primaryColor: '#388E3C', secondaryColor: '#FBC02D', textColor: '#FFFFFF', stadiumCapacity: 41000, stadiumName: 'Arena Pantanal', reputation: 74, stars: [
+    { name: "Marcelo Carné", position: "GK", rating: 72 },
+    { name: "Alan Empereur", position: "DF", rating: 74 },
+    { name: "Lucas Fernandes", position: "MF", rating: 73 },
+    { name: "Deyverson", position: "FW", rating: 75 }
+  ] },
+  { id: 'fortaleza', name: 'Fortaleza', division: 'B', primaryColor: '#1976D2', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 63000, stadiumName: 'Castelao', reputation: 81, stars: [
+    { name: "Brenno", position: "GK", rating: 75 },
+    { name: "João Ricardo", position: "GK", rating: 75 },
+    { name: "Gabriel Fuentes", position: "DF", rating: 78 },
+    { name: "Ryan", position: "MF", rating: 80 },
+    { name: "Vitinho", position: "FW", rating: 80 }
+  ] },
+  { id: 'goias', name: 'Goias', division: 'B', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 14000, stadiumName: 'Serrinha', reputation: 74, stars: [
+    { name: "Tadeu", position: "GK", rating: 76 },
+    { name: "Sander", position: "DF", rating: 72 },
+    { name: "Wellington Rato", position: "MF", rating: 75 },
+    { name: "Lucas Lima", position: "MF", rating: 74 },
+    { name: "Angelo Rodriguez", position: "FW", rating: 73 }
+  ] },
+  { id: 'juventude', name: 'Juventude', division: 'B', primaryColor: '#2E7D32', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19000, stadiumName: 'Alfredo Jaconi', reputation: 72, stars: [
+    { name: "Jandrei", position: "GK", rating: 74 },
+    { name: "Danilo Boza", position: "DF", rating: 72 },
+    { name: "Nenê", position: "MF", rating: 73 },
+    { name: "Lucas Barbosa", position: "FW", rating: 74 }
+  ] },
+  { id: 'londrina', name: 'Londrina', division: 'B', primaryColor: '#03A9F4', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 30000, stadiumName: 'Estadio do Cafe', reputation: 66, stars: [
+    { name: "Iago Teles", position: "FW", rating: 67 },
+    { name: "Rafael Longuine", position: "MF", rating: 68 }
+  ] },
+  { id: 'nautico', name: 'Nautico', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Aflitos', reputation: 69, stars: [
+    { name: "Vagner", position: "GK", rating: 68 },
+    { name: "Diego Matos", position: "DF", rating: 67 },
+    { name: "Paulo Sergio", position: "FW", rating: 70 }
+  ] },
+  { id: 'novorizontino', name: 'Novorizontino', division: 'B', primaryColor: '#FFD54F', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 16000, stadiumName: 'Jorjao', reputation: 70, stars: [
+    { name: "Jordi", position: "GK", rating: 71 },
+    { name: "Cesar Martins", position: "DF", rating: 70 },
+    { name: "Marlon", position: "MF", rating: 70 },
+    { name: "Neto Pessoa", position: "FW", rating: 71 }
+  ] },
+  { id: 'operario_pr', name: 'Operario-PR', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Germano Kruger', reputation: 65, stars: [
+    { name: "Rafael Santos", position: "GK", rating: 68 },
+    { name: "Willian Machado", position: "DF", rating: 67 },
+    { name: "Felipe Augusto", position: "FW", rating: 68 }
+  ] },
+  { id: 'ponte_preta', name: 'Ponte Preta', division: 'B', primaryColor: '#FFFFFF', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 17000, stadiumName: 'Majestoso', reputation: 69, stars: [
+    { name: "Pedro Rocha", position: "GK", rating: 68 },
+    { name: "Elvis", position: "MF", rating: 70 },
+    { name: "Jeh", position: "FW", rating: 71 }
+  ] },
+  { id: 'sao_bernardo', name: 'Sao Bernardo', division: 'B', primaryColor: '#FFC107', secondaryColor: '#1B5E20', textColor: '#000000', stadiumCapacity: 12000, stadiumName: 'Primeiro de Maio', reputation: 64, stars: [
+    { name: "Alex Alves", position: "GK", rating: 66 },
+    { name: "Lucas Lima", position: "DF", rating: 65 },
+    { name: "Silvinho", position: "FW", rating: 67 }
+  ] },
+  { id: 'sport', name: 'Sport Recife', division: 'B', primaryColor: '#C62828', secondaryColor: '#E65100', textColor: '#FFFFFF', stadiumCapacity: 32000, stadiumName: 'Ilha do Retiro', reputation: 76, stars: [
+    { name: "Caíque França", position: "GK", rating: 74 },
+    { name: "Rafael Thyere", position: "DF", rating: 73 },
+    { name: "Lucas Lima", position: "MF", rating: 75 },
+    { name: "Gustavo Coutinho", position: "FW", rating: 74 }
+  ] },
+  { id: 'vila_nova', name: 'Vila Nova', division: 'B', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 11000, stadiumName: 'OBA', reputation: 68, stars: [
+    { name: "Dênis Júnior", position: "GK", rating: 70 },
+    { name: "Ralf", position: "MF", rating: 69 },
+    { name: "Alesson", position: "FW", rating: 71 }
+  ] },
 
   // --- SERIE C ---
-  { id: 'amazonas', name: 'Amazonas FC', division: 'C', primaryColor: '#FBC02D', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 44000, stadiumName: 'Arena da Amazonia', reputation: 62, stars: [] },
-  { id: 'anapolis', name: 'Anapolis', division: 'C', primaryColor: '#1976D2', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Jonas Duarte', reputation: 50, stars: [] },
-  { id: 'barra_sc', name: 'Barra-SC', division: 'C', primaryColor: '#0288D1', secondaryColor: '#FBC02D', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Arena Barra', reputation: 48, stars: [] },
-  { id: 'botafogo_pb', name: 'Botafogo-PB', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 25000, stadiumName: 'Almeidao', reputation: 55, stars: [] },
-  { id: 'brusque', name: 'Brusque', division: 'C', primaryColor: '#FBC02D', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Augusto Bauer', reputation: 58, stars: [] },
-  { id: 'caxias', name: 'Caxias', division: 'C', primaryColor: '#880E4F', secondaryColor: '#0D47A1', textColor: '#FFFFFF', stadiumCapacity: 22000, stadiumName: 'Centenario', reputation: 56, stars: [] },
-  { id: 'confianca', name: 'Confianca', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 15000, stadiumName: 'Batistao', reputation: 54, stars: [] },
-  { id: 'ferroviaria', name: 'Ferroviaria', division: 'C', primaryColor: '#4A148C', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Fonte Luminosa', reputation: 59, stars: [] },
-  { id: 'figueirense', name: 'Figueirense', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19800, stadiumName: 'Orlando Scarpelli', reputation: 62, stars: [] },
-  { id: 'floresta', name: 'Floresta', division: 'C', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Presidente Vargas', reputation: 46, stars: [] },
-  { id: 'guarani', name: 'Guarani', division: 'C', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 29000, stadiumName: 'Brinco de Ouro', reputation: 64, stars: [] },
-  { id: 'inter_limeira', name: 'Inter de Limeira', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 13000, stadiumName: 'Limeirao', reputation: 52, stars: [] },
-  { id: 'itabaiana', name: 'Itabaiana', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Mendonçao', reputation: 48, stars: [] },
-  { id: 'ituano', name: 'Ituano', division: 'C', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Novelli Junior', reputation: 60, stars: [] },
-  { id: 'maranhao', name: 'Maranhao', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 40000, stadiumName: 'Castelao-MA', reputation: 49, stars: [] },
-  { id: 'maringa', name: 'Maringa', division: 'C', primaryColor: '#111111', secondaryColor: '#00E676', textColor: '#FFFFFF', stadiumCapacity: 16000, stadiumName: 'Willie Davids', reputation: 57, stars: [] },
-  { id: 'paysandu', name: 'Paysandu', division: 'C', primaryColor: '#03A9F4', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 16000, stadiumName: 'Curuzu', reputation: 65, stars: [] },
-  { id: 'santa_cruz', name: 'Santa Cruz', division: 'C', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 60000, stadiumName: 'Arruda', reputation: 66, stars: [] },
-  { id: 'volta_redonda', name: 'Volta Redonda', division: 'C', primaryColor: '#FFC107', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 20000, stadiumName: 'Raulino de Oliveira', reputation: 58, stars: [] },
-  { id: 'ypiranga_rs', name: 'Ypiranga-RS', division: 'C', primaryColor: '#FFEB3B', secondaryColor: '#1B5E20', textColor: '#000000', stadiumCapacity: 8000, stadiumName: 'Colosso da Lagoa', reputation: 55, stars: [] },
-
-  // --- SERIE D ---
-  { id: 'abc', name: 'ABC', division: 'D', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Frasqueirao', reputation: 58, stars: [] },
-  { id: 'america_rn', name: 'America-RN', division: 'D', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 31000, stadiumName: 'Arena das Dunas', reputation: 57, stars: [] },
-  { id: 'asa', name: 'ASA', division: 'D', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 12000, stadiumName: 'Fumeirao', reputation: 46, stars: [] },
-  { id: 'cianorte', name: 'Cianorte', division: 'D', primaryColor: '#2E7D32', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Albino Turbay', reputation: 45, stars: [] },
-  { id: 'csa', name: 'CSA', division: 'D', primaryColor: '#1565C0', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Rei Pele', reputation: 55, stars: [] },
-  { id: 'ferroviario', name: 'Ferroviario', division: 'D', primaryColor: '#C62828', secondaryColor: '#1565C0', textColor: '#FFFFFF', stadiumCapacity: 15000, stadiumName: 'Elzir Cabral', reputation: 50, stars: [] },
-  { id: 'gama', name: 'Gama', division: 'D', primaryColor: '#2E7D32', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Bezerrão', reputation: 48, stars: [] },
-  { id: 'goiatuba', name: 'Goiatuba', division: 'D', primaryColor: '#1565C0', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Divino Garcia', reputation: 40, stars: [] },
-  { id: 'iguatu', name: 'Iguatu', division: 'D', primaryColor: '#1565C0', secondaryColor: '#FFD54F', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Morenão-CE', reputation: 42, stars: [] },
-  { id: 'luverdense', name: 'Luverdense', division: 'D', primaryColor: '#2E7D32', secondaryColor: '#FFD54F', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Passo das Emas', reputation: 47, stars: [] },
-  { id: 'nacional_am', name: 'Nacional-AM', division: 'D', primaryColor: '#1565C0', secondaryColor: '#FFD54F', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Ismael Benigno', reputation: 44, stars: [] },
-  { id: 'portuguesa_sp', name: 'Portuguesa', division: 'D', primaryColor: '#C62828', secondaryColor: '#2E7D32', textColor: '#FFFFFF', stadiumCapacity: 21000, stadiumName: 'Canindé', reputation: 56, stars: [] },
-  { id: 'sao_jose_rn', name: 'Sao Jose-RN', division: 'D', primaryColor: '#1565C0', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 3000, stadiumName: 'Aníbal Filho', reputation: 38, stars: [] },
-  { id: 'sao_luiz_rs', name: 'Sao Luiz-RS', division: 'D', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 8000, stadiumName: '19 de Outubro', reputation: 44, stars: [] },
-  { id: 'treze', name: 'Treze', division: 'D', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19000, stadiumName: 'Amigão', reputation: 53, stars: [] },
-  { id: 'uberlandia', name: 'Uberlandia', division: 'D', primaryColor: '#2E7D32', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 53000, stadiumName: 'Parque do Sabiá', reputation: 47, stars: [] },
-  { id: 'campinense', name: 'Campinense', division: 'D', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 19000, stadiumName: 'Amigão', reputation: 52, stars: [] },
-  { id: 'sergipe', name: 'Sergipe', division: 'D', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 15000, stadiumName: 'Batistão', reputation: 48, stars: [] },
-  { id: 'moto_club', name: 'Moto Club', division: 'D', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 40000, stadiumName: 'Castelão-MA', reputation: 49, stars: [] },
-  { id: 'joinville', name: 'Joinville', division: 'D', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 22000, stadiumName: 'Arena Joinville', reputation: 54, stars: [] }
+  { id: 'amazonas', name: 'Amazonas FC', division: 'C', primaryColor: '#FBC02D', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 44000, stadiumName: 'Arena da Amazonia', reputation: 62, stars: [
+    { name: "Marcão", position: "GK", rating: 65 },
+    { name: "Sassá", position: "FW", rating: 67 },
+    { name: "Diego Torres", position: "MF", rating: 66 }
+  ] },
+  { id: 'anapolis', name: 'Anapolis', division: 'C', primaryColor: '#1976D2', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Jonas Duarte', reputation: 50, stars: [
+    { name: "Marcão", position: "DF", rating: 55 },
+    { name: "Gonzalo", position: "FW", rating: 57 }
+  ] },
+  { id: 'barra_sc', name: 'Barra-SC', division: 'C', primaryColor: '#0288D1', secondaryColor: '#FBC02D', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Arena Barra', reputation: 48, stars: [
+    { name: "Ewerton", position: "GK", rating: 52 },
+    { name: "Adilson", position: "FW", rating: 54 }
+  ] },
+  { id: 'botafogo_pb', name: 'Botafogo-PB', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 25000, stadiumName: 'Almeidao', reputation: 55, stars: [
+    { name: "Wallace", position: "GK", rating: 60 },
+    { name: "Pipico", position: "FW", rating: 61 }
+  ] },
+  { id: 'brusque', name: 'Brusque', division: 'C', primaryColor: '#FBC02D', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Augusto Bauer', reputation: 58, stars: [
+    { name: "Matheus Nogueira", position: "GK", rating: 62 },
+    { name: "Wallace", position: "DF", rating: 60 },
+    { name: "Rodolfo Potiguar", position: "MF", rating: 60 }
+  ] },
+  { id: 'caxias', name: 'Caxias', division: 'C', primaryColor: '#880E4F', secondaryColor: '#0D47A1', textColor: '#FFFFFF', stadiumCapacity: 22000, stadiumName: 'Centenario', reputation: 56, stars: [
+    { name: "Dirceu", position: "DF", rating: 59 },
+    { name: "Tomas Bastos", position: "MF", rating: 60 }
+  ] },
+  { id: 'confianca', name: 'Confianca', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 15000, stadiumName: 'Batistao', reputation: 54, stars: [
+    { name: "Jeferson Souza", position: "GK", rating: 58 },
+    { name: "Willians Santana", position: "FW", rating: 59 }
+  ] },
+  { id: 'ferroviaria', name: 'Ferroviaria', division: 'C', primaryColor: '#4A148C', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Fonte Luminosa', reputation: 59, stars: [
+    { name: "Saulo", position: "GK", rating: 62 },
+    { name: "Ronaldo Alves", position: "DF", rating: 61 },
+    { name: "Carlão", position: "FW", rating: 62 }
+  ] },
+  { id: 'figueirense', name: 'Figueirense', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19800, stadiumName: 'Orlando Scarpelli', reputation: 62, stars: [
+    { name: "Thiago Gonçalves", position: "GK", rating: 64 },
+    { name: "Genilson", position: "DF", rating: 62 },
+    { name: "Camilo", position: "MF", rating: 65 }
+  ] },
+  { id: 'floresta', name: 'Floresta', division: 'C', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Presidente Vargas', reputation: 46, stars: [
+    { name: "Igor Campos", position: "DF", rating: 51 },
+    { name: "Buba", position: "FW", rating: 53 }
+  ] },
+  { id: 'guarani', name: 'Guarani', division: 'C', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 29000, stadiumName: 'Brinco de Ouro', reputation: 64, stars: [
+    { name: "Douglas Borges", position: "GK", rating: 66 },
+    { name: "Léo Santos", position: "DF", rating: 65 },
+    { name: "Chay", position: "MF", rating: 67 },
+    { name: "Luccas Paraizo", position: "FW", rating: 66 }
+  ] },
+  { id: 'inter_limeira', name: 'Inter de Limeira', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 13000, stadiumName: 'Limeirao', reputation: 52, stars: [
+    { name: "André Luiz", position: "GK", rating: 56 },
+    { name: "Diego Jussani", position: "DF", rating: 58 }
+  ] },
+  { id: 'itabaiana', name: 'Itabaiana', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Mendonçao', reputation: 48, stars: [
+    { name: "Jefferson", position: "GK", rating: 52 },
+    { name: "Tiago Souza", position: "FW", rating: 54 }
+  ] },
+  { id: 'ituano', name: 'Ituano', division: 'C', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Novelli Junior', reputation: 60, stars: [
+    { name: "Jefferson Paulino", position: "GK", rating: 64 },
+    { name: "Claudinho", position: "DF", rating: 61 },
+    { name: "José Aldo", position: "MF", rating: 63 }
+  ] },
+  { id: 'maranhao', name: 'Maranhao', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 40000, stadiumName: 'Castelao-MA', reputation: 49, stars: [
+    { name: "Moises", position: "GK", rating: 53 },
+    { name: "Ronald", position: "FW", rating: 55 }
+  ] },
+  { id: 'maringa', name: 'Maringa', division: 'C', primaryColor: '#111111', secondaryColor: '#00E676', textColor: '#FFFFFF', stadiumCapacity: 16000, stadiumName: 'Willie Davids', reputation: 57, stars: [
+    { name: "Dheimison", position: "GK", rating: 62 },
+    { name: "Tito", position: "DF", rating: 60 },
+    { name: "Rodrigo", position: "MF", rating: 61 }
+  ] },
+  { id: 'paysandu', name: 'Paysandu', division: 'C', primaryColor: '#03A9F4', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 16000, stadiumName: 'Curuzu', reputation: 65, stars: [
+    { name: "Matheus Nogueira", position: "GK", rating: 67 },
+    { name: "Lucas Maia", position: "DF", rating: 66 },
+    { name: "Robinho", position: "MF", rating: 67 },
+    { name: "Nicolas", position: "FW", rating: 68 }
+  ] },
+  { id: 'santa_cruz', name: 'Santa Cruz', division: 'C', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 60000, stadiumName: 'Arruda', reputation: 66, stars: [
+    { name: "Matheus Melo", position: "MF", rating: 67 },
+    { name: "Gilvan", position: "DF", rating: 65 },
+    { name: "Thiago Henrique", position: "FW", rating: 66 }
+  ] },
+  { id: 'volta_redonda', name: 'Volta Redonda', division: 'C', primaryColor: '#FFC107', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 20000, stadiumName: 'Raulino de Oliveira', reputation: 58, stars: [
+    { name: "Jean Drosny", position: "GK", rating: 62 },
+    { name: "Bruno Barra", position: "MF", rating: 61 },
+    { name: "MV", position: "FW", rating: 63 }
+  ] },
+  { id: 'ypiranga_rs', name: 'Ypiranga-RS', division: 'C', primaryColor: '#FFEB3B', secondaryColor: '#1B5E20', textColor: '#000000', stadiumCapacity: 8000, stadiumName: 'Colosso da Lagoa', reputation: 55, stars: [
+    { name: "Alexander", position: "GK", rating: 60 },
+    { name: "Heitor", position: "DF", rating: 59 },
+    { name: "Alisson Farias", position: "MF", rating: 61 }
+  ] }
 ];
 
 const randomRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -822,15 +968,12 @@ const calculatePlayerValueAndSalary = (rating: number, age: number, position: st
   return { value, salary };
 };
 
-export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C' | 'D', stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW'; rating: number }[] = []): Player[] => {
+export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW'; rating: number }[] = []): Player[] => {
   const squad: Player[] = [];
   let idCounter = 1;
 
-  let minRating = 40;
-  let maxRating = 52;
-  if (division === 'C') { minRating = 53; maxRating = 64; }
-  else if (division === 'B') { minRating = 65; maxRating = 74; }
-  else if (division === 'A') { minRating = 75; maxRating = 83; }
+  let minRating = division === 'A' ? 75 : division === 'B' ? 65 : 53;
+  let maxRating = division === 'A' ? 83 : division === 'B' ? 74 : 64;
 
   const usedPositions: Record<'GK' | 'DF' | 'MF' | 'FW', number> = { GK: 0, DF: 0, MF: 0, FW: 0 };
   
@@ -908,7 +1051,7 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C' | 'D', s
 export const initializeClubs = (): Club[] => {
   return CLUB_DEFINITIONS.map(def => {
     const squad = generateSquad(def.id, def.division, def.stars);
-    const tvMoney = def.division === 'A' ? 8000000 : def.division === 'B' ? 2000000 : def.division === 'C' ? 500000 : 100000;
+    const tvMoney = def.division === 'A' ? 8000000 : def.division === 'B' ? 2000000 : 500000;
     const finances = Math.round(def.reputation * def.reputation * 3000) + tvMoney;
     return {
       id: def.id,
@@ -919,7 +1062,7 @@ export const initializeClubs = (): Club[] => {
       textColor: def.textColor,
       stadiumCapacity: def.stadiumCapacity,
       stadiumName: def.stadiumName,
-      ticketPrice: def.division === 'A' ? 50 : def.division === 'B' ? 35 : def.division === 'C' ? 25 : 15,
+      ticketPrice: def.division === 'A' ? 50 : def.division === 'B' ? 35 : 25,
       finances,
       confidence: 70,
       reputation: def.reputation,

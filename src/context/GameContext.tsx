@@ -10,7 +10,7 @@ export interface LeagueMatch {
   round: number;
   homeId: string;
   awayId: string;
-  division: 'A' | 'B' | 'C' | 'D';
+  division: 'A' | 'B' | 'C';
   simulated: boolean;
   result?: MatchResult;
 }
@@ -33,7 +33,7 @@ export interface StadiumUpgrade {
 export interface JobOffer {
   clubId: string;
   clubName: string;
-  division: 'A' | 'B' | 'C' | 'D';
+  division: 'A' | 'B' | 'C';
   salaryBonus: number;
 }
 
@@ -46,9 +46,9 @@ export interface NewsItem {
 
 export interface HistoryRecord {
   year: number;
-  champions: Record<'A' | 'B' | 'C' | 'D', string>;
+  champions: Record<'A' | 'B' | 'C', string>;
   userClub: string;
-  userDivision: 'A' | 'B' | 'C' | 'D';
+  userDivision: 'A' | 'B' | 'C';
   userFinish: number;
 }
 
@@ -117,8 +117,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        // Se for um save antigo ou sem versão 2 atualizada dos elencos, ignora e limpa
-        if (!data.dbVersion || data.dbVersion < 2) {
+        // Se for um save antigo ou sem versão 3 atualizada dos elencos, ignora e limpa
+        if (!data.dbVersion || data.dbVersion < 3) {
           localStorage.removeItem('elifoot_2026_save');
           return;
         }
@@ -158,7 +158,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sponsorsList: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>
   ) => {
     const data = {
-      dbVersion: 2, // Identificador da versão atualizada dos elencos de 2026
+      dbVersion: 3, // Identificador da versão atualizada dos elencos de 2026
       gameState: state,
       managerName: name,
       currentYear: year,
@@ -196,7 +196,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Generate schedules for all divisions
     const newSchedule: LeagueMatch[] = [];
-    const divisions: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
+    const divisions: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
     
     divisions.forEach(div => {
       const divClubIds = updatedClubs.filter(c => c.division === div).map(c => c.id);
@@ -220,12 +220,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     
     const initialNews: NewsItem[] = [
-      { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${updatedClubs.find(c => c.id === chosenClubId)?.name}. Boa sorte na Série D!`, type: 'BOARD' }
+      { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${updatedClubs.find(c => c.id === chosenClubId)?.name}. Boa sorte na Série C!`, type: 'BOARD' }
     ];
     setNews(initialNews);
     
     // Generate initial market
-    const market = generateMarketPlayers('D');
+    const market = generateMarketPlayers('C');
     setMarketPlayers(market);
     setGameState('PLAYING');
 
@@ -233,12 +233,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Generate random players for transfer market
-  const generateMarketPlayers = (div: 'A' | 'B' | 'C' | 'D'): Player[] => {
+  const generateMarketPlayers = (div: 'A' | 'B' | 'C'): Player[] => {
     // Generate 10-15 random free agents or transfer listed players
     const list: Player[] = [];
     const positions: ('GK' | 'DF' | 'MF' | 'FW')[] = ['GK', 'DF', 'MF', 'FW'];
     
-    let baseMin = 40, baseMax = 50;
+    let baseMin = 50, baseMax = 62;
     if (div === 'C') { baseMin = 50; baseMax = 62; }
     if (div === 'B') { baseMin = 62; baseMax = 72; }
     if (div === 'A') { baseMin = 72; baseMax = 84; }
@@ -563,16 +563,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         type: 'BOARD'
       }]);
       
-      // Generate immediate job offers from Série D clubs (lower tier)
-      const dClubs = finalClubs.filter(c => c.division === 'D' && c.id !== userClubId);
+      // Generate immediate job offers from Série C clubs (lower tier)
+      const cClubs = finalClubs.filter(c => c.division === 'C' && c.id !== userClubId);
       const generatedOffers: JobOffer[] = [];
       for (let i = 0; i < 3; i++) {
-        const target = dClubs[Math.floor(Math.random() * dClubs.length)];
-        if (!generatedOffers.some(o => o.clubId === target.id)) {
+        const target = cClubs[Math.floor(Math.random() * cClubs.length)];
+        if (target && !generatedOffers.some(o => o.clubId === target.id)) {
           generatedOffers.push({
             clubId: target.id,
             clubName: target.name,
-            division: 'D',
+            division: 'C',
             salaryBonus: 0
           });
         }
@@ -591,7 +591,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Refresh transfer market occasionally
     let nextMarket = marketPlayers;
     if (Math.random() < 0.25) {
-      nextMarket = generateMarketPlayers(userClub.division);
+      nextMarket = generateMarketPlayers(userClub.division as 'A' | 'B' | 'C');
     }
 
     // Set states
@@ -630,11 +630,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const standings = calculateStandings(currentClubs, currentSchedule);
 
     // 2. Identify Promoted and Relegated teams
-    const promotions: Record<'B' | 'C' | 'D', string[]> = { B: [], C: [], D: [] };
-    const relegations: Record<'A' | 'B' | 'C', string[]> = { A: [], B: [], C: [] };
+    const promotions: Record<'B' | 'C', string[]> = { B: [], C: [] };
+    const relegations: Record<'A' | 'B', string[]> = { A: [], B: [] };
 
-    const divisions: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
-    const divisionChampions: Record<'A' | 'B' | 'C' | 'D', string> = { A: '', B: '', C: '', D: '' };
+    const divisions: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
+    const divisionChampions: Record<'A' | 'B' | 'C', string> = { A: '', B: '', C: '' };
 
     divisions.forEach(div => {
       const divStandings = standings[div];
@@ -651,15 +651,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (div === 'C') {
         // Promote top 4 of C
         promotions.C = divStandings.slice(0, 4).map(s => s.clubId);
-        // Relegate bottom 4 of C
-        relegations.C = divStandings.slice(16, 20).map(s => s.clubId);
-      } else if (div === 'D') {
-        // Promote top 4 of D
-        promotions.D = divStandings.slice(0, 4).map(s => s.clubId);
       }
     });
 
-    const getPrizeMoney = (division: 'A' | 'B' | 'C' | 'D', rankIndex: number): number => {
+    const getPrizeMoney = (division: 'A' | 'B' | 'C', rankIndex: number): number => {
       if (division === 'A') {
         const prizesA = [
           70000000, 50000000, 40000000, 30000000, 25000000, 
@@ -687,20 +682,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ];
         return prizesC[rankIndex] || 500000;
       }
-      if (division === 'D') {
-        const prizesD = [
-          15000000, 9000000, 5000000, 2000000, 1000000,
-          1000000, 1000000, 1000000, 1000000, 1000000,
-          500000, 500000, 500000, 500000, 500000,
-          500000, 500000, 500000, 500000, 500000
-        ];
-        return prizesD[rankIndex] || 500000;
-      }
       return 0;
     };
 
     // 2.5 Find top scorers per division to award/keep Star status
-    const divisionTopScorers: Record<string, { playerName: string; goals: number }[]> = { A: [], B: [], C: [], D: [] };
+    const divisionTopScorers: Record<string, { playerName: string; goals: number }[]> = { A: [], B: [], C: [] };
     currentClubs.forEach(c => {
       c.squad.forEach(p => {
         if (p.goals > 0) {
@@ -719,7 +705,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let div = club.division;
       const divStandings = standings[club.division];
       const rankIndex = divStandings.findIndex(s => s.clubId === club.id);
-      const prizeMoney = getPrizeMoney(club.division, rankIndex);
+      const prizeMoney = getPrizeMoney(club.division as 'A' | 'B' | 'C', rankIndex);
       const finances = club.finances + prizeMoney;
 
       if (div === 'A' && relegations.A.includes(club.id)) div = 'B';
@@ -728,15 +714,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         else if (relegations.B.includes(club.id)) div = 'C';
       } else if (div === 'C') {
         if (promotions.C.includes(club.id)) div = 'B';
-        else if (relegations.C.includes(club.id)) div = 'D';
-      } else if (div === 'D') {
-        if (promotions.D.includes(club.id)) div = 'C';
       }
 
       // Reset squad card stats (clean slate for goals/cards) & evaluate Stars
       const isRelegated = (club.division === 'A' && relegations.A.includes(club.id)) ||
-                          (club.division === 'B' && relegations.B.includes(club.id)) ||
-                          (club.division === 'C' && relegations.C.includes(club.id));
+                          (club.division === 'B' && relegations.B.includes(club.id));
       
       const squad = club.squad.map(p => {
         const isMF_FW = p.position === 'MF' || p.position === 'FW';
@@ -796,19 +778,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Generate Career Job Offers based on player performance
     const isPlayerPromoted = (playerDiv === 'B' && promotions.B.includes(userClubId)) ||
-                             (playerDiv === 'C' && promotions.C.includes(userClubId)) ||
-                             (playerDiv === 'D' && promotions.D.includes(userClubId));
+                             (playerDiv === 'C' && promotions.C.includes(userClubId));
     const isPlayerChampion = divisionChampions[playerDiv] === playerClubFinal.name;
     const isPlayerRelegated = (playerDiv === 'A' && relegations.A.includes(userClubId)) ||
-                              (playerDiv === 'B' && relegations.B.includes(userClubId)) ||
-                              (playerDiv === 'C' && relegations.C.includes(userClubId));
+                              (playerDiv === 'B' && relegations.B.includes(userClubId));
 
     const careerOffers: JobOffer[] = [];
     const allAvailableClubs = finalClubs.filter(c => c.id !== userClubId);
 
     if (isPlayerChampion) {
       // Elite offers from higher divisions
-      const nextDiv = playerDiv === 'D' ? 'C' : playerDiv === 'C' ? 'B' : playerDiv === 'B' ? 'A' : 'A';
+      const nextDiv = playerDiv === 'C' ? 'B' : 'A';
       const potentialClubs = allAvailableClubs.filter(c => c.division === nextDiv);
       for (let i = 0; i < 3; i++) {
         const c = potentialClubs[Math.floor(Math.random() * potentialClubs.length)];
@@ -818,7 +798,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } else if (isPlayerPromoted) {
       // Good offers
-      const nextDiv = playerDiv === 'D' ? 'C' : playerDiv === 'C' ? 'B' : 'A';
+      const nextDiv = playerDiv === 'C' ? 'B' : 'A';
       const potentialClubs = allAvailableClubs.filter(c => c.division === nextDiv || c.division === playerDiv);
       for (let i = 0; i < 2; i++) {
         const c = potentialClubs[Math.floor(Math.random() * potentialClubs.length)];
@@ -828,7 +808,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } else if (isPlayerRelegated) {
       // Only offers from lower divisions or same low tier
-      const lowerDiv = playerDiv === 'A' ? 'B' : playerDiv === 'B' ? 'C' : 'D';
+      const lowerDiv = playerDiv === 'A' ? 'B' : 'C';
       const potentialClubs = allAvailableClubs.filter(c => c.division === lowerDiv);
       for (let i = 0; i < 2; i++) {
         const c = potentialClubs[Math.floor(Math.random() * potentialClubs.length)];
@@ -858,7 +838,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {
         id: `summary_${Date.now()}`,
         week: 38,
-        text: `Fim da Temporada ${currentYear}! Campeão Série A: ${divisionChampions.A}. Promoções: Série B (${promotions.B.map(id => currentClubs.find(c=>c.id===id)?.name).join(', ')}), Série C (${promotions.C.map(id => currentClubs.find(c=>c.id===id)?.name).join(', ')}).`,
+        text: `Fim da Temporada ${currentYear}! Campeão Série A: ${divisionChampions.A}. Promoções: Série B (${promotions.B.map(id => currentClubs.find(c=>c.id===id)?.name).join(', ')}).`,
         type: 'BOARD'
       },
       {
@@ -875,8 +855,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Helper to calculate standings table
   const calculateStandings = (allClubs: Club[], allSchedule: LeagueMatch[]) => {
-    const list: Record<'A' | 'B' | 'C' | 'D', { clubId: string; clubName: string; points: number; played: number; wins: number; draws: number; losses: number; gf: number; ga: number; gd: number }[]> = {
-      A: [], B: [], C: [], D: []
+    const list: Record<'A' | 'B' | 'C', { clubId: string; clubName: string; points: number; played: number; wins: number; draws: number; losses: number; gf: number; ga: number; gd: number }[]> = {
+      A: [], B: [], C: []
     };
 
     const initStandings = (club: Club) => ({
@@ -900,8 +880,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Calculate from matches results
     allSchedule.forEach(match => {
       if (match.simulated && match.result) {
-        const homeEntry = list[match.division].find(e => e.clubId === match.homeId);
-        const awayEntry = list[match.division].find(e => e.clubId === match.awayId);
+        const homeEntry = list[match.division as 'A' | 'B' | 'C'].find(e => e.clubId === match.homeId);
+        const awayEntry = list[match.division as 'A' | 'B' | 'C'].find(e => e.clubId === match.awayId);
 
         if (homeEntry && awayEntry) {
           const hgf = match.result.homeScore;
@@ -945,7 +925,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     list.A.sort(sortStandings);
     list.B.sort(sortStandings);
     list.C.sort(sortStandings);
-    list.D.sort(sortStandings);
 
     return list;
   };
@@ -1195,7 +1174,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Regenerate schedule for new season
     const newSchedule: LeagueMatch[] = [];
-    const divisions: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
+    const divisions: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
     
     divisions.forEach(div => {
       const divClubIds = updatedClubs.filter(c => c.division === div).map(c => c.id);
@@ -1233,7 +1212,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const stayAtClub = () => {
     // Regenerate schedule for next year
     let updatedClubs = clubs.map(c => {
-      const tvMoney = c.division === 'A' ? 8000000 : c.division === 'B' ? 2000000 : c.division === 'C' ? 500000 : 100000;
+      const tvMoney = c.division === 'A' ? 8000000 : c.division === 'B' ? 2000000 : 500000;
       return {
         ...c,
         finances: c.finances + tvMoney
@@ -1241,7 +1220,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     setClubs(updatedClubs);
     const newSchedule: LeagueMatch[] = [];
-    const divisions: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
+    const divisions: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
     
     divisions.forEach(div => {
       const divClubIds = updatedClubs.filter(c => c.division === div).map(c => c.id);

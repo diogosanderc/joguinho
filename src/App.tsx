@@ -32,7 +32,7 @@ const AppContent: React.FC = () => {
   const [subslotIndex, setSubslotIndex] = useState<number | null>(null);
 
   // Standings filter states
-  const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C' | 'D'>('D');
+  const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C'>('C');
   const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'HISTORY'>('TABLE');
 
   // Market filter states
@@ -63,7 +63,7 @@ const AppContent: React.FC = () => {
 
   // Market Search & Negotiation states
   const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS'>('FREE_AGENTS');
-  const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C' | 'D'>('A');
+  const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('A');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
   const [negotiatingClubId, setNegotiatingClubId] = useState<string>('');
@@ -415,8 +415,8 @@ const AppContent: React.FC = () => {
   };
 
   const getStandingsData = () => {
-    const list: Record<'A' | 'B' | 'C' | 'D', { clubId: string; clubName: string; points: number; played: number; wins: number; draws: number; losses: number; gf: number; ga: number; gd: number }[]> = {
-      A: [], B: [], C: [], D: []
+    const list: Record<'A' | 'B' | 'C', { clubId: string; clubName: string; points: number; played: number; wins: number; draws: number; losses: number; gf: number; ga: number; gd: number }[]> = {
+      A: [], B: [], C: []
     };
 
     const initStandings = (club: Club) => ({
@@ -438,8 +438,8 @@ const AppContent: React.FC = () => {
 
     schedule.forEach(match => {
       if (match.simulated && match.result) {
-        const homeEntry = list[match.division].find(e => e.clubId === match.homeId);
-        const awayEntry = list[match.division].find(e => e.clubId === match.awayId);
+        const homeEntry = list[match.division as 'A' | 'B' | 'C'].find(e => e.clubId === match.homeId);
+        const awayEntry = list[match.division as 'A' | 'B' | 'C'].find(e => e.clubId === match.awayId);
 
         if (homeEntry && awayEntry) {
           const hgf = match.result.homeScore;
@@ -482,7 +482,6 @@ const AppContent: React.FC = () => {
     list.A.sort(sortStandings);
     list.B.sort(sortStandings);
     list.C.sort(sortStandings);
-    list.D.sort(sortStandings);
 
     return list;
   };
@@ -510,7 +509,7 @@ const AppContent: React.FC = () => {
 
   // --- START SCREEN RENDER ---
   if (gameState === 'START') {
-    const dClubs = CLUB_DEFINITIONS.filter(c => c.division === 'D');
+    const cClubs = CLUB_DEFINITIONS.filter(c => c.division === 'C');
 
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
@@ -541,9 +540,9 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', flex: 0.8, overflow: 'hidden' }}>
-          <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube (Série D)</h3>
+          <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube (Série C)</h3>
           <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', gap: '8px', display: 'flex', flexDirection: 'column' }}>
-            {dClubs.map(club => (
+            {cClubs.map(club => (
               <div 
                 key={club.id}
                 onClick={() => setSelectedStartClubId(club.id)}
@@ -691,7 +690,7 @@ const AppContent: React.FC = () => {
 
         {/* CLASSIC SIMULTANEOUS DIVISION BOARD */}
         <div className="classic-board-container" style={{ scrollBehavior: 'smooth' }}>
-          {(['A', 'B', 'C', 'D'] as const).map(div => {
+          {(['A', 'B', 'C'] as const).map(div => {
             const divMatches = roundMatches.filter(m => m.division === div);
             
             return (
@@ -1478,7 +1477,7 @@ const AppContent: React.FC = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  {(['A', 'B', 'C', 'D'] as const).map(div => (
+                  {(['A', 'B', 'C'] as const).map(div => (
                     <button
                       key={div}
                       className={`sub-tab-btn ${selectedSearchDiv === div ? 'active' : ''}`}
@@ -1933,7 +1932,7 @@ const AppContent: React.FC = () => {
               <>
                 {/* Division selectors */}
                 <div className="sub-tabs" style={{ padding: '0 0 12px 0' }}>
-                  {(['A', 'B', 'C', 'D'] as const).map(div => (
+                  {(['A', 'B', 'C'] as const).map(div => (
                     <button
                       key={div}
                       onClick={() => setStandingsTab(div)}
@@ -1961,7 +1960,7 @@ const AppContent: React.FC = () => {
                     // Highlight colors
                     let highlightClass = '';
                     if (idx < 4) highlightClass = 'pos-green-highlight'; // Promotion
-                    else if (idx >= 16 && standingsTab !== 'D') highlightClass = 'pos-red-highlight'; // Relegation
+                    else if (idx >= 16 && standingsTab !== 'C') highlightClass = 'pos-red-highlight'; // Relegation
 
                     return (
                       <div 
@@ -1990,7 +1989,7 @@ const AppContent: React.FC = () => {
               <>
                 {/* Division selectors */}
                 <div className="sub-tabs" style={{ padding: '0 0 12px 0' }}>
-                  {(['A', 'B', 'C', 'D'] as const).map(div => (
+                  {(['A', 'B', 'C'] as const).map(div => (
                     <button
                       key={div}
                       onClick={() => setStandingsTab(div)}
@@ -2048,7 +2047,6 @@ const AppContent: React.FC = () => {
                           <span>🏆 Campeão Série A: **{hist.champions.A}**</span>
                           <span>🏆 Campeão Série B: **{hist.champions.B}**</span>
                           <span>🏆 Campeão Série C: **{hist.champions.C}**</span>
-                          <span>🏆 Campeão Série D: **{hist.champions.D}**</span>
                         </div>
                       </div>
                     ))
