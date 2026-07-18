@@ -58,6 +58,7 @@ const AppContent: React.FC = () => {
   const [redCardModalOpen, setRedCardModalOpen] = useState(false);
   const [lastRedCardMinute, setLastRedCardMinute] = useState(-1);
   const [redCardPlayer, setRedCardPlayer] = useState<Player | null>(null);
+  const [savesModalOpen, setSavesModalOpen] = useState(false);
 
   // Sponsors list generator (deterministic based on club reputation)
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
@@ -1023,69 +1024,30 @@ const AppContent: React.FC = () => {
         {/* --- TAB 0: ESCRITÓRIO --- */}
         {activeTab === 0 && (
           <>
-            {/* Multi-Save / Load Slots Box */}
-            <div className="card" style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 14px', marginBottom: '14px' }}>
-              <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-gold)', marginBottom: '8px', textTransform: 'uppercase' }}>💾 Slots de Campanha (Saves)</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                {[1, 2, 3, 4].map(slot => {
-                  const saveKey = `elifoot_2026_save_slot_${slot}`;
-                  const slotExists = !!localStorage.getItem(saveKey);
-                  let slotInfo = 'Vazio';
-                  if (slotExists) {
-                    try {
-                      const data = JSON.parse(localStorage.getItem(saveKey) || '');
-                      slotInfo = `${data.managerName} (${data.clubs.find((c: any) => c.isPlayerClub)?.name || 'Time'}, R:${data.currentRound})`;
-                    } catch (e) {
-                      slotInfo = 'Slot Ocupado';
-                    }
-                  }
-
-                  return (
-                    <div key={slot} style={{ background: '#121316', border: '1px solid rgba(255,255,255,0.05)', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: 700 }}>Slot {slot}</span>
-                      <span style={{ fontSize: '0.62rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={slotInfo}>
-                        {slotInfo}
-                      </span>
-                      <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
-                        <button
-                          onClick={() => {
-                            const dataToSave = JSON.parse(localStorage.getItem('elifoot_2026_save') || '{}');
-                            if (Object.keys(dataToSave).length > 0) {
-                              localStorage.setItem(saveKey, JSON.stringify(dataToSave));
-                              alert(`Salvo com sucesso no Slot ${slot}!`);
-                              setSelectedManagePlayerId(null); // Force reload view state
-                            } else {
-                              alert('Nenhuma campanha ativa para salvar.');
-                            }
-                          }}
-                          style={{ flex: 1, fontSize: '0.62rem', padding: '3px 0', borderRadius: '4px', background: 'rgba(0,230,118,0.1)', color: 'var(--accent-green)', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-                        >
-                          Salvar
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!slotExists) {
-                              alert('Slot vazio!');
-                              return;
-                            }
-                            if (confirm(`Deseja carregar a campanha do Slot ${slot}? O progresso não salvo desta tela será perdido.`)) {
-                              const loadedData = JSON.parse(localStorage.getItem(saveKey) || '{}');
-                              loadGame(loadedData);
-                              localStorage.setItem('elifoot_2026_save', JSON.stringify(loadedData));
-                              alert(`Slot ${slot} carregado com sucesso!`);
-                            }
-                          }}
-                          style={{ flex: 1, fontSize: '0.62rem', padding: '3px 0', borderRadius: '4px', background: slotExists ? 'rgba(255,193,7,0.1)' : '#23252a', color: slotExists ? 'var(--accent-gold)' : '#9ca3af', border: 'none', cursor: slotExists ? 'pointer' : 'not-allowed', fontWeight: 700 }}
-                        >
-                          Carregar
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* discrete save slots button */}
+            <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
+              <button
+                onClick={() => setSavesModalOpen(true)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255, 193, 7, 0.08)',
+                  border: '1px solid rgba(255, 193, 7, 0.25)',
+                  color: 'var(--accent-gold)',
+                  borderRadius: '10px',
+                  padding: '9px 0',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'background 0.2s'
+                }}
+              >
+                💾 Gerenciar Saves (Slots)
+              </button>
             </div>
-
             {/* Save / Delete campaign buttons */}
             <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
               <button
@@ -2327,6 +2289,103 @@ const AppContent: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* DISCRETE SAVE SLOTS OVERLAY MODAL */}
+      {savesModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1250 }}>
+          <div className="modal-content" style={{ width: '360px', padding: '18px', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent-gold)' }}>💾 Slots de Salvação</h3>
+              <button 
+                onClick={() => setSavesModalOpen(false)} 
+                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.4rem', cursor: 'pointer', fontWeight: 800 }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '14px', lineHeight: '1.4' }}>
+              Salve seu progresso atual ou carregue uma campanha existente em um dos slots independentes disponíveis.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+              {[1, 2, 3, 4].map(slot => {
+                const saveKey = `elifoot_2026_save_slot_${slot}`;
+                const slotExists = !!localStorage.getItem(saveKey);
+                let slotInfo = 'Vazio (Livre)';
+                if (slotExists) {
+                  try {
+                    const data = JSON.parse(localStorage.getItem(saveKey) || '');
+                    slotInfo = `${data.managerName} - ${data.clubs.find((c: any) => c.isPlayerClub)?.name || 'Time'} (Ano ${data.currentYear}, R:${data.currentRound})`;
+                  } catch (e) {
+                    slotInfo = 'Slot Ocupado';
+                  }
+                }
+
+                return (
+                  <div key={slot} style={{ background: '#121316', border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 800 }}>Slot 0{slot}</span>
+                      <span style={{ fontSize: '0.62rem', color: '#9ca3af' }}>{slotExists ? '💾 Salvo' : '⚪ Livre'}</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={slotInfo}>
+                      {slotInfo}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                      <button
+                        onClick={() => {
+                          const dataToSave = JSON.parse(localStorage.getItem('elifoot_2026_save') || '{}');
+                          if (Object.keys(dataToSave).length > 0) {
+                            localStorage.setItem(saveKey, JSON.stringify(dataToSave));
+                            alert(`Salvo com sucesso no Slot ${slot}!`);
+                            // Force update by triggering state reset
+                            setSavesModalOpen(false);
+                            setSavesModalOpen(true);
+                          } else {
+                            alert('Nenhuma campanha ativa para salvar.');
+                          }
+                        }}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, fontSize: '0.7rem', padding: '6px 0', borderRadius: '6px', background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.2)', color: 'var(--accent-green)', fontWeight: 700 }}
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!slotExists) {
+                            alert('Slot vazio!');
+                            return;
+                          }
+                          if (confirm(`Deseja carregar a campanha do Slot ${slot}?`)) {
+                            const loadedData = JSON.parse(localStorage.getItem(saveKey) || '{}');
+                            loadGame(loadedData);
+                            localStorage.setItem('elifoot_2026_save', JSON.stringify(loadedData));
+                            setSavesModalOpen(false);
+                            alert(`Slot ${slot} carregado com sucesso!`);
+                          }
+                        }}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, fontSize: '0.7rem', padding: '6px 0', borderRadius: '6px', background: slotExists ? 'rgba(255,193,7,0.1)' : '#1e2126', border: slotExists ? '1px solid rgba(255,193,7,0.2)' : '1px solid rgba(255,255,255,0.02)', color: slotExists ? 'var(--accent-gold)' : '#9ca3af', cursor: slotExists ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+                        disabled={!slotExists}
+                      >
+                        Carregar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => setSavesModalOpen(false)}
+              style={{ width: '100%', height: '40px', fontSize: '0.8rem', fontWeight: 700 }}
+            >
+              Fechar Janela
+            </button>
           </div>
         </div>
       )}
