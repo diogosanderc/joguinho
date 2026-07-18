@@ -2476,12 +2476,38 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
   });
 
   // Post-process to assign subPositions (LE, LD, ZAG for DF; GK, MF, FW for others)
+  // Mapping lists based on real Serie A fullbacks and common names
+  const REAL_LE_NAMES = [
+    'Ayrton Lucas', 'Alex Sandro', 'Joaquín Piquerez', 'Jefté', 'Arthur Gabriel', 'Enzo Díaz', 'Wendell', 
+    'Matheus Bidu', 'Hugo', 'Fabrizio Angileri', 'Alex Telles', 'Fernando Marçal', 'Jhoan Hernández', 'Caio Roque', 'Paulinho',
+    'Reinaldo', 'Renan Lodi', 'Marlon', 'Guilherme Arana', 'Rubens', 'Piquerez', 'Wellington', 'Cuiabano', 'Marçal',
+    'Renê', 'Bernabei', 'Samuel Xavier', 'Marcelo', 'Diogo Barbosa', 'Piton', 'Lucas Piton', 'Victor Luis'
+  ];
+
+  const REAL_LD_NAMES = [
+    'Varela', 'Guillermo Varela', 'Emerson Royal', 'Agustín Giay', 'Khellven', 'João Moreira', 'Lucas Ramon', 
+    'Maik', 'Igor Felisberto', 'Aurélio Buta', 'Matheuzinho', 'Pedro Milans', 'Vitinho', 'Mateo Ponte', 'Igor Vinícius',
+    'William', 'Fagner', 'Marcos Rocha', 'Mayke', 'Guga', 'Samuel Xavier', 'Wesley', 'Calegari', 'Bustos', 
+    'Fabricio Bustos', 'Puma Rodríguez', 'Nathan', 'Léo Mana', 'João Pedro'
+  ];
+
   const dfs = squad.filter(p => p.position === 'DF');
   dfs.forEach((p, idx) => {
-    // Distribute subPositions evenly among defenders
-    if (idx % 3 === 0) p.subPosition = 'LE';
-    else if (idx % 3 === 1) p.subPosition = 'LD';
-    else p.subPosition = 'ZAG';
+    // 1. Check if name matches known LE list
+    const hasLEMatch = REAL_LE_NAMES.some(leName => p.name.toLowerCase().includes(leName.toLowerCase()));
+    // 2. Check if name matches known LD list
+    const hasLDMatch = REAL_LD_NAMES.some(ldName => p.name.toLowerCase().includes(ldName.toLowerCase()));
+
+    if (hasLEMatch) {
+      p.subPosition = 'LE';
+    } else if (hasLDMatch) {
+      p.subPosition = 'LD';
+    } else {
+      // Default: Fallback evenly to ensure every team has at least one of each
+      if (idx % 3 === 0) p.subPosition = 'LE';
+      else if (idx % 3 === 1) p.subPosition = 'LD';
+      else p.subPosition = 'ZAG';
+    }
   });
   squad.forEach(p => {
     if (p.position === 'GK') p.subPosition = 'GK';
