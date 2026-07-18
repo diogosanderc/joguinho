@@ -1265,12 +1265,33 @@ const AppContent: React.FC = () => {
 
                 {/* Defenders row */}
                 <div className="tactical-row">
-                  {starters.filter(p => p.position === 'DF').map(p => (
-                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
-                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-blue)' }}>{p.rating}</div>
-                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
-                    </div>
-                  ))}
+                  {(() => {
+                    const dfs = starters.filter(p => p.position === 'DF');
+                    return dfs.map((p, idx) => {
+                      // Dynamically label LD, LE, ZAG based on their index in the row
+                      let sideLabel = 'ZAG';
+                      if (dfs.length === 3) {
+                        if (idx === 0) sideLabel = 'LE';
+                        if (idx === 2) sideLabel = 'LD';
+                      } else if (dfs.length === 4) {
+                        if (idx === 0) sideLabel = 'LE';
+                        if (idx === 3) sideLabel = 'LD';
+                      } else if (dfs.length === 5) {
+                        if (idx === 0) sideLabel = 'LE';
+                        if (idx === 4) sideLabel = 'LD';
+                      }
+                      
+                      return (
+                        <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
+                          <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-blue)' }}>{p.rating}</div>
+                          <span className="token-name" style={{ fontSize: '0.62rem' }}>
+                            <strong style={{ color: 'var(--accent-blue)', marginRight: '2px' }}>{sideLabel}</strong> 
+                            {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Goalkeeper row */}

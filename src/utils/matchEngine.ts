@@ -197,15 +197,17 @@ export const simulateMatch = (
     if (Math.random() < 0.08) {
       const homePossessionChance = homeMid / (homeMid + awayMid);
       const isHomeAttack = Math.random() < homePossessionChance;
-
       if (isHomeAttack) {
         // Home attacks! Compare Home Attack vs Away Defense
         homeStats.shots++;
-        const attackChance = homeAtt / (homeAtt + awayDef);
+        
+        // AMPLIFY RATING INFLUENCE: Use a power factor to expand the difference between forces
+        const baseAttackChance = homeAtt / (homeAtt + awayDef);
+        const attackChance = Math.pow(baseAttackChance, 1.6); // Expands the advantage of higher ratings
         
         // Let's decide if it's a Goal, Saved, or Miss
         const attackRoll = Math.random();
-        if (attackRoll < attackChance * 0.23) { // Goal!
+        if (attackRoll < attackChance * 0.28) { // Increased base conversion for higher force gap
           homeScore++;
           const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
           events.push({
@@ -215,7 +217,7 @@ export const simulateMatch = (
             clubId: homeClub.id,
             description: `Gol do ${homeClub.name}! ${scorer.name} chuta forte de dentro da área sem chances para o goleiro!`
           });
-        } else if (attackRoll < attackChance * 0.5) { // Saved
+        } else if (attackRoll < attackChance * 0.55) { // Saved
           const shooter = choosePlayer(homeStarters, ['FW', 'MF', 'DF']);
           events.push({
             minute: min,
@@ -238,10 +240,11 @@ export const simulateMatch = (
       } else {
         // Away attacks! Compare Away Attack vs Home Defense
         awayStats.shots++;
-        const attackChance = awayAtt / (awayAtt + homeDef);
+        const baseAttackChance = awayAtt / (awayAtt + homeDef);
+        const attackChance = Math.pow(baseAttackChance, 1.6);
         
         const attackRoll = Math.random();
-        if (attackRoll < attackChance * 0.23) { // Goal!
+        if (attackRoll < attackChance * 0.28) { // Goal!
           awayScore++;
           const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
           events.push({
