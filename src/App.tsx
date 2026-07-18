@@ -476,21 +476,8 @@ const AppContent: React.FC = () => {
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 
-            onDoubleClick={() => {
-              const code = prompt('Digite o código de trapaça (Cheat Code):');
-              if (code === 'querosermilionario') {
-                cheatFinances();
-                alert('Trapaça ativada! R$ 1.000.000.000 adicionados às suas finanças.');
-              } else if (code !== null) {
-                alert('Código incorreto!');
-              }
-            }}
-            style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px', cursor: 'pointer', userSelect: 'none' }}
-          >
-            ELIFOOT 2026
-          </h1>
-          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile (Dê 2 cliques no título para Cheat)</p>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>ELIFOOT 2026</h1>
+          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
         </div>
 
         <div className="card" style={{ background: 'rgba(255,255,255,0.03)' }}>
@@ -956,7 +943,19 @@ const AppContent: React.FC = () => {
       {/* HEADER STATUS */}
       <div className="header-bar">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="club-pill">
+          <div 
+            className="club-pill"
+            onDoubleClick={() => {
+              const code = prompt('Digite o código de trapaça (Cheat Code):');
+              if (code === 'querosermilionario') {
+                cheatFinances();
+                alert('Trapaça ativada! R$ 1.000.000.000 (1 Bilhão) adicionados ao caixa do clube!');
+              } else if (code !== null) {
+                alert('Código incorreto!');
+              }
+            }}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
             <span className="club-badge-mini" style={{ backgroundColor: userClub.primaryColor, border: `1px solid ${userClub.secondaryColor}` }} />
             <span>{userClub.name}</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', marginLeft: '4px' }}>Série {userClub.division}</span>
