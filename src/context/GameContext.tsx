@@ -88,6 +88,7 @@ interface GameContextType {
   updateTicketPrice: (delta: number) => void;
   loadGame: (saveData: any) => void;
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
+  cheatFinances: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -1442,6 +1443,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveSponsors(data.activeSponsors);
   };
 
+  const cheatFinances = () => {
+    if (!userClubId) return;
+    setClubs(prev => prev.map(c => {
+      if (c.id !== userClubId) return c;
+      return { ...c, finances: c.finances + 1000000000 };
+    }));
+  };
+
   return (
     <GameContext.Provider value={{
       gameState,
@@ -1478,7 +1487,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       renewContract,
       acceptIncomingProposal,
       loadGame,
-      cancelSponsor
+      cancelSponsor,
+      cheatFinances
     }}>
       {children}
     </GameContext.Provider>

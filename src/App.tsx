@@ -16,7 +16,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, clearCurrentMatch,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
@@ -520,8 +520,21 @@ const AppContent: React.FC = () => {
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>ELIFOOT 2026</h1>
-          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
+          <h1 
+            onDoubleClick={() => {
+              const code = prompt('Digite o código de trapaça (Cheat Code):');
+              if (code === 'querosermilionario') {
+                cheatFinances();
+                alert('Trapaça ativada! R$ 1.000.000.000 adicionados às suas finanças.');
+              } else if (code !== null) {
+                alert('Código incorreto!');
+              }
+            }}
+            style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px', cursor: 'pointer', userSelect: 'none' }}
+          >
+            ELIFOOT 2026
+          </h1>
+          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile (Dê 2 cliques no título para Cheat)</p>
         </div>
 
         <div className="card" style={{ background: 'rgba(255,255,255,0.03)' }}>
