@@ -1,136 +1,64 @@
 {
   "athletico_pr": [
     {
-      "name": "Mycael",
-      "position": "GOL",
+      "name": "Isaac",
+      "position": "ATA",
       "rating": 83,
       "age": 22
     },
     {
-      "name": "Leonardo Derik",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 20
+      "name": "Alejandro García",
+      "position": "MEI",
+      "rating": 82,
+      "age": 25
     },
     {
-      "name": "Arthur Monteiro",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 16
+      "name": "Stiven Mendoza",
+      "position": "ATA",
+      "rating": 82,
+      "age": 34
+    },
+    {
+      "name": "Julimar",
+      "position": "ATA",
+      "rating": 82,
+      "age": 25
     },
     {
       "name": "Juan Portilla",
       "position": "MEI",
-      "rating": 83,
+      "rating": 81,
       "age": 27
     },
     {
-      "name": "João Cruz",
-      "position": "MEI",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Kevin Viveros",
-      "position": "ATA",
-      "rating": 83,
-      "age": 26
-    },
-    {
-      "name": "Lucas Amorim",
-      "position": "ATA",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Juliano Santini",
-      "position": "ATA",
-      "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "Jádson",
-      "position": "MEI",
-      "rating": 82,
-      "age": 32
-    },
-    {
-      "name": "Alejandro García",
-      "position": "MEI",
-      "rating": 81,
+      "name": "Carlos Terán",
+      "position": "ZAG",
+      "rating": 79,
       "age": 25
-    },
-    {
-      "name": "Chiqueti",
-      "position": "MEI",
-      "rating": 81,
-      "age": 21
-    },
-    {
-      "name": "Kauan Stabelini",
-      "position": "MEI",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Renan",
-      "position": "ATA",
-      "rating": 81,
-      "age": 26
-    },
-    {
-      "name": "Santos",
-      "position": "GOL",
-      "rating": 80,
-      "age": 36
-    },
-    {
-      "name": "Dudu",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 29
-    },
-    {
-      "name": "Guilherme Back",
-      "position": "MEI",
-      "rating": 80,
-      "age": 19
-    },
-    {
-      "name": "Claudinho",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 20
-    },
-    {
-      "name": "Diogo Riquelme",
-      "position": "MEI",
-      "rating": 79,
-      "age": 21
-    },
-    {
-      "name": "Benjamín Brito",
-      "position": "MEI",
-      "rating": 79,
-      "age": 18
-    },
-    {
-      "name": "Sorriso",
-      "position": "ATA",
-      "rating": 79,
-      "age": 20
-    },
-    {
-      "name": "Hayen Palacios",
-      "position": "ZAG",
-      "rating": 78,
-      "age": 26
     },
     {
       "name": "Gastón Benavídez",
       "position": "ZAG",
-      "rating": 78,
+      "rating": 79,
       "age": 30
+    },
+    {
+      "name": "Leozinho",
+      "position": "ATA",
+      "rating": 79,
+      "age": 27
+    },
+    {
+      "name": "Dudu",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 29
+    },
+    {
+      "name": "Juan Felipe Aguirre",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 29
     },
     {
       "name": "Filipinho",
@@ -139,102 +67,120 @@
       "age": 24
     },
     {
-      "name": "Gilberto Junior",
-      "position": "ZAG",
+      "name": "Jádson",
+      "position": "MEI",
       "rating": 78,
-      "age": 21
+      "age": 32
+    },
+    {
+      "name": "Mycael",
+      "position": "GOL",
+      "rating": 77,
+      "age": 22
+    },
+    {
+      "name": "Kevin Viveros",
+      "position": "ATA",
+      "rating": 77,
+      "age": 26
+    },
+    {
+      "name": "Santos",
+      "position": "GOL",
+      "rating": 76,
+      "age": 36
+    },
+    {
+      "name": "Luiz Gustavo",
+      "position": "MEI",
+      "rating": 76,
+      "age": 38
+    },
+    {
+      "name": "Renan",
+      "position": "ATA",
+      "rating": 76,
+      "age": 23
+    },
+    {
+      "name": "Léo",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 30
+    },
+    {
+      "name": "Lucas Esquivel",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 24
+    },
+    {
+      "name": "Renan",
+      "position": "ATA",
+      "rating": 75,
+      "age": 26
+    },
+    {
+      "name": "Hayen Palacios",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 26
+    },
+    {
+      "name": "Bruno Zapelli",
+      "position": "MEI",
+      "rating": 74,
+      "age": 24
     }
   ],
   "atletico_mg": [
     {
-      "name": "Rômulo",
-      "position": "ZAG",
+      "name": "Tomás Cuello",
+      "position": "ATA",
       "rating": 83,
-      "age": 22
+      "age": 26
     },
     {
-      "name": "Kauã Pascini",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 18
-    },
-    {
-      "name": "Tomás Pérez",
-      "position": "MEI",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Renan Lodi",
+      "name": "Júnior Alonso",
       "position": "ZAG",
       "rating": 82,
-      "age": 28
+      "age": 33
     },
     {
-      "name": "Victor Hugo",
+      "name": "Igor Gomes",
       "position": "MEI",
       "rating": 82,
-      "age": 22
+      "age": 27
+    },
+    {
+      "name": "Reiner",
+      "position": "MEI",
+      "rating": 82,
+      "age": 24
+    },
+    {
+      "name": "Vitor Hugo",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 35
     },
     {
       "name": "Patrick Silva",
       "position": "MEI",
-      "rating": 82,
+      "rating": 81,
       "age": 22
-    },
-    {
-      "name": "Riquelme Henrique",
-      "position": "ATA",
-      "rating": 82,
-      "age": 17
     },
     {
       "name": "Lyanco",
       "position": "ZAG",
-      "rating": 81,
+      "rating": 80,
       "age": 29
     },
     {
-      "name": "Mateo Casierra",
-      "position": "ATA",
-      "rating": 81,
-      "age": 29
-    },
-    {
-      "name": "Alan Minda",
-      "position": "ATA",
-      "rating": 81,
-      "age": 23
-    },
-    {
-      "name": "Lucas Louback",
-      "position": "ATA",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Wallysson Da Silva",
-      "position": "ATA",
-      "rating": 81,
-      "age": 18
-    },
-    {
-      "name": "Alexsander",
+      "name": "Gustavo Scarpa",
       "position": "MEI",
       "rating": 80,
-      "age": 22
-    },
-    {
-      "name": "Eric",
-      "position": "MEI",
-      "rating": 80,
-      "age": 20
-    },
-    {
-      "name": "Cauã Soares",
-      "position": "ATA",
-      "rating": 80,
-      "age": 18
+      "age": 32
     },
     {
       "name": "Éverson",
@@ -249,84 +195,108 @@
       "age": 24
     },
     {
-      "name": "Samuel Barros",
+      "name": "Ángelo Preciado",
       "position": "ZAG",
       "rating": 79,
-      "age": 20
+      "age": 28
     },
     {
-      "name": "Wanderson Junior De Souza Vaz",
+      "name": "Natanael",
       "position": "ZAG",
       "rating": 79,
-      "age": 18
+      "age": 24
+    },
+    {
+      "name": "Victor Hugo",
+      "position": "MEI",
+      "rating": 79,
+      "age": 22
+    },
+    {
+      "name": "Alexsander",
+      "position": "MEI",
+      "rating": 79,
+      "age": 22
+    },
+    {
+      "name": "Dudu",
+      "position": "ATA",
+      "rating": 79,
+      "age": 34
+    },
+    {
+      "name": "Bernard",
+      "position": "MEI",
+      "rating": 78,
+      "age": 33
+    },
+    {
+      "name": "Alan Minda",
+      "position": "ATA",
+      "rating": 77,
+      "age": 23
     },
     {
       "name": "Alan Franco",
       "position": "MEI",
-      "rating": 79,
+      "rating": 76,
       "age": 27
     },
     {
-      "name": "Tomás Cuello",
+      "name": "Mateo Casierra",
       "position": "ATA",
-      "rating": 79,
-      "age": 26
+      "rating": 76,
+      "age": 29
     },
     {
-      "name": "Murillo Fernandes",
-      "position": "ATA",
-      "rating": 79,
-      "age": 19
+      "name": "Rômulo",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 22
     },
     {
-      "name": "Pedro Cobra",
-      "position": "GOL",
-      "rating": 78,
-      "age": 20
+      "name": "Renan Lodi",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 28
     },
     {
-      "name": "Kaio",
-      "position": "GOL",
-      "rating": 78,
-      "age": 18
+      "name": "Maycon",
+      "position": "MEI",
+      "rating": 74,
+      "age": 29
     }
   ],
   "bahia": [
     {
-      "name": "Fabio",
-      "position": "GOL",
+      "name": "Erick",
+      "position": "MEI",
       "rating": 83,
-      "age": 18
+      "age": 28
     },
     {
-      "name": "Ruan Pablo",
+      "name": "Jean Lucas",
+      "position": "MEI",
+      "rating": 83,
+      "age": 28
+    },
+    {
+      "name": "Nicolás Acevedo",
+      "position": "MEI",
+      "rating": 83,
+      "age": 27
+    },
+    {
+      "name": "Caio Alexandre",
+      "position": "MEI",
+      "rating": 83,
+      "age": 27
+    },
+    {
+      "name": "Everaldo",
       "position": "ATA",
       "rating": 83,
-      "age": 17
-    },
-    {
-      "name": "Caio Suassuna",
-      "position": "ATA",
-      "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "Ronaldo",
-      "position": "GOL",
-      "rating": 82,
-      "age": 29
-    },
-    {
-      "name": "Marcos Victor",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 24
-    },
-    {
-      "name": "Zé Guilherme",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 21
+      "age": 35
     },
     {
       "name": "Rodrigo Nestor",
@@ -335,106 +305,112 @@
       "age": 25
     },
     {
-      "name": "Iuri Jean Carlo Neres Dos Santos",
-      "position": "GOL",
-      "rating": 81,
-      "age": 26
-    },
-    {
-      "name": "Caio Alexandre",
+      "name": "Éverton Ribeiro",
       "position": "MEI",
-      "rating": 81,
-      "age": 27
-    },
-    {
-      "name": "João Coni",
-      "position": "ATA",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Léo",
-      "position": "GOL",
       "rating": 80,
-      "age": 35
-    },
-    {
-      "name": "Dell",
-      "position": "ATA",
-      "rating": 80,
-      "age": 18
+      "age": 37
     },
     {
       "name": "David Duarte",
       "position": "ZAG",
-      "rating": 79,
+      "rating": 78,
       "age": 31
+    },
+    {
+      "name": "Iago",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 29
     },
     {
       "name": "Kanu",
       "position": "ZAG",
-      "rating": 79,
+      "rating": 78,
       "age": 29
-    },
-    {
-      "name": "Dodô",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 20
-    },
-    {
-      "name": "Éverton Ribeiro",
-      "position": "MEI",
-      "rating": 79,
-      "age": 37
-    },
-    {
-      "name": "Erick",
-      "position": "MEI",
-      "rating": 79,
-      "age": 28
-    },
-    {
-      "name": "Sidney",
-      "position": "MEI",
-      "rating": 79,
-      "age": 20
     },
     {
       "name": "Cristian Olivera",
       "position": "ATA",
-      "rating": 79,
+      "rating": 78,
       "age": 24
     },
     {
       "name": "Willian José",
       "position": "ATA",
-      "rating": 79,
+      "rating": 78,
       "age": 34
     },
     {
-      "name": "Ryan Nascimento",
+      "name": "Ademir",
       "position": "ATA",
-      "rating": 79,
-      "age": 17
+      "rating": 78,
+      "age": 31
     },
     {
-      "name": "Fredi Lippert",
+      "name": "Iuri Jean Carlo Neres Dos Santos",
+      "position": "GOL",
+      "rating": 77,
+      "age": 26
+    },
+    {
+      "name": "Marcos Victor",
       "position": "ZAG",
-      "rating": 78,
-      "age": 20
+      "rating": 77,
+      "age": 24
     },
     {
-      "name": "Jean Lucas",
+      "name": "Michel Araújo",
       "position": "MEI",
-      "rating": 78,
-      "age": 28
+      "rating": 77,
+      "age": 29
     },
     {
-      "name": "Nicolás Acevedo",
-      "position": "MEI",
-      "rating": 78,
-      "age": 27
+      "name": "Ronaldo",
+      "position": "GOL",
+      "rating": 75,
+      "age": 29
+    },
+    {
+      "name": "Santiago Ramos",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 24
+    },
+    {
+      "name": "Gilberto",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 33
+    },
+    {
+      "name": "Román Gómez",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 22
+    },
+    {
+      "name": "Erick Pulga",
+      "position": "ATA",
+      "rating": 75,
+      "age": 25
+    },
+    {
+      "name": "Mateo Sanabria",
+      "position": "ATA",
+      "rating": 75,
+      "age": 22
+    },
+    {
+      "name": "Léo",
+      "position": "GOL",
+      "rating": 74,
+      "age": 35
+    },
+    {
+      "name": "Luciano Juba",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 26
     }
   ],
   "botafogo": [
@@ -445,302 +421,296 @@
       "age": 28
     },
     {
-      "name": "Anthony",
+      "name": "Lucas Villalba",
       "position": "ZAG",
       "rating": 83,
-      "age": 21
+      "age": 31
     },
     {
-      "name": "Allan",
-      "position": "MEI",
-      "rating": 83,
-      "age": 35
-    },
-    {
-      "name": "Edenilson",
-      "position": "MEI",
-      "rating": 83,
-      "age": 36
-    },
-    {
-      "name": "Danilo Santos",
-      "position": "MEI",
-      "rating": 83,
-      "age": 25
-    },
-    {
-      "name": "Wallace Davi",
-      "position": "MEI",
-      "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "Felipe Januário",
+      "name": "Matheus Martins",
       "position": "ATA",
       "rating": 83,
-      "age": 19
+      "age": 23
     },
     {
-      "name": "Cristian Medina",
-      "position": "MEI",
+      "name": "Elias Manoel",
+      "position": "ATA",
       "rating": 82,
       "age": 24
     },
     {
-      "name": "Jordan Barrera",
+      "name": "Danilo Santos",
       "position": "MEI",
       "rating": 82,
-      "age": 20
+      "age": 25
     },
     {
-      "name": "Lucas Villalba",
-      "position": "ZAG",
+      "name": "Arthur Cabral",
+      "position": "ATA",
       "rating": 82,
-      "age": 31
+      "age": 28
     },
     {
       "name": "Caio Roque",
       "position": "ZAG",
-      "rating": 81,
+      "rating": 80,
       "age": 24
     },
     {
       "name": "Newton",
       "position": "MEI",
-      "rating": 81,
+      "rating": 80,
       "age": 26
     },
     {
-      "name": "Caio Valle",
-      "position": "MEI",
-      "rating": 81,
-      "age": 18
-    },
-    {
-      "name": "Kauan Toledo",
-      "position": "MEI",
-      "rating": 81,
-      "age": 20
+      "name": "Joaquín Correa",
+      "position": "ATA",
+      "rating": 80,
+      "age": 31
     },
     {
       "name": "Alex Telles",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 79,
       "age": 33
     },
     {
       "name": "Kaio",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 79,
       "age": 30
     },
     {
-      "name": "Nahuel Ferraresi",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 27
-    },
-    {
-      "name": "Jhoan Hernández",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 20
-    },
-    {
-      "name": "Ythallo",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 21
-    },
-    {
-      "name": "Kauã Serafim",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 19
-    },
-    {
-      "name": "Kayke",
-      "position": "ATA",
+      "name": "Edenilson",
+      "position": "MEI",
       "rating": 79,
-      "age": 20
-    },
-    {
-      "name": "Fernando Marçal",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 37
+      "age": 36
     },
     {
       "name": "Vitinho",
       "position": "ZAG",
-      "rating": 79,
+      "rating": 78,
       "age": 26
     },
     {
-      "name": "Gabriel Da Silva Abdias",
+      "name": "Leo Linck",
+      "position": "GOL",
+      "rating": 77,
+      "age": 25
+    },
+    {
+      "name": "Santiago Rodríguez",
+      "position": "MEI",
+      "rating": 77,
+      "age": 26
+    },
+    {
+      "name": "Allan",
+      "position": "MEI",
+      "rating": 77,
+      "age": 35
+    },
+    {
+      "name": "Cristian Medina",
+      "position": "MEI",
+      "rating": 77,
+      "age": 24
+    },
+    {
+      "name": "Matheus Nascimento",
+      "position": "ATA",
+      "rating": 76,
+      "age": 22
+    },
+    {
+      "name": "Fernando Marçal",
       "position": "ZAG",
-      "rating": 79,
-      "age": 20
+      "rating": 76,
+      "age": 37
+    },
+    {
+      "name": "Bastos",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 35
+    },
+    {
+      "name": "Nahuel Ferraresi",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 27
+    },
+    {
+      "name": "Júnior Santos",
+      "position": "ATA",
+      "rating": 75,
+      "age": 31
+    },
+    {
+      "name": "Mateo Ponte",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 23
     }
   ],
   "chapecoense": [
     {
-      "name": "Anderson Paixão",
-      "position": "GOL",
-      "rating": 83,
-      "age": 28
-    },
-    {
-      "name": "Kainã",
-      "position": "GOL",
-      "rating": 83,
-      "age": 21
-    },
-    {
-      "name": "Gustavo Talles",
+      "name": "Marcos Vinicius",
       "position": "ZAG",
       "rating": 83,
-      "age": 23
+      "age": 29
     },
     {
-      "name": "Da Silva",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 26
-    },
-    {
-      "name": "Kauan Godoy",
+      "name": "Giovanni Augusto",
       "position": "MEI",
       "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "Luizão",
-      "position": "ATA",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Bruno Pacheco",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 34
+      "age": 36
     },
     {
       "name": "Camilo",
       "position": "MEI",
-      "rating": 82,
+      "rating": 83,
       "age": 27
     },
     {
-      "name": "João Vitor",
+      "name": "Wemerson Do Carmo Silva",
       "position": "MEI",
-      "rating": 82,
-      "age": 28
+      "rating": 83,
+      "age": 25
     },
     {
       "name": "Maurício Garcez",
       "position": "ATA",
-      "rating": 82,
-      "age": 29
-    },
-    {
-      "name": "João Henrique Araújo Bom",
-      "position": "ATA",
-      "rating": 82,
-      "age": 21
-    },
-    {
-      "name": "Walter Clar",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 31
-    },
-    {
-      "name": "Rafael Thyere",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 33
-    },
-    {
-      "name": "Eduardo",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Rubens Tadeu Hartmann Ricoldi",
-      "position": "MEI",
-      "rating": 81,
-      "age": 23
-    },
-    {
-      "name": "Marcinho",
-      "position": "ATA",
-      "rating": 81,
-      "age": 31
-    },
-    {
-      "name": "Bruno Leonardo",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 30
-    },
-    {
-      "name": "Marcos Vinicius",
-      "position": "ZAG",
-      "rating": 80,
+      "rating": 83,
       "age": 29
     },
     {
       "name": "Everton",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 82,
       "age": 31
+    },
+    {
+      "name": "Neto",
+      "position": "ATA",
+      "rating": 82,
+      "age": 32
     },
     {
       "name": "Higor Matheus Meritão",
       "position": "MEI",
-      "rating": 80,
+      "rating": 81,
       "age": 32
     },
     {
-      "name": "Vinicius Eduardo De Almeida Gomes Da Silva",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 21
+      "name": "Ênio",
+      "position": "MEI",
+      "rating": 81,
+      "age": 25
     },
     {
-      "name": "Iago",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 19
+      "name": "Rafael Santos",
+      "position": "GOL",
+      "rating": 80,
+      "age": 37
     },
     {
-      "name": "Márcio Kalebe",
+      "name": "Da Silva",
       "position": "ZAG",
-      "rating": 79,
-      "age": 19
+      "rating": 80,
+      "age": 26
     },
     {
-      "name": "David",
+      "name": "Bruno Matias",
       "position": "MEI",
       "rating": 79,
-      "age": 20
+      "age": 27
+    },
+    {
+      "name": "Marcinho",
+      "position": "ATA",
+      "rating": 79,
+      "age": 31
+    },
+    {
+      "name": "Bruno Leonardo",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 30
+    },
+    {
+      "name": "Yannick Bolasie",
+      "position": "ATA",
+      "rating": 78,
+      "age": 37
+    },
+    {
+      "name": "Italo",
+      "position": "ATA",
+      "rating": 78,
+      "age": 23
+    },
+    {
+      "name": "Matheus",
+      "position": "GOL",
+      "rating": 77,
+      "age": 27
+    },
+    {
+      "name": "Rafael Thyere",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 33
+    },
+    {
+      "name": "Eduardo Doma",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 27
+    },
+    {
+      "name": "Kauan",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 23
+    },
+    {
+      "name": "João Vitor",
+      "position": "MEI",
+      "rating": 77,
+      "age": 28
+    },
+    {
+      "name": "Rubens Tadeu Hartmann Ricoldi",
+      "position": "MEI",
+      "rating": 77,
+      "age": 23
+    },
+    {
+      "name": "Kevin Ramírez",
+      "position": "ATA",
+      "rating": 77,
+      "age": 32
+    },
+    {
+      "name": "Rafael Cavalheira",
+      "position": "ATA",
+      "rating": 77,
+      "age": 27
     }
   ],
   "corinthians": [
     {
-      "name": "Matheus Bidu",
+      "name": "Gustavo Henrique",
       "position": "ZAG",
       "rating": 83,
-      "age": 27
+      "age": 33
     },
     {
-      "name": "Matheus Pereira",
-      "position": "MEI",
+      "name": "Mateuzinho",
+      "position": "ZAG",
       "rating": 83,
-      "age": 30
+      "age": 25
     },
     {
       "name": "Charles",
@@ -749,70 +719,34 @@
       "age": 30
     },
     {
-      "name": "Vitinho",
+      "name": "Alex Santana",
       "position": "MEI",
-      "rating": 83,
-      "age": 19
+      "rating": 82,
+      "age": 31
+    },
+    {
+      "name": "Memphis Depay",
+      "position": "ATA",
+      "rating": 82,
+      "age": 32
     },
     {
       "name": "Kaio",
       "position": "ATA",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "Kayke Ferrari",
-      "position": "ATA",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "Hugo Souza",
-      "position": "GOL",
       "rating": 82,
+      "age": 22
+    },
+    {
+      "name": "Matheus Bidu",
+      "position": "ZAG",
+      "rating": 81,
       "age": 27
     },
     {
-      "name": "André Ramalho",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 34
-    },
-    {
-      "name": "Guilherme Pellegrin Almeida",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Luiz Fabio",
-      "position": "MEI",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Fabrizio Angileri",
+      "name": "João Pedro",
       "position": "ZAG",
       "rating": 81,
-      "age": 32
-    },
-    {
-      "name": "Mateuzinho",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 25
-    },
-    {
-      "name": "Jacaré",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Caua Ribeiro",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 17
+      "age": 22
     },
     {
       "name": "Allan",
@@ -821,61 +755,103 @@
       "age": 29
     },
     {
-      "name": "André",
-      "position": "MEI",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Guilherme Caraguá",
-      "position": "MEI",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Memphis Depay",
-      "position": "ATA",
-      "rating": 81,
-      "age": 32
-    },
-    {
-      "name": "Vitinho",
-      "position": "ATA",
-      "rating": 81,
-      "age": 32
-    },
-    {
-      "name": "Pedro Raúl",
-      "position": "ATA",
-      "rating": 81,
-      "age": 29
-    },
-    {
-      "name": "Gustavo Milani",
-      "position": "GOL",
-      "rating": 80,
-      "age": 17
-    },
-    {
-      "name": "Gui Negão",
-      "position": "ATA",
-      "rating": 80,
-      "age": 19
-    },
-    {
-      "name": "João Pedro",
+      "name": "André Ramalho",
       "position": "ZAG",
+      "rating": 80,
+      "age": 34
+    },
+    {
+      "name": "Rodrigo Garro",
+      "position": "MEI",
+      "rating": 80,
+      "age": 28
+    },
+    {
+      "name": "Kauê Camargo",
+      "position": "GOL",
       "rating": 79,
       "age": 22
     },
     {
-      "name": "Luiz Eduardo",
+      "name": "Gabriel Paulista",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 35
+    },
+    {
+      "name": "Jesse Lingard",
       "position": "MEI",
       "rating": 79,
-      "age": 19
+      "age": 33
+    },
+    {
+      "name": "Vitinho",
+      "position": "ATA",
+      "rating": 78,
+      "age": 32
+    },
+    {
+      "name": "Hugo Souza",
+      "position": "GOL",
+      "rating": 77,
+      "age": 27
+    },
+    {
+      "name": "Raniele",
+      "position": "MEI",
+      "rating": 77,
+      "age": 29
+    },
+    {
+      "name": "Fabrizio Angileri",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 32
+    },
+    {
+      "name": "Pedro Milans",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 24
+    },
+    {
+      "name": "Matheus Pereira",
+      "position": "MEI",
+      "rating": 76,
+      "age": 30
+    },
+    {
+      "name": "Yuri Alberto",
+      "position": "ATA",
+      "rating": 76,
+      "age": 25
+    },
+    {
+      "name": "Hugo",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 28
+    },
+    {
+      "name": "André Carrillo",
+      "position": "MEI",
+      "rating": 75,
+      "age": 35
+    },
+    {
+      "name": "Zakaria Labyad",
+      "position": "ATA",
+      "rating": 75,
+      "age": 33
     }
   ],
   "coritiba": [
+    {
+      "name": "Gabriel Leite",
+      "position": "GOL",
+      "rating": 83,
+      "age": 38
+    },
     {
       "name": "Pedro Rangel",
       "position": "GOL",
@@ -883,157 +859,139 @@
       "age": 26
     },
     {
-      "name": "Benassi",
-      "position": "GOL",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "Maicon",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 37
-    },
-    {
-      "name": "Tiago",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "João Almeida",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Josué Pesqueira",
+      "name": "Thiago Santos",
       "position": "MEI",
       "rating": 83,
-      "age": 35
-    },
-    {
-      "name": "Fernando Sobral",
-      "position": "MEI",
-      "rating": 83,
-      "age": 31
-    },
-    {
-      "name": "Matheus Dias",
-      "position": "ATA",
-      "rating": 83,
-      "age": 18
-    },
-    {
-      "name": "Pedro Luccas",
-      "position": "GOL",
-      "rating": 82,
-      "age": 22
-    },
-    {
-      "name": "João Pedro Chermont",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 20
-    },
-    {
-      "name": "Geovane Santana Meurer",
-      "position": "MEI",
-      "rating": 82,
-      "age": 24
-    },
-    {
-      "name": "Thiago Azaf",
-      "position": "MEI",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Renato Marques",
-      "position": "ATA",
-      "rating": 82,
-      "age": 22
-    },
-    {
-      "name": "Alejandro Ararat",
-      "position": "MEI",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Felipe Jonatan",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 28
+      "age": 36
     },
     {
       "name": "Wallison Luiz",
       "position": "MEI",
-      "rating": 80,
+      "rating": 83,
       "age": 28
+    },
+    {
+      "name": "Tiago",
+      "position": "ZAG",
+      "rating": 82,
+      "age": 22
+    },
+    {
+      "name": "Sebastián Gómez",
+      "position": "MEI",
+      "rating": 82,
+      "age": 30
     },
     {
       "name": "Éberth",
       "position": "ATA",
-      "rating": 79,
+      "rating": 81,
       "age": 23
     },
     {
-      "name": "Gabriel Leite",
+      "name": "Pedro Luccas",
       "position": "GOL",
-      "rating": 79,
-      "age": 38
+      "rating": 81,
+      "age": 22
     },
     {
-      "name": "Gustavo",
+      "name": "Felipe Jonatan",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 28
+    },
+    {
+      "name": "Josué Pesqueira",
       "position": "MEI",
-      "rating": 79,
-      "age": 23
+      "rating": 81,
+      "age": 35
     },
     {
       "name": "Breno",
       "position": "ATA",
-      "rating": 79,
+      "rating": 81,
       "age": 30
     },
     {
-      "name": "Keiller",
-      "position": "GOL",
+      "name": "Fernando Sobral",
+      "position": "MEI",
+      "rating": 80,
+      "age": 31
+    },
+    {
+      "name": "Gustavo",
+      "position": "MEI",
+      "rating": 80,
+      "age": 23
+    },
+    {
+      "name": "Geovane Santana Meurer",
+      "position": "MEI",
+      "rating": 80,
+      "age": 24
+    },
+    {
+      "name": "Fabinho",
+      "position": "ATA",
+      "rating": 80,
+      "age": 26
+    },
+    {
+      "name": "Bruno Melo",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 33
+    },
+    {
+      "name": "Pedro Rocha",
+      "position": "ATA",
+      "rating": 79,
+      "age": 31
+    },
+    {
+      "name": "Renato Marques",
+      "position": "ATA",
+      "rating": 79,
+      "age": 22
+    },
+    {
+      "name": "Tinga",
+      "position": "ZAG",
       "rating": 78,
+      "age": 32
+    },
+    {
+      "name": "Keno",
+      "position": "ATA",
+      "rating": 78,
+      "age": 36
+    },
+    {
+      "name": "Rodrigo Rodrigues",
+      "position": "ATA",
+      "rating": 78,
+      "age": 30
+    },
+    {
+      "name": "Benassi",
+      "position": "GOL",
+      "rating": 77,
+      "age": 22
+    },
+    {
+      "name": "Jacy Maranhão",
+      "position": "ZAG",
+      "rating": 77,
       "age": 29
     },
     {
-      "name": "Rodrigo Moledo",
-      "position": "ZAG",
-      "rating": 78,
-      "age": 38
-    },
-    {
-      "name": "Tissi",
+      "name": "Willian",
       "position": "MEI",
-      "rating": 78,
-      "age": 19
-    },
-    {
-      "name": "Miguel Silva",
-      "position": "MEI",
-      "rating": 78,
-      "age": 18
+      "rating": 76,
+      "age": 33
     }
   ],
   "cruzeiro": [
-    {
-      "name": "Cássio",
-      "position": "GOL",
-      "rating": 83,
-      "age": 39
-    },
-    {
-      "name": "Matheus Cunha Queiroz",
-      "position": "GOL",
-      "rating": 83,
-      "age": 25
-    },
     {
       "name": "João Marcelo",
       "position": "ZAG",
@@ -1041,28 +999,22 @@
       "age": 26
     },
     {
-      "name": "Pedro Henrique Franklim Martins",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "Murilo Rhikman",
+      "name": "Lucas Romero",
       "position": "MEI",
-      "rating": 83,
-      "age": 20
+      "rating": 82,
+      "age": 32
     },
     {
-      "name": "William",
-      "position": "ZAG",
+      "name": "Lucas Silva",
+      "position": "MEI",
+      "rating": 82,
+      "age": 33
+    },
+    {
+      "name": "Walace",
+      "position": "MEI",
       "rating": 82,
       "age": 31
-    },
-    {
-      "name": "Jonathan Jesus",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 22
     },
     {
       "name": "Gerson",
@@ -1071,34 +1023,28 @@
       "age": 29
     },
     {
-      "name": "Neyser Villareal",
+      "name": "Christian",
       "position": "MEI",
       "rating": 82,
-      "age": 21
+      "age": 25
     },
     {
-      "name": "Keny Arroyo",
-      "position": "ATA",
-      "rating": 82,
-      "age": 20
+      "name": "Lucas Villalba",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 31
     },
     {
-      "name": "Kaique Kenji",
-      "position": "ATA",
-      "rating": 82,
-      "age": 20
-    },
-    {
-      "name": "Danilo Gimenes",
-      "position": "ATA",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "João Wellington",
+      "name": "Matheus Henrique",
       "position": "MEI",
       "rating": 81,
-      "age": 22
+      "age": 28
+    },
+    {
+      "name": "Wanderson",
+      "position": "ATA",
+      "rating": 81,
+      "age": 31
     },
     {
       "name": "Fabrício Bruno",
@@ -1107,79 +1053,79 @@
       "age": 30
     },
     {
-      "name": "Lucas Silva",
-      "position": "MEI",
-      "rating": 80,
-      "age": 33
-    },
-    {
-      "name": "Eduardo Pape",
-      "position": "MEI",
-      "rating": 80,
-      "age": 17
-    },
-    {
-      "name": "Marquinhos",
-      "position": "ATA",
-      "rating": 80,
-      "age": 23
-    },
-    {
-      "name": "Lucas Romero",
+      "name": "Matheus Pereira",
       "position": "MEI",
       "rating": 79,
-      "age": 32
+      "age": 30
+    },
+    {
+      "name": "Chico",
+      "position": "ATA",
+      "rating": 79,
+      "age": 31
+    },
+    {
+      "name": "Matheus Cunha Queiroz",
+      "position": "GOL",
+      "rating": 78,
+      "age": 25
+    },
+    {
+      "name": "Cássio",
+      "position": "GOL",
+      "rating": 77,
+      "age": 39
+    },
+    {
+      "name": "Jonathan Jesus",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 22
     },
     {
       "name": "Bruno Rodrigues",
       "position": "ATA",
-      "rating": 79,
+      "rating": 77,
       "age": 29
     },
     {
-      "name": "Wanderson",
+      "name": "Kaio Jorge",
       "position": "ATA",
-      "rating": 78,
+      "rating": 77,
+      "age": 24
+    },
+    {
+      "name": "Marquinhos",
+      "position": "ATA",
+      "rating": 77,
+      "age": 23
+    },
+    {
+      "name": "Fagner",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 37
+    },
+    {
+      "name": "Pedro Henrique Franklim Martins",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 22
+    },
+    {
+      "name": "William",
+      "position": "ZAG",
+      "rating": 74,
       "age": 31
     },
     {
-      "name": "Pablo",
-      "position": "ATA",
-      "rating": 78,
-      "age": 19
-    },
-    {
-      "name": "Nicolas Pontes",
-      "position": "ZAG",
-      "rating": 77,
-      "age": 20
-    },
-    {
-      "name": "Kauã Moraes Silva",
-      "position": "ZAG",
-      "rating": 77,
-      "age": 20
-    },
-    {
-      "name": "Kelvin Coutinho",
-      "position": "ZAG",
-      "rating": 77,
-      "age": 20
+      "name": "João Wellington",
+      "position": "MEI",
+      "rating": 74,
+      "age": 22
     }
   ],
   "flamengo": [
-    {
-      "name": "Gusttavo Sousa",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Daniel Carvalho Marinho Da Silva",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 17
-    },
     {
       "name": "Jorginho",
       "position": "MEI",
@@ -1187,454 +1133,460 @@
       "age": 34
     },
     {
-      "name": "Erick Pulgar",
-      "position": "MEI",
-      "rating": 83,
-      "age": 32
+      "name": "Vitão",
+      "position": "ZAG",
+      "rating": 82,
+      "age": 26
     },
     {
-      "name": "Nicolás de la Cruz",
-      "position": "MEI",
-      "rating": 83,
-      "age": 29
-    },
-    {
-      "name": "Gonzalo Plata",
+      "name": "Pedro",
       "position": "ATA",
-      "rating": 83,
-      "age": 25
+      "rating": 82,
+      "age": 29
     },
     {
       "name": "Agustín Rossi",
       "position": "GOL",
-      "rating": 82,
+      "rating": 81,
       "age": 30
-    },
-    {
-      "name": "Andrew",
-      "position": "GOL",
-      "rating": 82,
-      "age": 25
-    },
-    {
-      "name": "Emerson Royal",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 27
     },
     {
       "name": "Jorge Carrascal",
       "position": "MEI",
-      "rating": 82,
+      "rating": 81,
       "age": 28
     },
     {
-      "name": "Rayan Lucas",
-      "position": "MEI",
-      "rating": 82,
-      "age": 21
-    },
-    {
-      "name": "João",
+      "name": "Bruno Henrique",
       "position": "ATA",
-      "rating": 82,
-      "age": 19
+      "rating": 81,
+      "age": 35
     },
     {
-      "name": "Leó Nannetti",
-      "position": "GOL",
+      "name": "Gonzalo Plata",
+      "position": "ATA",
       "rating": 81,
-      "age": 18
+      "age": 25
+    },
+    {
+      "name": "Alex Sandro",
+      "position": "ZAG",
+      "rating": 80,
+      "age": 35
+    },
+    {
+      "name": "Emerson Royal",
+      "position": "ZAG",
+      "rating": 80,
+      "age": 27
+    },
+    {
+      "name": "Giorgian de Arrascaeta",
+      "position": "MEI",
+      "rating": 80,
+      "age": 32
+    },
+    {
+      "name": "Samuel Lino",
+      "position": "MEI",
+      "rating": 80,
+      "age": 26
+    },
+    {
+      "name": "Erick Pulgar",
+      "position": "MEI",
+      "rating": 79,
+      "age": 32
+    },
+    {
+      "name": "Dyogo Alves",
+      "position": "GOL",
+      "rating": 78,
+      "age": 22
+    },
+    {
+      "name": "Léo Pereira",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 30
+    },
+    {
+      "name": "Lucas Paquetá",
+      "position": "MEI",
+      "rating": 78,
+      "age": 28
+    },
+    {
+      "name": "Luiz Araújo",
+      "position": "ATA",
+      "rating": 77,
+      "age": 30
+    },
+    {
+      "name": "Danilo",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 35
+    },
+    {
+      "name": "Everton",
+      "position": "ATA",
+      "rating": 76,
+      "age": 30
     },
     {
       "name": "Guillermo Varela",
       "position": "ZAG",
-      "rating": 81,
+      "rating": 75,
       "age": 33
     },
     {
       "name": "Léo Ortiz",
       "position": "ZAG",
-      "rating": 81,
+      "rating": 75,
       "age": 30
     },
     {
-      "name": "Guilherme Gomes",
+      "name": "Saúl Ñíguez",
       "position": "MEI",
-      "rating": 81,
-      "age": 20
+      "rating": 75,
+      "age": 31
     },
     {
-      "name": "Luiz Felipe",
-      "position": "MEI",
-      "rating": 81,
-      "age": 18
-    },
-    {
-      "name": "Luiz Araújo",
-      "position": "ATA",
-      "rating": 81,
-      "age": 30
-    },
-    {
-      "name": "Gabriel Laizo  Werneck",
+      "name": "Andrew",
       "position": "GOL",
-      "rating": 80,
-      "age": 17
+      "rating": 74,
+      "age": 25
     },
     {
-      "name": "Vitão",
+      "name": "Ayrton Lucas",
       "position": "ZAG",
-      "rating": 80,
-      "age": 26
+      "rating": 74,
+      "age": 29
     },
     {
-      "name": "Da Mata",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 20
-    },
-    {
-      "name": "Johnny Monteiro Góes",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 19
-    },
-    {
-      "name": "Lucas Paquetá",
+      "name": "Nicolás de la Cruz",
       "position": "MEI",
-      "rating": 80,
-      "age": 28
-    },
-    {
-      "name": "Jhefinho",
-      "position": "MEI",
-      "rating": 80,
-      "age": 18
+      "rating": 74,
+      "age": 29
     }
   ],
   "fluminense": [
     {
-      "name": "Fábio",
-      "position": "GOL",
-      "rating": 83,
-      "age": 45
-    },
-    {
-      "name": "Juan Freytes",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 26
-    },
-    {
-      "name": "Davi Schuindt",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "Agner",
-      "position": "MEI",
-      "rating": 83,
-      "age": 21
-    },
-    {
-      "name": "Paulo Guilherme",
-      "position": "MEI",
-      "rating": 83,
-      "age": 18
-    },
-    {
-      "name": "Lelê",
-      "position": "ATA",
-      "rating": 82,
-      "age": 28
-    },
-    {
-      "name": "René",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 33
-    },
-    {
-      "name": "Julian Millan",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 28
-    },
-    {
-      "name": "Jemmes",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 26
-    },
-    {
-      "name": "Breno",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Gorgulho",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Otávio",
-      "position": "MEI",
-      "rating": 82,
-      "age": 32
-    },
-    {
-      "name": "Nonato",
-      "position": "MEI",
-      "rating": 82,
-      "age": 28
-    },
-    {
-      "name": "John Kennedy",
-      "position": "ATA",
-      "rating": 82,
-      "age": 24
-    },
-    {
-      "name": "Riquelme",
-      "position": "ATA",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Luciano Acosta",
-      "position": "MEI",
-      "rating": 81,
-      "age": 32
-    },
-    {
-      "name": "Matheus Reis",
-      "position": "ATA",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Isack Pelé",
-      "position": "ATA",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Enzo",
-      "position": "ATA",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Hulk",
-      "position": "ATA",
-      "rating": 80,
-      "age": 39
-    },
-    {
-      "name": "Guilherme Arana",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 29
-    },
-    {
       "name": "Igor Rabello",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 82,
       "age": 31
     },
     {
       "name": "Ignácio",
       "position": "ZAG",
+      "rating": 82,
+      "age": 29
+    },
+    {
+      "name": "Martinelli",
+      "position": "MEI",
+      "rating": 82,
+      "age": 24
+    },
+    {
+      "name": "Lelê",
+      "position": "ATA",
+      "rating": 81,
+      "age": 28
+    },
+    {
+      "name": "René",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 33
+    },
+    {
+      "name": "Facundo Bernal",
+      "position": "MEI",
+      "rating": 80,
+      "age": 22
+    },
+    {
+      "name": "Yeferson Soteldo",
+      "position": "ATA",
       "rating": 80,
       "age": 29
+    },
+    {
+      "name": "Samuel Xavier",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 36
+    },
+    {
+      "name": "Julian Millan",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 28
+    },
+    {
+      "name": "Juan Freytes",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 26
     },
     {
       "name": "Ganso",
       "position": "MEI",
-      "rating": 80,
+      "rating": 79,
       "age": 36
+    },
+    {
+      "name": "Luciano Acosta",
+      "position": "MEI",
+      "rating": 79,
+      "age": 32
+    },
+    {
+      "name": "Rodrigo Castillo",
+      "position": "ATA",
+      "rating": 79,
+      "age": 27
+    },
+    {
+      "name": "Germán Cano",
+      "position": "ATA",
+      "rating": 79,
+      "age": 38
+    },
+    {
+      "name": "John Kennedy",
+      "position": "ATA",
+      "rating": 79,
+      "age": 24
+    },
+    {
+      "name": "Marcelo Pitaluga",
+      "position": "GOL",
+      "rating": 78,
+      "age": 23
+    },
+    {
+      "name": "Davi Schuindt",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 22
+    },
+    {
+      "name": "Nonato",
+      "position": "MEI",
+      "rating": 77,
+      "age": 28
+    },
+    {
+      "name": "Gustavo Ramalho",
+      "position": "GOL",
+      "rating": 76,
+      "age": 23
+    },
+    {
+      "name": "Guilherme Arana",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 29
+    },
+    {
+      "name": "Jemmes",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 26
+    },
+    {
+      "name": "Hulk",
+      "position": "ATA",
+      "rating": 75,
+      "age": 39
+    },
+    {
+      "name": "Fábio",
+      "position": "GOL",
+      "rating": 75,
+      "age": 45
+    },
+    {
+      "name": "Vitor Eudes",
+      "position": "GOL",
+      "rating": 75,
+      "age": 27
     }
   ],
   "gremio": [
     {
-      "name": "Gabriel Grando",
-      "position": "GOL",
-      "rating": 83,
-      "age": 26
-    },
-    {
-      "name": "Fabián Balbuena",
+      "name": "Gustavo Martins",
       "position": "ZAG",
       "rating": 83,
-      "age": 34
-    },
-    {
-      "name": "Luis Eduardo",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 18
-    },
-    {
-      "name": "Wálter Kannemann",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 35
-    },
-    {
-      "name": "Dodi",
-      "position": "MEI",
-      "rating": 82,
-      "age": 30
-    },
-    {
-      "name": "Mathías Villasanti",
-      "position": "MEI",
-      "rating": 82,
-      "age": 29
-    },
-    {
-      "name": "Artur Junior",
-      "position": "MEI",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Lago Menezes",
-      "position": "MEI",
-      "rating": 82,
-      "age": 17
-    },
-    {
-      "name": "Martin Braithwaite",
-      "position": "ATA",
-      "rating": 82,
-      "age": 35
-    },
-    {
-      "name": "Weverton",
-      "position": "GOL",
-      "rating": 81,
-      "age": 38
-    },
-    {
-      "name": "Thiago Stallbaum",
-      "position": "GOL",
-      "rating": 81,
       "age": 23
     },
     {
-      "name": "João Victor Castelo",
-      "position": "GOL",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Gabriel Menegon",
-      "position": "GOL",
-      "rating": 81,
-      "age": 17
-    },
-    {
-      "name": "Marcos Rocha",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 37
-    },
-    {
-      "name": "Vagner",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 17
-    },
-    {
-      "name": "Jeferson Forneck",
+      "name": "Willian",
       "position": "MEI",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "José Enamorado",
-      "position": "ATA",
-      "rating": 81,
-      "age": 27
+      "rating": 83,
+      "age": 37
     },
     {
       "name": "Mateus Tetê",
       "position": "ATA",
-      "rating": 81,
+      "rating": 83,
       "age": 26
+    },
+    {
+      "name": "Juan Nardoni",
+      "position": "MEI",
+      "rating": 81,
+      "age": 24
+    },
+    {
+      "name": "Miguel Monsalve",
+      "position": "MEI",
+      "rating": 81,
+      "age": 22
+    },
+    {
+      "name": "Carlos Vinícius",
+      "position": "ATA",
+      "rating": 81,
+      "age": 31
+    },
+    {
+      "name": "Marcos Rocha",
+      "position": "ZAG",
+      "rating": 80,
+      "age": 37
+    },
+    {
+      "name": "Dodi",
+      "position": "MEI",
+      "rating": 80,
+      "age": 30
+    },
+    {
+      "name": "Weverton",
+      "position": "GOL",
+      "rating": 79,
+      "age": 38
+    },
+    {
+      "name": "Wálter Kannemann",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 35
+    },
+    {
+      "name": "Erick Noriega",
+      "position": "MEI",
+      "rating": 79,
+      "age": 24
+    },
+    {
+      "name": "Gabriel Grando",
+      "position": "GOL",
+      "rating": 78,
+      "age": 26
+    },
+    {
+      "name": "Thiago Stallbaum",
+      "position": "GOL",
+      "rating": 78,
+      "age": 23
     },
     {
       "name": "João Pedro",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 78,
       "age": 29
     },
     {
-      "name": "Gustavo Martins",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 23
-    },
-    {
-      "name": "Leonel Pérez",
-      "position": "MEI",
-      "rating": 80,
-      "age": 21
-    },
-    {
-      "name": "Arnaldo",
+      "name": "Cristian Pavón",
       "position": "ATA",
-      "rating": 80,
-      "age": 19
+      "rating": 78,
+      "age": 30
     },
     {
       "name": "Adriel",
       "position": "GOL",
-      "rating": 79,
+      "rating": 77,
       "age": 25
     },
     {
-      "name": "João Borne",
+      "name": "Fabián Balbuena",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 34
+    },
+    {
+      "name": "Martin Braithwaite",
+      "position": "ATA",
+      "rating": 77,
+      "age": 35
+    },
+    {
+      "name": "Caio Paulista",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 28
+    },
+    {
+      "name": "Marlon",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 29
+    },
+    {
+      "name": "Mathías Villasanti",
       "position": "MEI",
-      "rating": 79,
-      "age": 18
+      "rating": 75,
+      "age": 29
+    },
+    {
+      "name": "Francis Amuzu",
+      "position": "ATA",
+      "rating": 75,
+      "age": 26
+    },
+    {
+      "name": "José Enamorado",
+      "position": "ATA",
+      "rating": 75,
+      "age": 27
+    },
+    {
+      "name": "Wagner Leonardo",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 26
     }
   ],
   "internacional": [
     {
-      "name": "Diego Esser",
+      "name": "Sergio Rochet",
       "position": "GOL",
       "rating": 83,
-      "age": 21
+      "age": 33
     },
     {
-      "name": "Alexander Bernabei",
+      "name": "Kauan",
+      "position": "GOL",
+      "rating": 83,
+      "age": 23
+    },
+    {
+      "name": "Gabriel Mercado",
       "position": "ZAG",
       "rating": 83,
-      "age": 25
+      "age": 39
     },
     {
-      "name": "Pedro Kauã",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Luiz Felipe De Morais Francisco",
+      "name": "Clayton",
       "position": "ZAG",
       "rating": 83,
       "age": 26
-    },
-    {
-      "name": "Bruno Henrique",
-      "position": "MEI",
-      "rating": 83,
-      "age": 36
     },
     {
       "name": "Richard",
@@ -1643,70 +1595,40 @@
       "age": 32
     },
     {
-      "name": "João Victor",
+      "name": "Rafael Borré",
       "position": "ATA",
       "rating": 83,
-      "age": 18
+      "age": 30
     },
     {
-      "name": "Denis Marfo",
+      "name": "Alan Patrick",
+      "position": "MEI",
+      "rating": 82,
+      "age": 35
+    },
+    {
+      "name": "Matheus Bahia",
       "position": "ZAG",
-      "rating": 82,
-      "age": 20
+      "rating": 81,
+      "age": 26
     },
     {
-      "name": "Kayky Chagas",
-      "position": "ATA",
-      "rating": 82,
-      "age": 23
-    },
-    {
-      "name": "Thiago Maia",
+      "name": "Ronaldo",
       "position": "MEI",
       "rating": 81,
       "age": 29
     },
     {
-      "name": "Rafael Borré",
-      "position": "ATA",
-      "rating": 81,
-      "age": 30
-    },
-    {
-      "name": "Johan Carbonero",
-      "position": "ATA",
-      "rating": 81,
-      "age": 26
-    },
-    {
-      "name": "Anthoni",
-      "position": "GOL",
-      "rating": 80,
-      "age": 24
-    },
-    {
-      "name": "Gabriel Mercado",
+      "name": "Juninho",
       "position": "ZAG",
       "rating": 80,
-      "age": 39
+      "age": 31
     },
     {
-      "name": "Victor Gabriel",
+      "name": "Félix Torres",
       "position": "ZAG",
       "rating": 80,
-      "age": 22
-    },
-    {
-      "name": "Alisson",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 17
-    },
-    {
-      "name": "Allex",
-      "position": "MEI",
-      "rating": 80,
-      "age": 20
+      "age": 29
     },
     {
       "name": "Bruno Tabata",
@@ -1715,66 +1637,114 @@
       "age": 29
     },
     {
-      "name": "Yago",
-      "position": "ATA",
-      "rating": 80,
-      "age": 19
-    },
-    {
-      "name": "Fabricio Prado",
+      "name": "Johan Carbonero",
       "position": "ATA",
       "rating": 80,
       "age": 26
     },
     {
-      "name": "Juninho",
+      "name": "Victor Gabriel",
       "position": "ZAG",
       "rating": 79,
-      "age": 31
+      "age": 22
     },
     {
-      "name": "Brian Aguirre",
+      "name": "Luiz Felipe De Morais Francisco",
       "position": "ZAG",
       "rating": 79,
-      "age": 25
+      "age": 26
     },
     {
-      "name": "Ronaldo",
-      "position": "MEI",
-      "rating": 79,
-      "age": 29
+      "name": "Alerrando",
+      "position": "ATA",
+      "rating": 78,
+      "age": 26
+    },
+    {
+      "name": "Kayky Chagas",
+      "position": "ATA",
+      "rating": 78,
+      "age": 23
     },
     {
       "name": "Bruno Gomes",
       "position": "MEI",
-      "rating": 79,
+      "rating": 77,
       "age": 25
+    },
+    {
+      "name": "Alexander Bernabei",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 25
+    },
+    {
+      "name": "Bruno Henrique",
+      "position": "MEI",
+      "rating": 76,
+      "age": 36
+    },
+    {
+      "name": "Rodrigo Villagra",
+      "position": "MEI",
+      "rating": 76,
+      "age": 25
+    },
+    {
+      "name": "Brian Aguirre",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 25
+    },
+    {
+      "name": "Thiago Maia",
+      "position": "MEI",
+      "rating": 75,
+      "age": 29
+    },
+    {
+      "name": "Gabriel Vinicius Oliveira Da Silva",
+      "position": "MEI",
+      "rating": 75,
+      "age": 26
     }
   ],
   "mirassol": [
     {
-      "name": "Vinicius Bacchi De Castro",
-      "position": "ATA",
+      "name": "Rodrigues",
+      "position": "ZAG",
       "rating": 83,
-      "age": 19
+      "age": 28
     },
     {
-      "name": "Felipe Pereira dos",
-      "position": "ATA",
-      "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "Georgemy",
+      "name": "Thomazella",
       "position": "GOL",
       "rating": 82,
-      "age": 30
+      "age": 35
     },
     {
-      "name": "Lucas Oliveira",
-      "position": "ZAG",
+      "name": "Antonio Galeano",
+      "position": "ATA",
       "rating": 82,
-      "age": 30
+      "age": 26
+    },
+    {
+      "name": "Alex Muralha",
+      "position": "GOL",
+      "rating": 81,
+      "age": 36
+    },
+    {
+      "name": "Victor Luis",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 33
+    },
+    {
+      "name": "Carlos Eduardo",
+      "position": "MEI",
+      "rating": 81,
+      "age": 36
     },
     {
       "name": "Denilson",
@@ -1783,94 +1753,52 @@
       "age": 25
     },
     {
-      "name": "Tiquinho Soares",
-      "position": "ATA",
-      "rating": 81,
-      "age": 35
-    },
-    {
       "name": "Carlos Eduardo",
       "position": "ATA",
       "rating": 81,
       "age": 29
-    },
-    {
-      "name": "Alex Muralha",
-      "position": "GOL",
-      "rating": 80,
-      "age": 36
-    },
-    {
-      "name": "Willian Machado",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 29
-    },
-    {
-      "name": "Igor Marques",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 27
-    },
-    {
-      "name": "Edson Carioca",
-      "position": "ATA",
-      "rating": 80,
-      "age": 29
-    },
-    {
-      "name": "Gabriel",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 18
-    },
-    {
-      "name": "Reinaldo",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 36
-    },
-    {
-      "name": "Daniel Borges",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 33
-    },
-    {
-      "name": "Carlos Eduardo",
-      "position": "MEI",
-      "rating": 79,
-      "age": 36
-    },
-    {
-      "name": "André Luis",
-      "position": "ATA",
-      "rating": 79,
-      "age": 32
-    },
-    {
-      "name": "Alesson",
-      "position": "ATA",
-      "rating": 79,
-      "age": 27
-    },
-    {
-      "name": "Victor Luis",
-      "position": "ZAG",
-      "rating": 78,
-      "age": 33
-    },
-    {
-      "name": "Cauã Victor Soares Da Silva",
-      "position": "ZAG",
-      "rating": 78,
-      "age": 17
     },
     {
       "name": "Neto Moura",
       "position": "MEI",
-      "rating": 78,
+      "rating": 80,
       "age": 29
+    },
+    {
+      "name": "Tiquinho Soares",
+      "position": "ATA",
+      "rating": 80,
+      "age": 35
+    },
+    {
+      "name": "Georgemy",
+      "position": "GOL",
+      "rating": 79,
+      "age": 30
+    },
+    {
+      "name": "Igor Marques",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 27
+    },
+    {
+      "name": "José Aldo",
+      "position": "MEI",
+      "rating": 79,
+      "age": 27
+    },
+    {
+      "name": "Reinaldo",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 36
+    },
+    {
+      "name": "Lucas Oliveira",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 30
     },
     {
       "name": "Shaylon",
@@ -1879,370 +1807,364 @@
       "age": 29
     },
     {
-      "name": "Everton",
+      "name": "André Luis",
       "position": "ATA",
       "rating": 78,
+      "age": 32
+    },
+    {
+      "name": "Walter",
+      "position": "GOL",
+      "rating": 77,
+      "age": 38
+    },
+    {
+      "name": "Gabriel",
+      "position": "MEI",
+      "rating": 77,
+      "age": 32
+    },
+    {
+      "name": "Edson Carioca",
+      "position": "ATA",
+      "rating": 77,
       "age": 29
     },
     {
-      "name": "Glaucon",
+      "name": "Alesson",
       "position": "ATA",
-      "rating": 78,
-      "age": 20
+      "rating": 77,
+      "age": 27
     },
     {
-      "name": "Thomazella",
-      "position": "GOL",
-      "rating": 77,
+      "name": "Daniel Borges",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 33
+    },
+    {
+      "name": "João Victor Carroll",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 28
+    },
+    {
+      "name": "Chico",
+      "position": "MEI",
+      "rating": 76,
       "age": 35
     }
   ],
   "palmeiras": [
     {
-      "name": "Kauan Lima",
+      "name": "Carlos Miguel",
       "position": "GOL",
       "rating": 83,
-      "age": 19
+      "age": 27
     },
     {
-      "name": "Derick",
+      "name": "Bruno Fuchs",
       "position": "ZAG",
       "rating": 83,
-      "age": 18
+      "age": 27
     },
     {
-      "name": "Luccas Ramon",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 17
-    },
-    {
-      "name": "André Lucas",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 20
-    },
-    {
-      "name": "Felipe Anderson",
+      "name": "Maurício",
       "position": "MEI",
       "rating": 83,
-      "age": 33
-    },
-    {
-      "name": "Isaac",
-      "position": "MEI",
-      "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "Allan Andrade",
-      "position": "ATA",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "Khellven",
-      "position": "ZAG",
-      "rating": 82,
       "age": 25
     },
     {
-      "name": "Luis Saboia",
+      "name": "Kaiky Naves",
       "position": "ZAG",
       "rating": 82,
-      "age": 19
+      "age": 24
     },
     {
-      "name": "Jhon Arias",
-      "position": "MEI",
-      "rating": 82,
-      "age": 28
-    },
-    {
-      "name": "Rafael Coutinho",
-      "position": "MEI",
-      "rating": 82,
-      "age": 20
-    },
-    {
-      "name": "Luis Felipe",
-      "position": "MEI",
-      "rating": 82,
-      "age": 18
-    },
-    {
-      "name": "Ramón Sosa",
+      "name": "Paulinho",
       "position": "ATA",
       "rating": 82,
       "age": 26
     },
     {
-      "name": "Vitor Roque",
-      "position": "ATA",
-      "rating": 82,
-      "age": 21
-    },
-    {
-      "name": "Heittor",
-      "position": "ATA",
-      "rating": 82,
-      "age": 18
+      "name": "Lucas Evangelista",
+      "position": "MEI",
+      "rating": 81,
+      "age": 31
     },
     {
       "name": "Marcelo Lomba",
       "position": "GOL",
-      "rating": 81,
+      "rating": 80,
       "age": 39
     },
     {
-      "name": "Luiz Fernando",
-      "position": "GOL",
-      "rating": 81,
-      "age": 18
-    },
-    {
-      "name": "Luiz Benedetti",
+      "name": "Joaquín Piquerez",
       "position": "ZAG",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Larson",
-      "position": "MEI",
-      "rating": 81,
-      "age": 21
-    },
-    {
-      "name": "Erick Machado",
-      "position": "MEI",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Ruan Yago",
-      "position": "MEI",
-      "rating": 81,
-      "age": 17
-    },
-    {
-      "name": "Kauã",
-      "position": "ATA",
-      "rating": 81,
-      "age": 17
-    },
-    {
-      "name": "Carlos Miguel",
-      "position": "GOL",
       "rating": 80,
       "age": 27
     },
     {
+      "name": "Agustín Giay",
+      "position": "ZAG",
+      "rating": 80,
+      "age": 22
+    },
+    {
+      "name": "José Manuel López",
+      "position": "ATA",
+      "rating": 80,
+      "age": 25
+    },
+    {
+      "name": "Jefté",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 22
+    },
+    {
+      "name": "Felipe Anderson",
+      "position": "MEI",
+      "rating": 79,
+      "age": 33
+    },
+    {
+      "name": "Andreas Pereira",
+      "position": "MEI",
+      "rating": 79,
+      "age": 30
+    },
+    {
+      "name": "Jhon Arias",
+      "position": "MEI",
+      "rating": 79,
+      "age": 28
+    },
+    {
+      "name": "Allan Andrade",
+      "position": "ATA",
+      "rating": 79,
+      "age": 22
+    },
+    {
+      "name": "Gustavo Gómez",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 33
+    },
+    {
       "name": "Emiliano Martínez",
       "position": "MEI",
-      "rating": 80,
+      "rating": 78,
+      "age": 26
+    },
+    {
+      "name": "Murilo",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 29
+    },
+    {
+      "name": "Kaique",
+      "position": "GOL",
+      "rating": 75,
+      "age": 23
+    },
+    {
+      "name": "Khellven",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 25
+    },
+    {
+      "name": "Marlon Freitas",
+      "position": "MEI",
+      "rating": 74,
+      "age": 31
+    },
+    {
+      "name": "Ramón Sosa",
+      "position": "ATA",
+      "rating": 74,
       "age": 26
     }
   ],
   "santos": [
     {
-      "name": "João Paulo",
-      "position": "GOL",
-      "rating": 83,
-      "age": 31
-    },
-    {
-      "name": "Zé Rafael",
-      "position": "MEI",
-      "rating": 83,
-      "age": 33
-    },
-    {
-      "name": "Kaio Ganga",
-      "position": "ATA",
-      "rating": 83,
-      "age": 19
-    },
-    {
       "name": "Gonzalo Escobar",
       "position": "ZAG",
+      "rating": 83,
+      "age": 29
+    },
+    {
+      "name": "Benjamín Rollheiser",
+      "position": "ATA",
+      "rating": 83,
+      "age": 26
+    },
+    {
+      "name": "Gabriel Barbosa",
+      "position": "ATA",
       "rating": 82,
       "age": 29
     },
     {
-      "name": "Willian Arão",
+      "name": "Mayke",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 33
+    },
+    {
+      "name": "Zé Rafael",
       "position": "MEI",
-      "rating": 82,
+      "rating": 81,
+      "age": 33
+    },
+    {
+      "name": "Neymar",
+      "position": "ATA",
+      "rating": 81,
       "age": 34
+    },
+    {
+      "name": "Gabriel Brazão",
+      "position": "GOL",
+      "rating": 80,
+      "age": 25
+    },
+    {
+      "name": "Rony",
+      "position": "ATA",
+      "rating": 80,
+      "age": 31
+    },
+    {
+      "name": "Luan Peres",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 32
     },
     {
       "name": "Thaciano",
       "position": "MEI",
-      "rating": 82,
+      "rating": 79,
+      "age": 31
+    },
+    {
+      "name": "Christian Oliva",
+      "position": "MEI",
+      "rating": 79,
+      "age": 30
+    },
+    {
+      "name": "Diogenes",
+      "position": "GOL",
+      "rating": 78,
+      "age": 25
+    },
+    {
+      "name": "Zé Ivaldo",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 29
+    },
+    {
+      "name": "Gabriel Menino",
+      "position": "MEI",
+      "rating": 78,
+      "age": 25
+    },
+    {
+      "name": "João Paulo",
+      "position": "GOL",
+      "rating": 77,
       "age": 31
     },
     {
       "name": "Álvaro Barreal",
       "position": "MEI",
-      "rating": 82,
+      "rating": 77,
       "age": 25
     },
     {
-      "name": "Gabriel Menino",
-      "position": "MEI",
-      "rating": 82,
-      "age": 25
-    },
-    {
-      "name": "Pepê Fermino",
-      "position": "MEI",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Kauan Barreto",
-      "position": "MEI",
-      "rating": 82,
-      "age": 18
-    },
-    {
-      "name": "Benjamín Rollheiser",
+      "name": "Gustavo Caballero",
       "position": "ATA",
-      "rating": 82,
-      "age": 26
-    },
-    {
-      "name": "Lautaro Díaz",
-      "position": "ATA",
-      "rating": 82,
-      "age": 28
-    },
-    {
-      "name": "João Victor Dos Santos Alves",
-      "position": "ATA",
-      "rating": 82,
-      "age": 18
-    },
-    {
-      "name": "João Pedro",
-      "position": "GOL",
-      "rating": 81,
-      "age": 18
-    },
-    {
-      "name": "João Ananias",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "João Schmidt",
-      "position": "MEI",
-      "rating": 81,
-      "age": 33
-    },
-    {
-      "name": "Christian Oliva",
-      "position": "MEI",
-      "rating": 81,
-      "age": 30
-    },
-    {
-      "name": "Vinícius Rocha",
-      "position": "MEI",
-      "rating": 81,
-      "age": 17
-    },
-    {
-      "name": "Pedro Assis",
-      "position": "ATA",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Diogenes",
-      "position": "GOL",
-      "rating": 80,
-      "age": 25
-    },
-    {
-      "name": "Rodrigo Falcão",
-      "position": "GOL",
-      "rating": 80,
-      "age": 21
-    },
-    {
-      "name": "Arthur Vale",
-      "position": "GOL",
-      "rating": 80,
-      "age": 17
+      "rating": 76,
+      "age": 24
     },
     {
       "name": "Igor",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 76,
       "age": 29
     },
     {
-      "name": "Zé Ivaldo",
+      "name": "João Schmidt",
+      "position": "MEI",
+      "rating": 76,
+      "age": 33
+    },
+    {
+      "name": "Lucas Verissimo",
       "position": "ZAG",
-      "rating": 80,
+      "rating": 75,
+      "age": 31
+    },
+    {
+      "name": "Adonis Frias",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 28
+    },
+    {
+      "name": "Miguel Terceros",
+      "position": "MEI",
+      "rating": 75,
+      "age": 22
+    },
+    {
+      "name": "Lautaro Díaz",
+      "position": "ATA",
+      "rating": 75,
+      "age": 28
+    },
+    {
+      "name": "Moisés",
+      "position": "ATA",
+      "rating": 75,
       "age": 29
     }
   ],
   "sao_paulo": [
     {
-      "name": "Sabino",
+      "name": "Matheus Souza",
       "position": "ZAG",
       "rating": 83,
-      "age": 29
+      "age": 23
+    },
+    {
+      "name": "Pablo Maia",
+      "position": "MEI",
+      "rating": 83,
+      "age": 24
+    },
+    {
+      "name": "Robert Arboleda",
+      "position": "ZAG",
+      "rating": 82,
+      "age": 34
+    },
+    {
+      "name": "Lucas Ramon",
+      "position": "ZAG",
+      "rating": 82,
+      "age": 32
     },
     {
       "name": "Luciano",
       "position": "ATA",
-      "rating": 83,
+      "rating": 82,
       "age": 33
-    },
-    {
-      "name": "Ryan Francisco",
-      "position": "ATA",
-      "rating": 83,
-      "age": 19
-    },
-    {
-      "name": "João Pedro",
-      "position": "GOL",
-      "rating": 82,
-      "age": 20
-    },
-    {
-      "name": "Rafael Tolói",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 35
-    },
-    {
-      "name": "Luis Osorio",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Damián Bobadilla",
-      "position": "MEI",
-      "rating": 82,
-      "age": 25
-    },
-    {
-      "name": "Felipe Negrucci",
-      "position": "MEI",
-      "rating": 82,
-      "age": 22
-    },
-    {
-      "name": "Juan Potes",
-      "position": "ATA",
-      "rating": 82,
-      "age": 19
     },
     {
       "name": "Rafael",
@@ -2251,109 +2173,115 @@
       "age": 37
     },
     {
-      "name": "Carlos Coronel",
-      "position": "GOL",
-      "rating": 81,
-      "age": 29
-    },
-    {
-      "name": "Felipe Preis",
-      "position": "GOL",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Wendell",
+      "name": "Cédric",
       "position": "ZAG",
       "rating": 81,
-      "age": 32
+      "age": 34
     },
     {
-      "name": "Igão",
+      "name": "João Moreira",
       "position": "ZAG",
       "rating": 81,
-      "age": 18
-    },
-    {
-      "name": "Nicolas",
-      "position": "ZAG",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Luan",
-      "position": "MEI",
-      "rating": 81,
-      "age": 27
-    },
-    {
-      "name": "Gonzalo Tapia",
-      "position": "ATA",
-      "rating": 80,
-      "age": 24
-    },
-    {
-      "name": "Hugo",
-      "position": "ZAG",
-      "rating": 80,
       "age": 22
-    },
-    {
-      "name": "Robert William",
-      "position": "MEI",
-      "rating": 80,
-      "age": 16
-    },
-    {
-      "name": "Guilherme Reis",
-      "position": "ZAG",
-      "rating": 79,
-      "age": 20
-    },
-    {
-      "name": "Djhordney Ferreira",
-      "position": "MEI",
-      "rating": 79,
-      "age": 19
-    },
-    {
-      "name": "Matheus Souza",
-      "position": "ZAG",
-      "rating": 78,
-      "age": 23
     },
     {
       "name": "Danielzinho",
       "position": "MEI",
-      "rating": 78,
+      "rating": 80,
       "age": 31
     },
     {
-      "name": "Gustavo Santana",
+      "name": "Artur",
+      "position": "ATA",
+      "rating": 80,
+      "age": 28
+    },
+    {
+      "name": "Carlos Coronel",
+      "position": "GOL",
+      "rating": 77,
+      "age": 29
+    },
+    {
+      "name": "Sabino",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 29
+    },
+    {
+      "name": "Hugo",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 22
+    },
+    {
+      "name": "Marcos Antonio",
       "position": "MEI",
-      "rating": 78,
-      "age": 20
+      "rating": 77,
+      "age": 26
+    },
+    {
+      "name": "Luan",
+      "position": "MEI",
+      "rating": 77,
+      "age": 27
+    },
+    {
+      "name": "Young",
+      "position": "GOL",
+      "rating": 76,
+      "age": 24
+    },
+    {
+      "name": "Enzo Díaz",
+      "position": "ZAG",
+      "rating": 76,
+      "age": 30
+    },
+    {
+      "name": "André Silva",
+      "position": "ATA",
+      "rating": 76,
+      "age": 29
+    },
+    {
+      "name": "Ferreira",
+      "position": "ATA",
+      "rating": 76,
+      "age": 28
+    },
+    {
+      "name": "Rafael Tolói",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 35
+    },
+    {
+      "name": "Alan Franco",
+      "position": "ZAG",
+      "rating": 75,
+      "age": 29
+    },
+    {
+      "name": "Cauly",
+      "position": "MEI",
+      "rating": 75,
+      "age": 30
+    },
+    {
+      "name": "Damián Bobadilla",
+      "position": "MEI",
+      "rating": 75,
+      "age": 25
+    },
+    {
+      "name": "Lucas Moura",
+      "position": "ATA",
+      "rating": 75,
+      "age": 33
     }
   ],
   "vasco": [
-    {
-      "name": "Daniel Fuzato",
-      "position": "GOL",
-      "rating": 83,
-      "age": 29
-    },
-    {
-      "name": "Pablo",
-      "position": "GOL",
-      "rating": 83,
-      "age": 23
-    },
-    {
-      "name": "José Luis Rodríguez",
-      "position": "ZAG",
-      "rating": 83,
-      "age": 29
-    },
     {
       "name": "Lucas Freitas",
       "position": "ZAG",
@@ -2361,100 +2289,52 @@
       "age": 25
     },
     {
-      "name": "Nuno Moreira",
-      "position": "MEI",
+      "name": "Claudio Spinelli",
+      "position": "ATA",
       "rating": 83,
+      "age": 29
+    },
+    {
+      "name": "Adson",
+      "position": "ATA",
+      "rating": 83,
+      "age": 25
+    },
+    {
+      "name": "Daniel Fuzato",
+      "position": "GOL",
+      "rating": 82,
+      "age": 29
+    },
+    {
+      "name": "José Luis Rodríguez",
+      "position": "ZAG",
+      "rating": 82,
+      "age": 29
+    },
+    {
+      "name": "Carlos Cuesta",
+      "position": "ZAG",
+      "rating": 82,
       "age": 27
     },
     {
-      "name": "Cauan Barros",
-      "position": "MEI",
-      "rating": 83,
-      "age": 22
-    },
-    {
-      "name": "David",
+      "name": "Andrés Gómez",
       "position": "ATA",
-      "rating": 83,
-      "age": 30
-    },
-    {
-      "name": "Marino Hinestroza",
-      "position": "ATA",
-      "rating": 83,
-      "age": 24
-    },
-    {
-      "name": "Melim",
-      "position": "ZAG",
       "rating": 82,
-      "age": 18
-    },
-    {
-      "name": "Breno Sales",
-      "position": "ZAG",
-      "rating": 82,
-      "age": 16
-    },
-    {
-      "name": "Jair",
-      "position": "MEI",
-      "rating": 82,
-      "age": 31
-    },
-    {
-      "name": "Lucca Guima",
-      "position": "MEI",
-      "rating": 82,
-      "age": 20
-    },
-    {
-      "name": "Loide",
-      "position": "ATA",
-      "rating": 81,
-      "age": 26
-    },
-    {
-      "name": "Marcão",
-      "position": "GOL",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Lukas Zuccarello",
-      "position": "MEI",
-      "rating": 81,
-      "age": 19
-    },
-    {
-      "name": "Riquelme",
-      "position": "ZAG",
-      "rating": 80,
       "age": 23
     },
     {
-      "name": "Walace",
+      "name": "Léo Jardim",
+      "position": "GOL",
+      "rating": 81,
+      "age": 31
+    },
+    {
+      "name": "Paulo Henrique",
       "position": "ZAG",
       "rating": 80,
-      "age": 21
-    },
-    {
-      "name": "Wanyson Nogueira",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 20
-    },
-    {
-      "name": "Thiago Mendes",
-      "position": "MEI",
-      "rating": 80,
-      "age": 34
-    },
-    {
-      "name": "Bruno Lopes",
-      "position": "ATA",
-      "rating": 80,
-      "age": 18
+      "age": 29
     },
     {
       "name": "Robert",
@@ -2463,84 +2343,162 @@
       "age": 22
     },
     {
+      "name": "Jair",
+      "position": "MEI",
+      "rating": 79,
+      "age": 31
+    },
+    {
       "name": "Matheus Carvalho",
       "position": "MEI",
       "rating": 79,
       "age": 24
     },
     {
-      "name": "Claudio Spinelli",
-      "position": "ATA",
+      "name": "Cauan Barros",
+      "position": "MEI",
       "rating": 79,
-      "age": 29
+      "age": 22
     },
     {
-      "name": "Diego Minete",
+      "name": "Marino Hinestroza",
       "position": "ATA",
       "rating": 79,
-      "age": 17
+      "age": 24
+    },
+    {
+      "name": "Riquelme",
+      "position": "ZAG",
+      "rating": 78,
+      "age": 23
+    },
+    {
+      "name": "Thiago Mendes",
+      "position": "MEI",
+      "rating": 78,
+      "age": 34
+    },
+    {
+      "name": "Johan Rojas",
+      "position": "ATA",
+      "rating": 78,
+      "age": 23
+    },
+    {
+      "name": "Pablo",
+      "position": "GOL",
+      "rating": 77,
+      "age": 23
+    },
+    {
+      "name": "Lucas Piton",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 25
+    },
+    {
+      "name": "Cuiabano",
+      "position": "ZAG",
+      "rating": 77,
+      "age": 23
+    },
+    {
+      "name": "Tchê Tchê",
+      "position": "MEI",
+      "rating": 77,
+      "age": 33
+    },
+    {
+      "name": "Loide",
+      "position": "ATA",
+      "rating": 75,
+      "age": 26
+    },
+    {
+      "name": "Hugo Moura",
+      "position": "MEI",
+      "rating": 75,
+      "age": 28
+    },
+    {
+      "name": "Alan Saldivia",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 24
     }
   ],
   "vitoria": [
     {
-      "name": "Claudinho",
+      "name": "Lucas Arcanjo",
+      "position": "GOL",
+      "rating": 83,
+      "age": 27
+    },
+    {
+      "name": "Riccieli",
+      "position": "ZAG",
+      "rating": 83,
+      "age": 27
+    },
+    {
+      "name": "Ramon",
       "position": "ZAG",
       "rating": 83,
       "age": 25
     },
     {
-      "name": "Guilherme Inácio",
+      "name": "Fabiano",
       "position": "ZAG",
       "rating": 83,
-      "age": 18
+      "age": 26
     },
     {
-      "name": "Marcos Vinicius",
+      "name": "Emmanuel Martínez",
+      "position": "MEI",
+      "rating": 83,
+      "age": 32
+    },
+    {
+      "name": "Osvaldo",
       "position": "ATA",
       "rating": 83,
-      "age": 19
+      "age": 39
     },
     {
-      "name": "Cacá",
+      "name": "Matheusinho",
       "position": "ZAG",
       "rating": 82,
       "age": 27
     },
     {
-      "name": "Fabiano",
-      "position": "ZAG",
+      "name": "Zé Vitor",
+      "position": "MEI",
       "rating": 82,
       "age": 26
     },
     {
-      "name": "Kauan Santos",
-      "position": "ZAG",
+      "name": "Marinho",
+      "position": "ATA",
       "rating": 82,
-      "age": 19
+      "age": 36
     },
     {
-      "name": "Matheus",
-      "position": "MEI",
+      "name": "Renzo López",
+      "position": "ATA",
+      "rating": 82,
+      "age": 32
+    },
+    {
+      "name": "Erick",
+      "position": "ATA",
       "rating": 82,
       "age": 28
     },
     {
-      "name": "Alejandro Almaraz",
-      "position": "MEI",
-      "rating": 82,
-      "age": 19
-    },
-    {
-      "name": "Osvaldo",
-      "position": "ATA",
-      "rating": 82,
-      "age": 39
-    },
-    {
-      "name": "Ruan Gabriel",
-      "position": "ATA",
-      "rating": 82,
-      "age": 18
+      "name": "Neris",
+      "position": "ZAG",
+      "rating": 81,
+      "age": 34
     },
     {
       "name": "Luan Cândido",
@@ -2549,10 +2507,10 @@
       "age": 25
     },
     {
-      "name": "Camutanga",
+      "name": "Edu",
       "position": "ZAG",
       "rating": 81,
-      "age": 32
+      "age": 26
     },
     {
       "name": "Nathan",
@@ -2567,78 +2525,96 @@
       "age": 22
     },
     {
-      "name": "Lucas Lohan",
-      "position": "MEI",
-      "rating": 81,
-      "age": 20
-    },
-    {
-      "name": "Diego Tarzia",
-      "position": "ZAG",
-      "rating": 80,
-      "age": 23
-    },
-    {
-      "name": "Enrique Saverio",
+      "name": "Gabriel Baralhas",
       "position": "MEI",
       "rating": 80,
       "age": 27
     },
     {
-      "name": "Renato Kayzer",
+      "name": "Aitor Cantalapiedra",
       "position": "ATA",
       "rating": 80,
       "age": 30
     },
     {
-      "name": "Ezequiel",
-      "position": "GOL",
-      "rating": 79,
-      "age": 19
-    },
-    {
-      "name": "Emmanuel Martínez",
-      "position": "MEI",
+      "name": "Camutanga",
+      "position": "ZAG",
       "rating": 79,
       "age": 32
     },
     {
-      "name": "Gabriel",
-      "position": "GOL",
-      "rating": 78,
-      "age": 33
+      "name": "Claudinho",
+      "position": "ZAG",
+      "rating": 79,
+      "age": 25
     },
     {
-      "name": "Lucas Arcanjo",
-      "position": "GOL",
+      "name": "Dudu",
+      "position": "MEI",
+      "rating": 79,
+      "age": 27
+    },
+    {
+      "name": "Jamerson",
+      "position": "ZAG",
       "rating": 78,
       "age": 27
     },
     {
-      "name": "Wanderson",
-      "position": "ZAG",
-      "rating": 78,
-      "age": 17
-    },
-    {
-      "name": "Ruben Ramos",
+      "name": "Anderson Bispo Dos Santos",
       "position": "ATA",
       "rating": 78,
-      "age": 19
+      "age": 23
+    },
+    {
+      "name": "Caique",
+      "position": "MEI",
+      "rating": 77,
+      "age": 30
     }
   ],
   "america_mg": [
     {
-      "name": "Eduardo Luiz Person",
-      "position": "MEI",
+      "name": "Ricardo Silva",
+      "position": "ZAG",
       "rating": 74,
-      "age": 29
+      "age": 33
     },
     {
-      "name": "Luidy",
+      "name": "Heitor",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 22
+    },
+    {
+      "name": "Gabriel De Oliveira Da Silva",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 26
+    },
+    {
+      "name": "Jorge Roa",
+      "position": "MEI",
+      "rating": 74,
+      "age": 33
+    },
+    {
+      "name": "Felipe Amaral",
+      "position": "MEI",
+      "rating": 74,
+      "age": 23
+    },
+    {
+      "name": "William",
+      "position": "GOL",
+      "rating": 73,
+      "age": 28
+    },
+    {
+      "name": "Paulinho",
       "position": "ZAG",
       "rating": 73,
-      "age": 17
+      "age": 22
     },
     {
       "name": "Gabriel Domingos",
@@ -2647,94 +2623,28 @@
       "age": 25
     },
     {
-      "name": "Yago Souza",
-      "position": "MEI",
-      "rating": 73,
-      "age": 20
-    },
-    {
       "name": "Paulo Victor",
       "position": "ATA",
-      "rating": 73,
+      "rating": 72,
       "age": 25
-    },
-    {
-      "name": "Cássio",
-      "position": "GOL",
-      "rating": 72,
-      "age": 24
-    },
-    {
-      "name": "Heitor",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 22
     },
     {
       "name": "Jhonny Cardinoti Pedro",
       "position": "ZAG",
-      "rating": 72,
+      "rating": 71,
       "age": 24
-    },
-    {
-      "name": "Léo Alaba",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 27
     },
     {
       "name": "Rafael Barcelos",
       "position": "ZAG",
-      "rating": 72,
+      "rating": 71,
       "age": 22
     },
     {
-      "name": "Dalbert",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 32
-    },
-    {
-      "name": "Otávio Gonçalves",
-      "position": "MEI",
-      "rating": 71,
-      "age": 20
-    },
-    {
-      "name": "Gabriel Oliveira Santos",
-      "position": "MEI",
-      "rating": 71,
-      "age": 26
-    },
-    {
-      "name": "Gonzalo Mastriani",
-      "position": "ATA",
-      "rating": 71,
-      "age": 33
-    },
-    {
-      "name": "Matías Segovia",
-      "position": "ATA",
-      "rating": 71,
-      "age": 23
-    },
-    {
-      "name": "Pedro Geovane Paranhos Santos",
-      "position": "ATA",
-      "rating": 71,
-      "age": 19
-    },
-    {
-      "name": "Italo Brito",
-      "position": "GOL",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Thallyson",
+      "name": "Léo Alaba",
       "position": "ZAG",
       "rating": 70,
-      "age": 20
+      "age": 27
     },
     {
       "name": "Alê",
@@ -2743,156 +2653,138 @@
       "age": 36
     },
     {
-      "name": "Kaique Zizero",
+      "name": "Gabriel Oliveira Santos",
       "position": "MEI",
       "rating": 70,
-      "age": 19
+      "age": 26
     },
     {
-      "name": "Everton Sidnei De Brito",
-      "position": "ATA",
-      "rating": 70,
-      "age": 31
-    },
-    {
-      "name": "William",
-      "position": "GOL",
+      "name": "Enrico Bernardes Ribeiro Prudencio",
+      "position": "MEI",
       "rating": 69,
-      "age": 28
+      "age": 26
     },
     {
-      "name": "Ricardo Silva",
+      "name": "Italo Gabriel Charbaje De Souza",
+      "position": "MEI",
+      "rating": 69,
+      "age": 26
+    },
+    {
+      "name": "Emerson Santos",
       "position": "ZAG",
       "rating": 69,
-      "age": 33
+      "age": 31
     },
     {
       "name": "Wesley Augusto Henn Marth",
       "position": "ZAG",
       "rating": 69,
       "age": 26
+    },
+    {
+      "name": "Fernando Elizari",
+      "position": "MEI",
+      "rating": 69,
+      "age": 35
+    },
+    {
+      "name": "Matías Segovia",
+      "position": "ATA",
+      "rating": 69,
+      "age": 23
+    },
+    {
+      "name": "Gustavo",
+      "position": "GOL",
+      "rating": 68,
+      "age": 33
+    },
+    {
+      "name": "Cássio",
+      "position": "GOL",
+      "rating": 68,
+      "age": 24
+    },
+    {
+      "name": "Gonzalo Mastriani",
+      "position": "ATA",
+      "rating": 67,
+      "age": 33
+    },
+    {
+      "name": "Dalbert",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 32
     }
   ],
   "avai": [
     {
-      "name": "Jefferson",
-      "position": "ZAG",
+      "name": "Léo Gamalho",
+      "position": "ATA",
       "rating": 74,
-      "age": 23
+      "age": 40
     },
     {
-      "name": "Wallison",
-      "position": "ZAG",
-      "rating": 74,
+      "name": "Caio Brazil Fonseca",
+      "position": "MEI",
+      "rating": 72,
+      "age": 26
+    },
+    {
+      "name": "Leó Aragão",
+      "position": "GOL",
+      "rating": 72,
       "age": 24
     },
     {
-      "name": "Zé Ricardo",
+      "name": "Mateus Quaresma",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 29
+    },
+    {
+      "name": "Allyson",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 35
+    },
+    {
+      "name": "Joao Victor",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 25
+    },
+    {
+      "name": "Jean Lucas Figueiredo",
       "position": "MEI",
-      "rating": 74,
+      "rating": 71,
+      "age": 31
+    },
+    {
+      "name": "Igor José Bohn",
+      "position": "GOL",
+      "rating": 70,
       "age": 30
     },
     {
       "name": "Nicolás Cabral",
       "position": "ZAG",
-      "rating": 73,
+      "rating": 70,
       "age": 26
-    },
-    {
-      "name": "Joao Victor",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 25
-    },
-    {
-      "name": "Vinicius",
-      "position": "MEI",
-      "rating": 73,
-      "age": 19
-    },
-    {
-      "name": "Thayllon",
-      "position": "ATA",
-      "rating": 73,
-      "age": 19
-    },
-    {
-      "name": "Daniel Penha",
-      "position": "MEI",
-      "rating": 72,
-      "age": 27
-    },
-    {
-      "name": "Paulo Vitor",
-      "position": "MEI",
-      "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Bilu",
-      "position": "ATA",
-      "rating": 72,
-      "age": 27
-    },
-    {
-      "name": "Tucão",
-      "position": "ATA",
-      "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Igor José Bohn",
-      "position": "GOL",
-      "rating": 71,
-      "age": 30
-    },
-    {
-      "name": "Wesley",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 26
-    },
-    {
-      "name": "Douglas",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 25
     },
     {
       "name": "Otávio",
       "position": "GOL",
-      "rating": 70,
+      "rating": 69,
       "age": 33
     },
     {
-      "name": "Guilherme Aquino",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 22
-    },
-    {
-      "name": "Del Piage",
-      "position": "MEI",
-      "rating": 70,
-      "age": 26
-    },
-    {
-      "name": "Leonardo",
-      "position": "GOL",
-      "rating": 69,
-      "age": 20
-    },
-    {
-      "name": "William Fernando",
+      "name": "Douglas",
       "position": "ZAG",
       "rating": 69,
-      "age": 20
-    },
-    {
-      "name": "Gabriel Simples",
-      "position": "ZAG",
-      "rating": 69,
-      "age": 21
+      "age": 25
     },
     {
       "name": "Hyan",
@@ -2901,138 +2793,162 @@
       "age": 22
     },
     {
-      "name": "Isaías",
-      "position": "ATA",
+      "name": "Jefferson",
+      "position": "ZAG",
       "rating": 68,
-      "age": 21
+      "age": 23
     },
     {
-      "name": "Caio Brazil Fonseca",
+      "name": "Wallison",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 24
+    },
+    {
+      "name": "Guilherme Aquino",
+      "position": "ZAG",
+      "rating": 67,
+      "age": 22
+    },
+    {
+      "name": "Zé Ricardo",
       "position": "MEI",
       "rating": 67,
+      "age": 30
+    },
+    {
+      "name": "Wesley",
+      "position": "ZAG",
+      "rating": 66,
       "age": 26
     },
     {
-      "name": "Leó Aragão",
-      "position": "GOL",
-      "rating": 67,
+      "name": "Daniel Penha",
+      "position": "MEI",
+      "rating": 66,
+      "age": 27
+    },
+    {
+      "name": "Pedro Cuiabá",
+      "position": "MEI",
+      "rating": 66,
       "age": 24
+    },
+    {
+      "name": "Del Piage",
+      "position": "MEI",
+      "rating": 65,
+      "age": 26
+    },
+    {
+      "name": "Wenderson",
+      "position": "MEI",
+      "rating": 65,
+      "age": 27
+    },
+    {
+      "name": "Bilu",
+      "position": "ATA",
+      "rating": 65,
+      "age": 27
+    },
+    {
+      "name": "Cristiano",
+      "position": "ATA",
+      "rating": 65,
+      "age": 39
+    },
+    {
+      "name": "Luiz Henrique",
+      "position": "MEI",
+      "rating": 64,
+      "age": 27
     }
   ],
   "botafogo_sp": [
     {
-      "name": "Jordan",
+      "name": "Brenno Faro Klippel",
       "position": "GOL",
       "rating": 74,
-      "age": 28
-    },
-    {
-      "name": "Carlão",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 25
-    },
-    {
-      "name": "Darlan",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 22
-    },
-    {
-      "name": "Guilherme Queiroz",
-      "position": "MEI",
-      "rating": 74,
-      "age": 36
-    },
-    {
-      "name": "Yuri",
-      "position": "MEI",
-      "rating": 74,
-      "age": 20
-    },
-    {
-      "name": "Pedro Henrique Souza Do Nascimento",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 19
+      "age": 23
     },
     {
       "name": "Kelvin",
       "position": "MEI",
-      "rating": 73,
+      "rating": 74,
       "age": 28
-    },
-    {
-      "name": "Arthur Caike",
-      "position": "ATA",
-      "rating": 72,
-      "age": 34
-    },
-    {
-      "name": "Hebert Willian Badaró Oliveira",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Jonathan Lemos",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 33
-    },
-    {
-      "name": "Matheus Sales",
-      "position": "MEI",
-      "rating": 71,
-      "age": 31
-    },
-    {
-      "name": "Ruan Pablo De Oliveira Romano",
-      "position": "MEI",
-      "rating": 71,
-      "age": 20
     },
     {
       "name": "Thiago Moraes",
       "position": "MEI",
-      "rating": 71,
+      "rating": 74,
       "age": 28
     },
     {
-      "name": "Wesley Pinheiro",
-      "position": "ATA",
-      "rating": 71,
-      "age": 25
+      "name": "Darlan",
+      "position": "ZAG",
+      "rating": 73,
+      "age": 22
     },
     {
-      "name": "Márcio Maranhão",
+      "name": "Hugo",
       "position": "ATA",
+      "rating": 72,
+      "age": 26
+    },
+    {
+      "name": "Arthur Caike",
+      "position": "ATA",
+      "rating": 71,
+      "age": 34
+    },
+    {
+      "name": "Ericson",
+      "position": "ZAG",
       "rating": 71,
       "age": 27
     },
     {
-      "name": "Wallace",
+      "name": "Everton Morelli",
+      "position": "MEI",
+      "rating": 71,
+      "age": 28
+    },
+    {
+      "name": "Victor Souza",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 25
+    },
+    {
+      "name": "Felipe Vieira",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 27
+    },
+    {
+      "name": "Gabriel Inocencio",
       "position": "ZAG",
       "rating": 70,
       "age": 31
     },
     {
-      "name": "Penha",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Marco Antônio",
+      "name": "Matheus Sales",
       "position": "MEI",
       "rating": 70,
-      "age": 26
+      "age": 31
     },
     {
-      "name": "Hugo",
+      "name": "Luiz Guilherme Vieira Da Silva",
       "position": "ATA",
       "rating": 70,
-      "age": 26
+      "age": 23
+    },
+    {
+      "name": "Wallace",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 31
     },
     {
       "name": "Vilar",
@@ -3041,174 +2957,204 @@
       "age": 26
     },
     {
-      "name": "Everton Morelli",
-      "position": "MEI",
-      "rating": 69,
-      "age": 28
-    },
-    {
-      "name": "Willian",
+      "name": "Márcio Maranhão",
       "position": "ATA",
-      "rating": 68,
-      "age": 21
+      "rating": 69,
+      "age": 27
     },
     {
-      "name": "Victor Souza",
+      "name": "Patrick Brey",
       "position": "ZAG",
       "rating": 68,
+      "age": 29
+    },
+    {
+      "name": "Marco Antônio",
+      "position": "MEI",
+      "rating": 68,
+      "age": 26
+    },
+    {
+      "name": "Carlão",
+      "position": "ZAG",
+      "rating": 67,
       "age": 25
     },
     {
-      "name": "Ericson",
+      "name": "Leandro Maciel",
+      "position": "MEI",
+      "rating": 67,
+      "age": 30
+    },
+    {
+      "name": "Wesley Pinheiro",
+      "position": "ATA",
+      "rating": 67,
+      "age": 25
+    },
+    {
+      "name": "Jordan",
+      "position": "GOL",
+      "rating": 66,
+      "age": 28
+    },
+    {
+      "name": "Jonathan Lemos",
       "position": "ZAG",
-      "rating": 68,
-      "age": 27
+      "rating": 66,
+      "age": 33
+    },
+    {
+      "name": "Marquinho",
+      "position": "MEI",
+      "rating": 66,
+      "age": 24
     }
   ],
   "crb": [
     {
-      "name": "Vitor Caetano",
+      "name": "Bressan",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 33
+    },
+    {
+      "name": "Douglas Baggio",
+      "position": "ATA",
+      "rating": 73,
+      "age": 31
+    },
+    {
+      "name": "Thiago Fernandes",
+      "position": "ATA",
+      "rating": 73,
+      "age": 25
+    },
+    {
+      "name": "Fábio",
       "position": "GOL",
-      "rating": 74,
-      "age": 27
-    },
-    {
-      "name": "Cândido",
-      "position": "GOL",
-      "rating": 74,
-      "age": 20
-    },
-    {
-      "name": "Crystopher",
-      "position": "MEI",
-      "rating": 74,
-      "age": 28
-    },
-    {
-      "name": "Cauã Carvalho",
-      "position": "MEI",
-      "rating": 74,
-      "age": 19
-    },
-    {
-      "name": "Luis Vinicius Nunes Cavalcante",
-      "position": "ATA",
-      "rating": 74,
-      "age": 27
-    },
-    {
-      "name": "Ruy Marcos Levino De Oliveira",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 19
-    },
-    {
-      "name": "Luizao",
-      "position": "MEI",
-      "rating": 73,
-      "age": 28
-    },
-    {
-      "name": "Rian",
-      "position": "MEI",
-      "rating": 73,
-      "age": 19
-    },
-    {
-      "name": "Luiz Phellype",
-      "position": "ATA",
-      "rating": 73,
-      "age": 32
-    },
-    {
-      "name": "Leonardo de Campos",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 34
-    },
-    {
-      "name": "Lucas Lovat",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 29
-    },
-    {
-      "name": "Joao Neto",
-      "position": "ATA",
       "rating": 72,
       "age": 23
     },
     {
-      "name": "Anthony Matheus",
+      "name": "Crystopher",
+      "position": "MEI",
+      "rating": 72,
+      "age": 28
+    },
+    {
+      "name": "Luiz Phellype",
       "position": "ATA",
       "rating": 72,
-      "age": 19
+      "age": 32
     },
     {
-      "name": "Matheus",
-      "position": "GOL",
-      "rating": 71,
-      "age": 31
-    },
-    {
-      "name": "Heitor Brissantt",
+      "name": "Kevin",
       "position": "ZAG",
       "rating": 71,
-      "age": 19
+      "age": 28
+    },
+    {
+      "name": "Fábio Augusto Schirmann",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 29
     },
     {
       "name": "Danielzinho",
       "position": "MEI",
-      "rating": 70,
+      "rating": 71,
       "age": 30
+    },
+    {
+      "name": "Patrick de Lucca",
+      "position": "MEI",
+      "rating": 71,
+      "age": 26
+    },
+    {
+      "name": "Joao Neto",
+      "position": "ATA",
+      "rating": 71,
+      "age": 23
+    },
+    {
+      "name": "Matheus",
+      "position": "GOL",
+      "rating": 70,
+      "age": 31
+    },
+    {
+      "name": "Luis Vinicius Nunes Cavalcante",
+      "position": "ATA",
+      "rating": 70,
+      "age": 27
+    },
+    {
+      "name": "Leonardo de Campos",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 34
     },
     {
       "name": "Dadá",
       "position": "ATA",
-      "rating": 70,
+      "rating": 69,
+      "age": 29
+    },
+    {
+      "name": "Vitor Caetano",
+      "position": "GOL",
+      "rating": 68,
+      "age": 27
+    },
+    {
+      "name": "Henri Santos",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 24
+    },
+    {
+      "name": "Pedro Castro",
+      "position": "MEI",
+      "rating": 68,
+      "age": 33
+    },
+    {
+      "name": "Mikael",
+      "position": "ATA",
+      "rating": 68,
+      "age": 27
+    },
+    {
+      "name": "Reverson",
+      "position": "ZAG",
+      "rating": 67,
       "age": 29
     },
     {
       "name": "Hereda",
       "position": "ZAG",
-      "rating": 69,
+      "rating": 66,
       "age": 27
     },
     {
-      "name": "Lyncon",
+      "name": "João Pedro Salvador Kruger Pin",
       "position": "ZAG",
-      "rating": 69,
-      "age": 21
+      "rating": 65,
+      "age": 26
     },
     {
-      "name": "Kevin",
-      "position": "ZAG",
-      "rating": 68,
+      "name": "Luizao",
+      "position": "MEI",
+      "rating": 65,
       "age": 28
     },
     {
-      "name": "Reverson",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 29
-    },
-    {
-      "name": "Fábio Augusto Schirmann",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 29
-    },
-    {
-      "name": "Maycon",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 20
-    },
-    {
-      "name": "Fábio",
-      "position": "GOL",
-      "rating": 67,
-      "age": 23
+      "name": "Geovane",
+      "position": "MEI",
+      "rating": 65,
+      "age": 27
     }
   ],
   "ceara": [
@@ -3219,82 +3165,58 @@
       "age": 25
     },
     {
-      "name": "Gustavo Martins",
-      "position": "GOL",
-      "rating": 74,
-      "age": 20
-    },
-    {
-      "name": "Sanchez",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 30
-    },
-    {
-      "name": "Pedro Esli",
-      "position": "MEI",
-      "rating": 74,
-      "age": 19
-    },
-    {
-      "name": "Janderson",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 20
-    },
-    {
-      "name": "Matheuzinho",
-      "position": "MEI",
-      "rating": 73,
-      "age": 28
-    },
-    {
-      "name": "Bruno",
-      "position": "GOL",
-      "rating": 72,
-      "age": 32
-    },
-    {
-      "name": "Rafael Ramos",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 31
-    },
-    {
       "name": "Luiz Otavio",
       "position": "ZAG",
-      "rating": 72,
+      "rating": 73,
       "age": 37
-    },
-    {
-      "name": "Éder",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 31
-    },
-    {
-      "name": "Alex",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 32
-    },
-    {
-      "name": "Richardson",
-      "position": "MEI",
-      "rating": 71,
-      "age": 34
-    },
-    {
-      "name": "Juan Alano",
-      "position": "ATA",
-      "rating": 71,
-      "age": 29
     },
     {
       "name": "Luiz Otávio",
       "position": "ZAG",
-      "rating": 70,
+      "rating": 73,
       "age": 33
+    },
+    {
+      "name": "Fernando",
+      "position": "ZAG",
+      "rating": 73,
+      "age": 26
+    },
+    {
+      "name": "Vinicius",
+      "position": "MEI",
+      "rating": 73,
+      "age": 35
+    },
+    {
+      "name": "Wendel",
+      "position": "ATA",
+      "rating": 73,
+      "age": 25
+    },
+    {
+      "name": "Lucca",
+      "position": "ATA",
+      "rating": 72,
+      "age": 23
+    },
+    {
+      "name": "Éder",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 31
+    },
+    {
+      "name": "Matheuzinho",
+      "position": "MEI",
+      "rating": 71,
+      "age": 28
+    },
+    {
+      "name": "Sanchez",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 30
     },
     {
       "name": "Bryan",
@@ -3303,46 +3225,10 @@
       "age": 29
     },
     {
-      "name": "Stanley Boateng",
+      "name": "Júlio César",
       "position": "ZAG",
       "rating": 70,
-      "age": 21
-    },
-    {
-      "name": "Vinicius Uchella",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Vinicius",
-      "position": "MEI",
-      "rating": 70,
-      "age": 25
-    },
-    {
-      "name": "Matheus Andrade",
-      "position": "MEI",
-      "rating": 70,
-      "age": 24
-    },
-    {
-      "name": "Gabriel Amaral",
-      "position": "ATA",
-      "rating": 69,
-      "age": 20
-    },
-    {
-      "name": "Caio",
-      "position": "MEI",
-      "rating": 69,
-      "age": 18
-    },
-    {
-      "name": "João Gabriel",
-      "position": "MEI",
-      "rating": 69,
-      "age": 20
+      "age": 22
     },
     {
       "name": "Ronald",
@@ -3351,36 +3237,84 @@
       "age": 26
     },
     {
-      "name": "Aloísio",
+      "name": "Richard",
+      "position": "GOL",
+      "rating": 67,
+      "age": 35
+    },
+    {
+      "name": "Bruno",
+      "position": "GOL",
+      "rating": 67,
+      "age": 32
+    },
+    {
+      "name": "Alex",
       "position": "ZAG",
-      "rating": 68,
-      "age": 18
+      "rating": 67,
+      "age": 32
+    },
+    {
+      "name": "Matheus Andrade",
+      "position": "MEI",
+      "rating": 67,
+      "age": 24
+    },
+    {
+      "name": "Juan Alano",
+      "position": "ATA",
+      "rating": 67,
+      "age": 29
+    },
+    {
+      "name": "Rafael Ramos",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 31
+    },
+    {
+      "name": "Vinicius",
+      "position": "MEI",
+      "rating": 66,
+      "age": 25
+    },
+    {
+      "name": "Richardson",
+      "position": "MEI",
+      "rating": 65,
+      "age": 34
     }
   ],
   "criciuma": [
     {
-      "name": "Ruan Rodrigues Carvalho",
+      "name": "Airton",
+      "position": "GOL",
+      "rating": 74,
+      "age": 32
+    },
+    {
+      "name": "Kauã Moroso",
+      "position": "GOL",
+      "rating": 74,
+      "age": 22
+    },
+    {
+      "name": "Heitor",
       "position": "ZAG",
       "rating": 74,
-      "age": 19
+      "age": 28
     },
     {
-      "name": "Fellipe Mateus",
+      "name": "Willean Lepu",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 29
+    },
+    {
+      "name": "Eduardo",
       "position": "MEI",
       "rating": 74,
-      "age": 35
-    },
-    {
-      "name": "Steven Nufour",
-      "position": "MEI",
-      "rating": 74,
-      "age": 21
-    },
-    {
-      "name": "Jhonata Robert",
-      "position": "ATA",
-      "rating": 74,
-      "age": 26
+      "age": 29
     },
     {
       "name": "João Carlos",
@@ -3395,88 +3329,52 @@
       "age": 31
     },
     {
-      "name": "Kauã Moroso",
-      "position": "GOL",
-      "rating": 73,
-      "age": 22
-    },
-    {
-      "name": "Léo Mana",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 22
-    },
-    {
-      "name": "Fabricio",
+      "name": "Eliel",
       "position": "MEI",
       "rating": 73,
-      "age": 20
-    },
-    {
-      "name": "Airton",
-      "position": "GOL",
-      "rating": 72,
-      "age": 32
-    },
-    {
-      "name": "Marcinho",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 30
-    },
-    {
-      "name": "Gui Lobo",
-      "position": "MEI",
-      "rating": 72,
-      "age": 26
-    },
-    {
-      "name": "Lucas Vinicius Bugs",
-      "position": "MEI",
-      "rating": 72,
-      "age": 20
-    },
-    {
-      "name": "Cauê",
-      "position": "ATA",
-      "rating": 72,
       "age": 23
-    },
-    {
-      "name": "Lucas Soratto",
-      "position": "GOL",
-      "rating": 71,
-      "age": 19
-    },
-    {
-      "name": "Octávio Henrique",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 21
-    },
-    {
-      "name": "Jean",
-      "position": "MEI",
-      "rating": 71,
-      "age": 31
-    },
-    {
-      "name": "Romarinho",
-      "position": "ATA",
-      "rating": 71,
-      "age": 32
-    },
-    {
-      "name": "César",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 33
     },
     {
       "name": "Luciano Castan",
       "position": "ZAG",
-      "rating": 69,
+      "rating": 72,
       "age": 36
+    },
+    {
+      "name": "Bruno Alves",
+      "position": "ZAG",
+      "rating": 72,
+      "age": 35
+    },
+    {
+      "name": "Rómulo Otero",
+      "position": "MEI",
+      "rating": 72,
+      "age": 33
+    },
+    {
+      "name": "Fellipe Mateus",
+      "position": "MEI",
+      "rating": 72,
+      "age": 35
+    },
+    {
+      "name": "Romarinho",
+      "position": "ATA",
+      "rating": 72,
+      "age": 32
+    },
+    {
+      "name": "Marcelo Hermes",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 31
+    },
+    {
+      "name": "Yuri",
+      "position": "ATA",
+      "rating": 70,
+      "age": 28
     },
     {
       "name": "Rodrigo",
@@ -3485,10 +3383,10 @@
       "age": 39
     },
     {
-      "name": "Ronald",
-      "position": "MEI",
+      "name": "Marcinho",
+      "position": "ZAG",
       "rating": 69,
-      "age": 29
+      "age": 30
     },
     {
       "name": "Sandry",
@@ -3497,30 +3395,60 @@
       "age": 23
     },
     {
-      "name": "Hiago",
+      "name": "Diego",
+      "position": "ATA",
+      "rating": 69,
+      "age": 31
+    },
+    {
+      "name": "Léo Mana",
+      "position": "ZAG",
+      "rating": 67,
+      "age": 22
+    },
+    {
+      "name": "Jean",
       "position": "MEI",
-      "rating": 68,
-      "age": 20
+      "rating": 67,
+      "age": 31
+    },
+    {
+      "name": "Nicolás",
+      "position": "ATA",
+      "rating": 67,
+      "age": 36
+    },
+    {
+      "name": "Cauê",
+      "position": "ATA",
+      "rating": 67,
+      "age": 23
+    },
+    {
+      "name": "Waguininho",
+      "position": "ATA",
+      "rating": 66,
+      "age": 36
     }
   ],
   "cuiaba": [
     {
-      "name": "Luisão",
+      "name": "Gabriel Knesowitsch",
       "position": "ZAG",
       "rating": 74,
-      "age": 21
+      "age": 22
     },
     {
-      "name": "Kauan",
+      "name": "Victor",
       "position": "MEI",
       "rating": 74,
-      "age": 20
+      "age": 22
     },
     {
-      "name": "Diodato",
+      "name": "Pedro",
       "position": "ATA",
       "rating": 73,
-      "age": 18
+      "age": 29
     },
     {
       "name": "Jean",
@@ -3529,192 +3457,174 @@
       "age": 25
     },
     {
-      "name": "Pepê",
-      "position": "MEI",
+      "name": "Joao Basso",
+      "position": "ZAG",
       "rating": 73,
-      "age": 28
-    },
-    {
-      "name": "Kauan",
-      "position": "ATA",
-      "rating": 73,
-      "age": 20
-    },
-    {
-      "name": "Lucas Moraes",
-      "position": "GOL",
-      "rating": 72,
-      "age": 19
-    },
-    {
-      "name": "Alan Empereur",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 32
-    },
-    {
-      "name": "Marlon Lopes",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 32
-    },
-    {
-      "name": "Oscar",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 18
-    },
-    {
-      "name": "Otávio",
-      "position": "MEI",
-      "rating": 72,
       "age": 29
     },
     {
-      "name": "Rodrigo",
-      "position": "ATA",
-      "rating": 72,
-      "age": 26
-    },
-    {
-      "name": "Aiyran",
-      "position": "ATA",
-      "rating": 72,
-      "age": 17
-    },
-    {
-      "name": "João Carlos",
-      "position": "GOL",
-      "rating": 71,
-      "age": 38
-    },
-    {
-      "name": "João Chaves",
-      "position": "GOL",
-      "rating": 71,
-      "age": 17
-    },
-    {
-      "name": "Gabriel Knesowitsch",
+      "name": "Vitor Mendes",
       "position": "ZAG",
-      "rating": 71,
-      "age": 22
-    },
-    {
-      "name": "Wesley Dias",
-      "position": "MEI",
-      "rating": 71,
-      "age": 31
+      "rating": 72,
+      "age": 27
     },
     {
       "name": "Raul",
       "position": "MEI",
-      "rating": 70,
+      "rating": 72,
       "age": 30
+    },
+    {
+      "name": "Alan Empereur",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 32
+    },
+    {
+      "name": "Otávio",
+      "position": "MEI",
+      "rating": 71,
+      "age": 29
+    },
+    {
+      "name": "Eliel",
+      "position": "ATA",
+      "rating": 71,
+      "age": 23
+    },
+    {
+      "name": "Vinicius Peixoto Trindade Da Silva",
+      "position": "ATA",
+      "rating": 71,
+      "age": 22
+    },
+    {
+      "name": "Eric",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 25
+    },
+    {
+      "name": "Yamil Asad",
+      "position": "ATA",
+      "rating": 70,
+      "age": 31
+    },
+    {
+      "name": "Marlon Lopes",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 32
     },
     {
       "name": "Weverson",
       "position": "MEI",
-      "rating": 70,
+      "rating": 69,
       "age": 22
-    },
-    {
-      "name": "Calebe",
-      "position": "MEI",
-      "rating": 70,
-      "age": 23
     },
     {
       "name": "Jean Dias",
       "position": "ATA",
-      "rating": 69,
+      "rating": 68,
       "age": 35
     },
     {
-      "name": "Pedro",
+      "name": "Wesley Dias",
+      "position": "MEI",
+      "rating": 67,
+      "age": 31
+    },
+    {
+      "name": "Pepê",
+      "position": "MEI",
+      "rating": 67,
+      "age": 28
+    },
+    {
+      "name": "Rodrigo",
       "position": "ATA",
-      "rating": 69,
-      "age": 29
+      "rating": 67,
+      "age": 26
+    },
+    {
+      "name": "Marcelo Carné",
+      "position": "GOL",
+      "rating": 66,
+      "age": 36
     },
     {
       "name": "Derik Lacerda",
       "position": "ATA",
-      "rating": 69,
+      "rating": 65,
       "age": 26
     },
     {
-      "name": "Railan",
+      "name": "Calebe",
       "position": "MEI",
-      "rating": 69,
-      "age": 26
+      "rating": 65,
+      "age": 23
+    },
+    {
+      "name": "João Carlos",
+      "position": "GOL",
+      "rating": 64,
+      "age": 38
+    },
+    {
+      "name": "Marcos Júnior",
+      "position": "MEI",
+      "rating": 64,
+      "age": 33
     }
   ],
   "fortaleza": [
     {
-      "name": "Lucca",
-      "position": "MEI",
-      "rating": 74,
-      "age": 22
-    },
-    {
-      "name": "Magrão",
+      "name": "Brenno",
       "position": "GOL",
-      "rating": 73,
-      "age": 26
+      "rating": 74,
+      "age": 27
     },
     {
-      "name": "Guilherme",
+      "name": "Tomás Cardona",
       "position": "ZAG",
-      "rating": 73,
-      "age": 21
-    },
-    {
-      "name": "Matheus Rossetto",
-      "position": "MEI",
-      "rating": 73,
+      "rating": 74,
       "age": 30
     },
     {
-      "name": "Rodriguinho",
+      "name": "Ronald Falkoski",
+      "position": "MEI",
+      "rating": 74,
+      "age": 23
+    },
+    {
+      "name": "Juan Miritello",
+      "position": "ATA",
+      "rating": 74,
+      "age": 27
+    },
+    {
+      "name": "Vitinho",
+      "position": "ATA",
+      "rating": 74,
+      "age": 25
+    },
+    {
+      "name": "Ryan",
       "position": "MEI",
       "rating": 73,
       "age": 23
     },
     {
-      "name": "Pierre",
-      "position": "MEI",
+      "name": "Gabriel Fuentes",
+      "position": "ZAG",
       "rating": 72,
-      "age": 24
+      "age": 29
     },
     {
-      "name": "Rodrigo Santos",
-      "position": "MEI",
-      "rating": 72,
-      "age": 25
-    },
-    {
-      "name": "Gabriel",
+      "name": "Luiz Fernando",
       "position": "ATA",
       "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Bruninho",
-      "position": "MEI",
-      "rating": 71,
-      "age": 21
-    },
-    {
-      "name": "Tomás Roco",
-      "position": "ATA",
-      "rating": 71,
-      "age": 20
-    },
-    {
-      "name": "Brenno",
-      "position": "GOL",
-      "rating": 70,
-      "age": 27
+      "age": 29
     },
     {
       "name": "Luan",
@@ -3723,96 +3633,120 @@
       "age": 25
     },
     {
-      "name": "Paulo Ricardo",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 21
+      "name": "Vinicius",
+      "position": "GOL",
+      "rating": 69,
+      "age": 32
     },
     {
-      "name": "Ryan",
-      "position": "MEI",
-      "rating": 70,
-      "age": 23
-    },
-    {
-      "name": "Welliton",
-      "position": "ATA",
-      "rating": 70,
+      "name": "Magrão",
+      "position": "GOL",
+      "rating": 69,
       "age": 26
     },
     {
-      "name": "João Ricardo",
-      "position": "GOL",
+      "name": "Maurício Júnior",
+      "position": "ZAG",
       "rating": 69,
-      "age": 37
+      "age": 25
     },
     {
-      "name": "Tomás Cardona",
-      "position": "ZAG",
+      "name": "Lucas Sasha",
+      "position": "MEI",
+      "rating": 69,
+      "age": 36
+    },
+    {
+      "name": "Matheus Rossetto",
+      "position": "MEI",
       "rating": 69,
       "age": 30
     },
     {
-      "name": "Ronald Falkoski",
-      "position": "MEI",
-      "rating": 69,
-      "age": 23
-    },
-    {
-      "name": "Kaua",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 19
-    },
-    {
-      "name": "João Lucas",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 16
-    },
-    {
-      "name": "Lucas Crispim",
+      "name": "Lucca",
       "position": "MEI",
       "rating": 68,
-      "age": 32
+      "age": 22
+    },
+    {
+      "name": "Lucas Xavier Gazal",
+      "position": "ZAG",
+      "rating": 67,
+      "age": 26
+    },
+    {
+      "name": "Tomás Pochettino",
+      "position": "MEI",
+      "rating": 67,
+      "age": 30
     },
     {
       "name": "Calebe",
       "position": "MEI",
-      "rating": 68,
+      "rating": 67,
       "age": 26
     },
     {
-      "name": "Lucas Emanoel",
+      "name": "Paulo Baya",
       "position": "ATA",
-      "rating": 68,
-      "age": 20
+      "rating": 67,
+      "age": 26
+    },
+    {
+      "name": "Pierre",
+      "position": "MEI",
+      "rating": 66,
+      "age": 24
+    },
+    {
+      "name": "Rodrigo Santos",
+      "position": "MEI",
+      "rating": 66,
+      "age": 25
+    },
+    {
+      "name": "João Ricardo",
+      "position": "GOL",
+      "rating": 65,
+      "age": 37
     },
     {
       "name": "Maílton dos Santos",
       "position": "ZAG",
-      "rating": 67,
+      "rating": 65,
       "age": 28
+    },
+    {
+      "name": "Lucas Crispim",
+      "position": "MEI",
+      "rating": 64,
+      "age": 32
     }
   ],
   "goias": [
     {
-      "name": "Silva",
-      "position": "ZAG",
+      "name": "Thiago Rodrigues",
+      "position": "GOL",
       "rating": 74,
-      "age": 31
+      "age": 37
     },
     {
-      "name": "Juninho",
+      "name": "Ezequiel",
+      "position": "GOL",
+      "rating": 74,
+      "age": 23
+    },
+    {
+      "name": "Wellington Rato",
       "position": "MEI",
+      "rating": 74,
+      "age": 34
+    },
+    {
+      "name": "Anselmo Ramon",
+      "position": "ATA",
       "rating": 74,
       "age": 38
-    },
-    {
-      "name": "Hygor",
-      "position": "MEI",
-      "rating": 74,
-      "age": 17
     },
     {
       "name": "Ramon Menezes",
@@ -3821,380 +3755,356 @@
       "age": 31
     },
     {
-      "name": "Jean Carlos Alves Ferreira",
-      "position": "MEI",
+      "name": "Kadu",
+      "position": "ATA",
       "rating": 73,
-      "age": 21
+      "age": 24
     },
     {
-      "name": "Luquinhas",
+      "name": "Juninho",
       "position": "MEI",
       "rating": 72,
-      "age": 18
+      "age": 38
     },
     {
-      "name": "Halerrandrio",
-      "position": "ATA",
-      "rating": 71,
-      "age": 20
-    },
-    {
-      "name": "Ezequiel",
-      "position": "GOL",
-      "rating": 71,
-      "age": 23
-    },
-    {
-      "name": "Rodrigo",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 33
-    },
-    {
-      "name": "Murilo Camara",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 19
-    },
-    {
-      "name": "Brayann",
+      "name": "Gegê",
       "position": "MEI",
-      "rating": 71,
-      "age": 28
+      "rating": 72,
+      "age": 32
     },
     {
-      "name": "Pedrinho",
-      "position": "ATA",
-      "rating": 71,
-      "age": 22
+      "name": "Machado",
+      "position": "MEI",
+      "rating": 72,
+      "age": 30
     },
     {
       "name": "Esli Garcia",
       "position": "ATA",
-      "rating": 71,
+      "rating": 72,
       "age": 26
     },
     {
-      "name": "Tadeu",
-      "position": "GOL",
-      "rating": 70,
-      "age": 34
+      "name": "Luiz Felipe",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 32
     },
     {
       "name": "Diego Caito",
       "position": "ZAG",
-      "rating": 70,
+      "rating": 69,
       "age": 22
+    },
+    {
+      "name": "Pedrinho",
+      "position": "ATA",
+      "rating": 69,
+      "age": 22
+    },
+    {
+      "name": "Nicolas",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 29
     },
     {
       "name": "Lourenco",
       "position": "MEI",
-      "rating": 70,
+      "rating": 66,
+      "age": 28
+    },
+    {
+      "name": "Brayann",
+      "position": "MEI",
+      "rating": 66,
       "age": 28
     },
     {
       "name": "Cadu",
       "position": "ATA",
-      "rating": 70,
+      "rating": 66,
       "age": 22
     },
     {
-      "name": "Kadu",
-      "position": "ATA",
-      "rating": 70,
-      "age": 24
+      "name": "Tadeu",
+      "position": "GOL",
+      "rating": 65,
+      "age": 34
+    },
+    {
+      "name": "Lucas Ribeiro",
+      "position": "ZAG",
+      "rating": 65,
+      "age": 27
+    },
+    {
+      "name": "Luis Fellipe",
+      "position": "ZAG",
+      "rating": 65,
+      "age": 22
     },
     {
       "name": "Lucas Lima",
       "position": "MEI",
-      "rating": 69,
+      "rating": 65,
       "age": 36
     },
     {
-      "name": "Luiz Felipe",
+      "name": "Rodrigo",
       "position": "ZAG",
-      "rating": 68,
-      "age": 32
+      "rating": 64,
+      "age": 33
     },
     {
-      "name": "Wellington Rato",
-      "position": "MEI",
-      "rating": 68,
-      "age": 34
-    },
-    {
-      "name": "Anselmo Ramon",
-      "position": "ATA",
-      "rating": 67,
-      "age": 38
-    },
-    {
-      "name": "Willie",
-      "position": "ATA",
-      "rating": 67,
-      "age": 19
-    },
-    {
-      "name": "Murillo Carvalho Victorio",
-      "position": "GOL",
-      "rating": 66,
-      "age": 19
+      "name": "Silva",
+      "position": "ZAG",
+      "rating": 64,
+      "age": 31
     }
   ],
   "juventude": [
     {
-      "name": "Patryck",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 23
-    },
-    {
-      "name": "Mateus Gabriel Schaffer",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 19
-    },
-    {
-      "name": "Clébio",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 22
-    },
-    {
-      "name": "Lucas Mineiro",
-      "position": "MEI",
-      "rating": 74,
-      "age": 30
-    },
-    {
-      "name": "Davi Goes",
-      "position": "MEI",
-      "rating": 74,
-      "age": 21
-    },
-    {
-      "name": "Marcos Paulo",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 23
-    },
-    {
-      "name": "Luiz Eduardo",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 20
-    },
-    {
       "name": "Pedro",
-      "position": "MEI",
-      "rating": 73,
-      "age": 20
+      "position": "GOL",
+      "rating": 74,
+      "age": 28
     },
     {
-      "name": "Nicolas Begliardi",
-      "position": "MEI",
-      "rating": 73,
-      "age": 18
-    },
-    {
-      "name": "Safira",
-      "position": "ATA",
-      "rating": 73,
-      "age": 31
-    },
-    {
-      "name": "João Victor Trevisol Da Silva",
-      "position": "MEI",
-      "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Luiz Henrique",
-      "position": "MEI",
-      "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Titi",
+      "name": "Raí Ramos",
       "position": "ZAG",
-      "rating": 71,
-      "age": 38
+      "rating": 74,
+      "age": 32
+    },
+    {
+      "name": "Luan Martins Gonçalves",
+      "position": "ZAG",
+      "rating": 74,
+      "age": 26
     },
     {
       "name": "Pablo",
       "position": "MEI",
-      "rating": 71,
+      "rating": 74,
       "age": 26
-    },
-    {
-      "name": "Manuel Castro",
-      "position": "ATA",
-      "rating": 71,
-      "age": 30
-    },
-    {
-      "name": "Ray",
-      "position": "ATA",
-      "rating": 71,
-      "age": 21
-    },
-    {
-      "name": "Fábio Lima",
-      "position": "ATA",
-      "rating": 71,
-      "age": 29
-    },
-    {
-      "name": "Zé Henrique",
-      "position": "GOL",
-      "rating": 70,
-      "age": 21
-    },
-    {
-      "name": "Kaynan Fragoso Azevedo",
-      "position": "MEI",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Sasso",
-      "position": "MEI",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Léo Agliardi",
-      "position": "GOL",
-      "rating": 69,
-      "age": 20
-    },
-    {
-      "name": "Rodrigo Sam",
-      "position": "ZAG",
-      "rating": 69,
-      "age": 30
     },
     {
       "name": "Gabriel",
       "position": "ZAG",
-      "rating": 69,
+      "rating": 73,
       "age": 29
+    },
+    {
+      "name": "Jandrei",
+      "position": "GOL",
+      "rating": 72,
+      "age": 33
+    },
+    {
+      "name": "Nathan",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 24
+    },
+    {
+      "name": "Ruan",
+      "position": "GOL",
+      "rating": 70,
+      "age": 36
+    },
+    {
+      "name": "Rodrigo Sam",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 30
+    },
+    {
+      "name": "Iba Ly",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 23
+    },
+    {
+      "name": "Raí",
+      "position": "MEI",
+      "rating": 70,
+      "age": 24
+    },
+    {
+      "name": "Fábio Lima",
+      "position": "ATA",
+      "rating": 70,
+      "age": 29
+    },
+    {
+      "name": "Messias",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 31
+    },
+    {
+      "name": "Patryck",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 23
+    },
+    {
+      "name": "Clébio",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 22
+    },
+    {
+      "name": "Safira",
+      "position": "ATA",
+      "rating": 69,
+      "age": 31
+    },
+    {
+      "name": "Allanzinho",
+      "position": "ATA",
+      "rating": 69,
+      "age": 26
+    },
+    {
+      "name": "Aderlan Silva",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 35
+    },
+    {
+      "name": "Marcos Paulo",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 23
     },
     {
       "name": "Alan Kardec",
       "position": "ATA",
-      "rating": 69,
+      "rating": 68,
       "age": 37
+    },
+    {
+      "name": "Marcos Paulo",
+      "position": "ATA",
+      "rating": 68,
+      "age": 25
+    },
+    {
+      "name": "Luis Mandaca",
+      "position": "MEI",
+      "rating": 67,
+      "age": 24
+    },
+    {
+      "name": "Alan Ruschel",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 36
+    },
+    {
+      "name": "Lucas Mineiro",
+      "position": "MEI",
+      "rating": 66,
+      "age": 30
     }
   ],
   "londrina": [
     {
-      "name": "Zanella",
-      "position": "GOL",
+      "name": "Rafael Monteiro",
+      "position": "ZAG",
       "rating": 74,
       "age": 22
     },
     {
-      "name": "Gabriel Lacerda",
-      "position": "ZAG",
+      "name": "André Luiz",
+      "position": "MEI",
+      "rating": 74,
+      "age": 30
+    },
+    {
+      "name": "Iago Teles Da Silva",
+      "position": "ATA",
       "rating": 74,
       "age": 26
     },
     {
-      "name": "André Cardoso",
-      "position": "MEI",
-      "rating": 74,
-      "age": 23
+      "name": "Mauricio Kozlinski",
+      "position": "GOL",
+      "rating": 73,
+      "age": 35
     },
     {
-      "name": "Lucas Marques",
-      "position": "MEI",
+      "name": "Paulinho",
+      "position": "ATA",
       "rating": 73,
-      "age": 31
+      "age": 32
     },
     {
       "name": "João Vitor",
       "position": "MEI",
-      "rating": 73,
-      "age": 22
-    },
-    {
-      "name": "Chumbinho",
-      "position": "MEI",
-      "rating": 73,
+      "rating": 72,
       "age": 22
     },
     {
       "name": "Caio Rafael",
       "position": "ATA",
-      "rating": 73,
+      "rating": 71,
       "age": 22
-    },
-    {
-      "name": "Caio Maia",
-      "position": "ATA",
-      "rating": 73,
-      "age": 21
     },
     {
       "name": "Vitinho Mota",
       "position": "ATA",
-      "rating": 73,
+      "rating": 71,
+      "age": 22
+    },
+    {
+      "name": "Zanella",
+      "position": "GOL",
+      "rating": 70,
+      "age": 22
+    },
+    {
+      "name": "Yago Lincoln Rocha Santos",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 23
+    },
+    {
+      "name": "Athyrson",
+      "position": "ATA",
+      "rating": 69,
       "age": 22
     },
     {
       "name": "Luan",
       "position": "GOL",
-      "rating": 72,
+      "rating": 69,
       "age": 29
-    },
-    {
-      "name": "Yago Lincoln Rocha Santos",
-      "position": "ZAG",
-      "rating": 72,
-      "age": 23
-    },
-    {
-      "name": "Kauã Jonathan",
-      "position": "ATA",
-      "rating": 71,
-      "age": 19
-    },
-    {
-      "name": "Fabricio",
-      "position": "ATA",
-      "rating": 71,
-      "age": 22
     },
     {
       "name": "Kevyn",
       "position": "ZAG",
-      "rating": 70,
+      "rating": 69,
       "age": 28
+    },
+    {
+      "name": "Weverton",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 27
     },
     {
       "name": "André Dhominique",
       "position": "ZAG",
-      "rating": 70,
+      "rating": 69,
       "age": 22
     },
     {
       "name": "Thalis",
       "position": "MEI",
-      "rating": 70,
+      "rating": 69,
       "age": 30
-    },
-    {
-      "name": "Thiago",
-      "position": "GOL",
-      "rating": 69,
-      "age": 19
-    },
-    {
-      "name": "Caio",
-      "position": "ZAG",
-      "rating": 69,
-      "age": 21
     },
     {
       "name": "Gilberto",
@@ -4203,218 +4113,248 @@
       "age": 37
     },
     {
-      "name": "Wallace Reis",
+      "name": "Richarlyson Covre De Mello",
       "position": "ZAG",
       "rating": 68,
-      "age": 38
+      "age": 26
+    },
+    {
+      "name": "Lucas Marques",
+      "position": "MEI",
+      "rating": 68,
+      "age": 31
+    },
+    {
+      "name": "Chumbinho",
+      "position": "MEI",
+      "rating": 68,
+      "age": 22
+    },
+    {
+      "name": "Bruno Santos",
+      "position": "ATA",
+      "rating": 68,
+      "age": 29
+    },
+    {
+      "name": "Fabricio",
+      "position": "ATA",
+      "rating": 68,
+      "age": 22
     },
     {
       "name": "João Vitor",
       "position": "ZAG",
-      "rating": 68,
-      "age": 22
-    },
-    {
-      "name": "Rafael Monteiro",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 22
-    },
-    {
-      "name": "Asafe",
-      "position": "ATA",
-      "rating": 68,
-      "age": 20
-    },
-    {
-      "name": "Kauê Leonardo",
-      "position": "ZAG",
       "rating": 67,
-      "age": 21
+      "age": 22
+    },
+    {
+      "name": "Gabriel Lacerda",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 26
     }
   ],
   "novorizontino": [
     {
-      "name": "César",
-      "position": "GOL",
-      "rating": 74,
-      "age": 31
-    },
-    {
-      "name": "Miguel Contiero",
+      "name": "Francisco Reidiney Duarte Gomes",
       "position": "MEI",
       "rating": 74,
-      "age": 21
+      "age": 26
     },
     {
-      "name": "Bruno Santana",
-      "position": "MEI",
-      "rating": 74,
-      "age": 19
-    },
-    {
-      "name": "Tavinho",
-      "position": "ATA",
-      "rating": 74,
-      "age": 22
-    },
-    {
-      "name": "Paulo Henrique Fagundes Dos Anjos",
-      "position": "GOL",
-      "rating": 73,
-      "age": 35
-    },
-    {
-      "name": "Luis",
-      "position": "MEI",
-      "rating": 73,
-      "age": 29
-    },
-    {
-      "name": "Ronald Barcellos",
-      "position": "ATA",
-      "rating": 73,
-      "age": 24
-    },
-    {
-      "name": "Eduardo Brock",
+      "name": "Renato Silveira",
       "position": "ZAG",
-      "rating": 72,
-      "age": 35
-    },
-    {
-      "name": "Alexis Alvariño",
-      "position": "MEI",
-      "rating": 72,
-      "age": 25
-    },
-    {
-      "name": "Sander",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 35
-    },
-    {
-      "name": "Carlos Lora",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 25
+      "rating": 74,
+      "age": 34
     },
     {
       "name": "Carlinhos",
       "position": "ZAG",
-      "rating": 71,
+      "rating": 74,
       "age": 31
     },
     {
-      "name": "Gabriel Correia Da Silva",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 20
-    },
-    {
-      "name": "Alemão",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 19
-    },
-    {
-      "name": "Antony Gustavo Mariano Dos Santos",
-      "position": "MEI",
-      "rating": 71,
-      "age": 21
-    },
-    {
-      "name": "Jhones Kauê",
-      "position": "MEI",
-      "rating": 71,
-      "age": 17
-    },
-    {
-      "name": "Hector",
+      "name": "Carlão",
       "position": "ATA",
-      "rating": 71,
-      "age": 21
+      "rating": 74,
+      "age": 34
     },
     {
-      "name": "Gabriel",
+      "name": "Kaio Teixeira Gezo Carminati",
+      "position": "MEI",
+      "rating": 73,
+      "age": 26
+    },
+    {
+      "name": "Jordi",
+      "position": "GOL",
+      "rating": 72,
+      "age": 32
+    },
+    {
+      "name": "Ronald Barcellos",
+      "position": "ATA",
+      "rating": 72,
+      "age": 24
+    },
+    {
+      "name": "Luis",
+      "position": "MEI",
+      "rating": 71,
+      "age": 29
+    },
+    {
+      "name": "Sander",
+      "position": "ZAG",
+      "rating": 70,
+      "age": 35
+    },
+    {
+      "name": "Patrick",
       "position": "ZAG",
       "rating": 70,
       "age": 27
-    },
-    {
-      "name": "Arthur Barbosa",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Juninho",
-      "position": "MEI",
-      "rating": 70,
-      "age": 25
-    },
-    {
-      "name": "Jardiel",
-      "position": "MEI",
-      "rating": 70,
-      "age": 21
-    },
-    {
-      "name": "João Vitor Indalecio Scapin",
-      "position": "GOL",
-      "rating": 69,
-      "age": 22
     },
     {
       "name": "Rômulo Simão",
       "position": "MEI",
-      "rating": 69,
+      "rating": 70,
       "age": 24
     },
     {
-      "name": "Christian Ortíz",
-      "position": "MEI",
+      "name": "Lucas",
+      "position": "GOL",
       "rating": 69,
-      "age": 18
+      "age": 28
+    },
+    {
+      "name": "Carlos Lora",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 25
+    },
+    {
+      "name": "Gabriel",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 27
+    },
+    {
+      "name": "Robson",
+      "position": "ATA",
+      "rating": 69,
+      "age": 35
+    },
+    {
+      "name": "César",
+      "position": "GOL",
+      "rating": 68,
+      "age": 31
+    },
+    {
+      "name": "Eduardo Brock",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 35
+    },
+    {
+      "name": "Leo Naldi",
+      "position": "MEI",
+      "rating": 68,
+      "age": 24
+    },
+    {
+      "name": "Vinicius Paiva",
+      "position": "ATA",
+      "rating": 68,
+      "age": 25
+    },
+    {
+      "name": "Matheus Bianqui",
+      "position": "MEI",
+      "rating": 67,
+      "age": 28
+    },
+    {
+      "name": "João Vitor Indalecio Scapin",
+      "position": "GOL",
+      "rating": 66,
+      "age": 22
+    },
+    {
+      "name": "Hélio",
+      "position": "ATA",
+      "rating": 66,
+      "age": 26
+    },
+    {
+      "name": "Nilson Castrillón",
+      "position": "ZAG",
+      "rating": 65,
+      "age": 30
+    },
+    {
+      "name": "Marlon",
+      "position": "MEI",
+      "rating": 65,
+      "age": 36
     }
   ],
   "nautico": [
     {
-      "name": "Arthur Henrique Bittencourt",
+      "name": "Gastón Guruceaga",
       "position": "GOL",
       "rating": 74,
-      "age": 29
+      "age": 31
     },
     {
-      "name": "Gustavo Henrique Da Silva",
+      "name": "Arnaldo",
       "position": "ZAG",
       "rating": 74,
-      "age": 20
+      "age": 34
     },
     {
-      "name": "Betão",
+      "name": "Luiz Paulo",
       "position": "ZAG",
-      "rating": 73,
-      "age": 27
+      "rating": 74,
+      "age": 33
     },
     {
-      "name": "Ramon",
+      "name": "Auremir",
+      "position": "MEI",
+      "rating": 74,
+      "age": 34
+    },
+    {
+      "name": "Vinícius",
+      "position": "ATA",
+      "rating": 74,
+      "age": 32
+    },
+    {
+      "name": "Vinicius Rodrigues",
       "position": "MEI",
       "rating": 73,
-      "age": 29
+      "age": 25
     },
     {
-      "name": "Felipe",
+      "name": "Victor Andrade",
       "position": "ATA",
       "rating": 73,
-      "age": 28
+      "age": 30
     },
     {
-      "name": "Emanuel Minervino",
+      "name": "Maranhão",
+      "position": "ATA",
+      "rating": 72,
+      "age": 22
+    },
+    {
+      "name": "Igor",
       "position": "ZAG",
       "rating": 72,
-      "age": 17
+      "age": 34
     },
     {
       "name": "Leonai",
@@ -4423,138 +4363,114 @@
       "age": 31
     },
     {
-      "name": "Victor Andrade",
-      "position": "ATA",
-      "rating": 72,
-      "age": 30
-    },
-    {
-      "name": "Luiz Paulo",
+      "name": "Wanderson Camelo Viana",
       "position": "ZAG",
       "rating": 71,
+      "age": 31
+    },
+    {
+      "name": "Betão",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 27
+    },
+    {
+      "name": "Alemão Irioni",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 35
+    },
+    {
+      "name": "Matheus Ribeiro",
+      "position": "ZAG",
+      "rating": 69,
       "age": 33
     },
     {
-      "name": "Gabriel Índio",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 22
-    },
-    {
-      "name": "Gledson",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 20
+      "name": "Felipe Cardoso",
+      "position": "MEI",
+      "rating": 69,
+      "age": 23
     },
     {
       "name": "Wenderson",
       "position": "MEI",
-      "rating": 71,
+      "rating": 69,
       "age": 28
-    },
-    {
-      "name": "Samuel",
-      "position": "MEI",
-      "rating": 71,
-      "age": 22
-    },
-    {
-      "name": "Felipe Redaelli",
-      "position": "MEI",
-      "rating": 71,
-      "age": 23
-    },
-    {
-      "name": "Reginaldo",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 33
-    },
-    {
-      "name": "Luiz Felipe Oliveira De Paula",
-      "position": "MEI",
-      "rating": 70,
-      "age": 28
-    },
-    {
-      "name": "Halan",
-      "position": "MEI",
-      "rating": 70,
-      "age": 20
     },
     {
       "name": "Paulo Sérgio",
       "position": "ATA",
-      "rating": 70,
+      "rating": 69,
       "age": 37
     },
     {
-      "name": "Isaque Ferreira",
+      "name": "Felipe",
       "position": "ATA",
-      "rating": 70,
-      "age": 19
+      "rating": 69,
+      "age": 28
+    },
+    {
+      "name": "Yuri",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 30
+    },
+    {
+      "name": "Juninho",
+      "position": "MEI",
+      "rating": 68,
+      "age": 30
+    },
+    {
+      "name": "Luiz Felipe Oliveira De Paula",
+      "position": "MEI",
+      "rating": 68,
+      "age": 28
     },
     {
       "name": "Muriel",
       "position": "GOL",
-      "rating": 69,
+      "rating": 67,
       "age": 39
     },
     {
-      "name": "Arnaldo",
+      "name": "Reginaldo",
       "position": "ZAG",
-      "rating": 69,
-      "age": 34
+      "rating": 67,
+      "age": 33
     },
     {
-      "name": "Wanderson Camelo Viana",
+      "name": "Mateus",
       "position": "ZAG",
-      "rating": 69,
+      "rating": 67,
       "age": 31
-    },
-    {
-      "name": "Kevyn",
-      "position": "ATA",
-      "rating": 69,
-      "age": 19
-    },
-    {
-      "name": "Luiz Claudio",
-      "position": "ATA",
-      "rating": 69,
-      "age": 21
     }
   ],
   "ponte_preta": [
     {
-      "name": "Pedrinho",
+      "name": "Rodrigo Souza",
       "position": "MEI",
       "rating": 74,
-      "age": 18
+      "age": 38
     },
     {
-      "name": "Miguel",
-      "position": "MEI",
+      "name": "William Pottker",
+      "position": "ATA",
       "rating": 74,
-      "age": 21
+      "age": 32
     },
     {
-      "name": "Thalys Victor Martins Sena",
+      "name": "Kevyson",
       "position": "ZAG",
       "rating": 73,
-      "age": 26
+      "age": 22
     },
     {
-      "name": "Gabriel Henrique",
+      "name": "Léo Gomes",
       "position": "MEI",
       "rating": 73,
-      "age": 20
-    },
-    {
-      "name": "Guilherme Martins",
-      "position": "MEI",
-      "rating": 73,
-      "age": 21
+      "age": 29
     },
     {
       "name": "Jonathan Cafú",
@@ -4563,16 +4479,10 @@
       "age": 35
     },
     {
-      "name": "João Victor Damião Dos Santos",
-      "position": "ATA",
-      "rating": 73,
-      "age": 17
-    },
-    {
-      "name": "Kevyson",
-      "position": "ZAG",
+      "name": "Vinicius",
+      "position": "GOL",
       "rating": 72,
-      "age": 22
+      "age": 23
     },
     {
       "name": "Gabriel",
@@ -4581,284 +4491,296 @@
       "age": 22
     },
     {
-      "name": "Kawann",
-      "position": "ZAG",
+      "name": "Tarik",
+      "position": "MEI",
       "rating": 72,
-      "age": 21
+      "age": 33
+    },
+    {
+      "name": "Diogo Ribeiro",
+      "position": "MEI",
+      "rating": 72,
+      "age": 24
+    },
+    {
+      "name": "Thalys Victor Martins Sena",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 26
     },
     {
       "name": "Diego Tavares",
       "position": "ATA",
-      "rating": 72,
+      "rating": 71,
       "age": 35
+    },
+    {
+      "name": "Daniel Goncalves Batista",
+      "position": "ATA",
+      "rating": 70,
+      "age": 26
+    },
+    {
+      "name": "Marcio Silva",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 25
+    },
+    {
+      "name": "Guilherme Viana",
+      "position": "GOL",
+      "rating": 68,
+      "age": 22
     },
     {
       "name": "Rodriguinho",
       "position": "ATA",
-      "rating": 72,
+      "rating": 68,
       "age": 25
     },
     {
-      "name": "Vinicius",
-      "position": "GOL",
-      "rating": 71,
-      "age": 23
-    },
-    {
-      "name": "Gustavo Teles",
-      "position": "MEI",
-      "rating": 71,
-      "age": 21
-    },
-    {
-      "name": "Vítor Ribeiro",
+      "name": "Brandão",
       "position": "ATA",
-      "rating": 71,
-      "age": 27
+      "rating": 68,
+      "age": 22
     },
     {
       "name": "Diogo Silva",
       "position": "GOL",
-      "rating": 70,
+      "rating": 67,
       "age": 40
-    },
-    {
-      "name": "João Gabriel",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 21
-    },
-    {
-      "name": "Lucas Da Sliva Justen",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 23
-    },
-    {
-      "name": "Tarik",
-      "position": "MEI",
-      "rating": 70,
-      "age": 33
-    },
-    {
-      "name": "Chicão",
-      "position": "MEI",
-      "rating": 70,
-      "age": 18
-    },
-    {
-      "name": "Diego Porfirio",
-      "position": "ZAG",
-      "rating": 69,
-      "age": 26
-    },
-    {
-      "name": "Gustavo Felipe Almeida",
-      "position": "ZAG",
-      "rating": 69,
-      "age": 20
-    },
-    {
-      "name": "Rodrigo Souza",
-      "position": "MEI",
-      "rating": 69,
-      "age": 38
     },
     {
       "name": "André",
       "position": "MEI",
-      "rating": 69,
+      "rating": 67,
       "age": 26
+    },
+    {
+      "name": "Danilo Barcelos",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 34
+    },
+    {
+      "name": "Lucas Cunha",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 29
+    },
+    {
+      "name": "Lucas Da Sliva Justen",
+      "position": "ZAG",
+      "rating": 66,
+      "age": 23
+    },
+    {
+      "name": "Élvis",
+      "position": "MEI",
+      "rating": 66,
+      "age": 35
+    },
+    {
+      "name": "Luis Phelipe",
+      "position": "ATA",
+      "rating": 66,
+      "age": 25
+    },
+    {
+      "name": "Vítor Ribeiro",
+      "position": "ATA",
+      "rating": 66,
+      "age": 27
     }
   ],
   "sport": [
     {
-      "name": "Dênis",
-      "position": "GOL",
-      "rating": 74,
-      "age": 39
-    },
-    {
-      "name": "Halls",
-      "position": "GOL",
-      "rating": 74,
-      "age": 27
-    },
-    {
-      "name": "Patrick",
+      "name": "Edson Pereira",
       "position": "ZAG",
-      "rating": 74,
-      "age": 21
-    },
-    {
-      "name": "José Gabriel",
-      "position": "MEI",
-      "rating": 74,
-      "age": 27
-    },
-    {
-      "name": "Gustavo Maia",
-      "position": "ATA",
-      "rating": 74,
+      "rating": 73,
       "age": 25
     },
     {
-      "name": "Dedé",
-      "position": "ATA",
-      "rating": 74,
-      "age": 20
+      "name": "Thiago Couto",
+      "position": "GOL",
+      "rating": 72,
+      "age": 27
     },
     {
-      "name": "Arthur Moreira",
-      "position": "ATA",
-      "rating": 74,
-      "age": 18
-    },
-    {
-      "name": "Ze Marcos",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 28
-    },
-    {
-      "name": "Felipinho",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 29
-    },
-    {
-      "name": "Rafinha",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 20
-    },
-    {
-      "name": "Zé Lucas",
+      "name": "Yago Felipe",
       "position": "MEI",
-      "rating": 73,
-      "age": 18
+      "rating": 72,
+      "age": 31
+    },
+    {
+      "name": "Mádson",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 34
+    },
+    {
+      "name": "Marcelo",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 23
+    },
+    {
+      "name": "Clayson",
+      "position": "MEI",
+      "rating": 71,
+      "age": 31
+    },
+    {
+      "name": "Biel",
+      "position": "MEI",
+      "rating": 71,
+      "age": 24
     },
     {
       "name": "Pedro Perotti",
       "position": "ATA",
-      "rating": 73,
+      "rating": 71,
       "age": 28
     },
     {
       "name": "Antônio Adriano",
       "position": "GOL",
-      "rating": 72,
+      "rating": 70,
       "age": 23
     },
     {
-      "name": "Adriel",
+      "name": "Fabricio Domínguez",
       "position": "MEI",
-      "rating": 72,
-      "age": 20
+      "rating": 70,
+      "age": 28
     },
     {
       "name": "Marlon",
       "position": "ATA",
-      "rating": 72,
+      "rating": 69,
       "age": 28
     },
     {
-      "name": "Micael",
-      "position": "ATA",
-      "rating": 72,
-      "age": 20
-    },
-    {
-      "name": "Lipão",
-      "position": "ATA",
-      "rating": 72,
-      "age": 19
-    },
-    {
-      "name": "Victor Hugo Barbosa De Farias",
-      "position": "GOL",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Richarlyson",
+      "name": "Ze Marcos",
       "position": "ZAG",
-      "rating": 70,
-      "age": 18
+      "rating": 68,
+      "age": 28
     },
     {
-      "name": "Biel",
+      "name": "José Gabriel",
       "position": "MEI",
-      "rating": 70,
-      "age": 24
+      "rating": 68,
+      "age": 27
+    },
+    {
+      "name": "Iury",
+      "position": "ATA",
+      "rating": 68,
+      "age": 30
+    },
+    {
+      "name": "Chrystian",
+      "position": "ATA",
+      "rating": 68,
+      "age": 25
+    },
+    {
+      "name": "Marcelo Benevenuto",
+      "position": "ZAG",
+      "rating": 67,
+      "age": 30
+    },
+    {
+      "name": "Felipinho",
+      "position": "ZAG",
+      "rating": 67,
+      "age": 29
+    },
+    {
+      "name": "Fábio Matheus",
+      "position": "MEI",
+      "rating": 67,
+      "age": 23
     },
     {
       "name": "Habraão",
       "position": "ZAG",
-      "rating": 69,
+      "rating": 66,
       "age": 25
     },
     {
-      "name": "Felipinho Santos",
+      "name": "Carlos De Peña",
       "position": "MEI",
-      "rating": 69,
-      "age": 19
+      "rating": 66,
+      "age": 34
     },
     {
-      "name": "Jefinho",
+      "name": "Zé Roberto",
       "position": "ATA",
-      "rating": 69,
-      "age": 19
+      "rating": 66,
+      "age": 32
     },
     {
-      "name": "Caio Moura",
-      "position": "ZAG",
-      "rating": 68,
-      "age": 18
+      "name": "Gustavo Maia",
+      "position": "ATA",
+      "rating": 66,
+      "age": 25
+    },
+    {
+      "name": "Dênis",
+      "position": "GOL",
+      "rating": 65,
+      "age": 39
+    },
+    {
+      "name": "Halls",
+      "position": "GOL",
+      "rating": 65,
+      "age": 27
     }
   ],
   "sao_bernardo": [
     {
-      "name": "Pará",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 30
-    },
-    {
-      "name": "Lucas Rian Santos Oliveira",
-      "position": "ATA",
-      "rating": 74,
-      "age": 26
-    },
-    {
-      "name": "Alex Alves",
+      "name": "Júnior Oliveira",
       "position": "GOL",
-      "rating": 73,
-      "age": 39
+      "rating": 74,
+      "age": 36
     },
     {
       "name": "Jemerson",
       "position": "ZAG",
-      "rating": 73,
+      "rating": 74,
       "age": 33
     },
     {
-      "name": "Helder Gomes Maciel",
+      "name": "Matheus Salustiano",
       "position": "ZAG",
-      "rating": 73,
-      "age": 36
+      "rating": 74,
+      "age": 33
     },
     {
-      "name": "Eduardo",
+      "name": "Júnior Urso",
       "position": "MEI",
+      "rating": 73,
+      "age": 37
+    },
+    {
+      "name": "Neto Costa",
+      "position": "ATA",
+      "rating": 73,
+      "age": 29
+    },
+    {
+      "name": "Echaporã",
+      "position": "ATA",
       "rating": 73,
       "age": 26
     },
     {
-      "name": "Daniel Amorim",
+      "name": "Lucas Rian Santos Oliveira",
       "position": "ATA",
       "rating": 73,
-      "age": 36
+      "age": 26
     },
     {
       "name": "Hyoran",
@@ -4867,168 +4789,138 @@
       "age": 33
     },
     {
-      "name": "Kaká",
-      "position": "MEI",
-      "rating": 72,
-      "age": 20
-    },
-    {
-      "name": "Daniel Davi Simao Roque",
+      "name": "Pablo Dyego",
       "position": "ATA",
       "rating": 72,
-      "age": 21
-    },
-    {
-      "name": "Rodrigo Ferreira",
-      "position": "ZAG",
-      "rating": 71,
-      "age": 31
-    },
-    {
-      "name": "Hugo",
-      "position": "ZAG",
-      "rating": 71,
       "age": 32
     },
     {
-      "name": "Pedrinho",
-      "position": "ATA",
+      "name": "Alex Alves",
+      "position": "GOL",
       "rating": 71,
-      "age": 26
+      "age": 39
     },
     {
       "name": "Mário Sérgio",
       "position": "ZAG",
-      "rating": 70,
+      "rating": 71,
       "age": 32
     },
     {
-      "name": "Marcão Silva",
-      "position": "MEI",
-      "rating": 70,
-      "age": 35
-    },
-    {
-      "name": "Júnior Oliveira",
-      "position": "GOL",
-      "rating": 69,
-      "age": 36
-    },
-    {
-      "name": "Júnior Urso",
-      "position": "MEI",
-      "rating": 69,
-      "age": 37
-    },
-    {
-      "name": "Pedro Vitor",
-      "position": "ATA",
-      "rating": 69,
-      "age": 28
-    },
-    {
-      "name": "Neto Costa",
-      "position": "ATA",
-      "rating": 69,
+      "name": "Augusto",
+      "position": "ZAG",
+      "rating": 71,
       "age": 29
     },
     {
-      "name": "Fabrício Daniel",
-      "position": "ATA",
-      "rating": 69,
-      "age": 28
+      "name": "Luizão",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 24
     },
     {
       "name": "Lino",
       "position": "MEI",
-      "rating": 68,
+      "rating": 71,
       "age": 29
     },
     {
-      "name": "Pablo Dyego",
+      "name": "Daniel Amorim",
       "position": "ATA",
-      "rating": 68,
+      "rating": 70,
+      "age": 36
+    },
+    {
+      "name": "Pará",
+      "position": "ZAG",
+      "rating": 69,
+      "age": 30
+    },
+    {
+      "name": "Hugo",
+      "position": "ZAG",
+      "rating": 69,
       "age": 32
     },
     {
-      "name": "Echaporã",
-      "position": "ATA",
-      "rating": 68,
+      "name": "Rodrigo Andrade",
+      "position": "MEI",
+      "rating": 69,
+      "age": 29
+    },
+    {
+      "name": "Eduardo",
+      "position": "MEI",
+      "rating": 69,
       "age": 26
+    },
+    {
+      "name": "Helder Gomes Maciel",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 36
+    },
+    {
+      "name": "Wellington Jesus Cardoso",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 25
+    },
+    {
+      "name": "Marcão Silva",
+      "position": "MEI",
+      "rating": 68,
+      "age": 35
     },
     {
       "name": "Matheus Nogueira",
       "position": "GOL",
       "rating": 67,
       "age": 28
+    },
+    {
+      "name": "Foguinho",
+      "position": "MEI",
+      "rating": 67,
+      "age": 34
     }
   ],
   "vila_nova": [
     {
-      "name": "Breno Augusto De Azevedo Bora",
+      "name": "Marquinhos Gabriel",
       "position": "MEI",
       "rating": 74,
-      "age": 26
+      "age": 35
     },
     {
-      "name": "Anderson Jesus",
-      "position": "ZAG",
-      "rating": 74,
+      "name": "Helton Leite",
+      "position": "GOL",
+      "rating": 73,
+      "age": 35
+    },
+    {
+      "name": "Dodô",
+      "position": "MEI",
+      "rating": 73,
       "age": 31
     },
     {
-      "name": "Carlão",
-      "position": "ZAG",
-      "rating": 74,
-      "age": 19
+      "name": "Dalberson",
+      "position": "GOL",
+      "rating": 72,
+      "age": 29
     },
     {
-      "name": "Enzo",
-      "position": "MEI",
-      "rating": 74,
-      "age": 23
-    },
-    {
-      "name": "Soares",
-      "position": "ATA",
-      "rating": 73,
-      "age": 20
-    },
-    {
-      "name": "Samuel Lucas De Oliveira Souza",
-      "position": "ZAG",
-      "rating": 73,
-      "age": 18
-    },
-    {
-      "name": "Willian Maranhão",
-      "position": "MEI",
-      "rating": 73,
-      "age": 30
-    },
-    {
-      "name": "Dudu",
-      "position": "MEI",
-      "rating": 73,
-      "age": 24
-    },
-    {
-      "name": "Willian Prado Camargo",
+      "name": "Caio Marcelo Pinheiro Da Silva",
       "position": "ZAG",
       "rating": 72,
-      "age": 31
+      "age": 28
     },
     {
-      "name": "Guilherme Vieira",
+      "name": "João Pedro Vieira",
       "position": "MEI",
       "rating": 72,
-      "age": 20
-    },
-    {
-      "name": "Gabriel Dias",
-      "position": "MEI",
-      "rating": 72,
-      "age": 17
+      "age": 28
     },
     {
       "name": "Dellatorre",
@@ -5037,76 +4929,100 @@
       "age": 34
     },
     {
-      "name": "Rafael Silva",
+      "name": "Janderson",
       "position": "ATA",
       "rating": 72,
-      "age": 34
-    },
-    {
-      "name": "Helton Leite",
-      "position": "GOL",
-      "rating": 71,
-      "age": 35
-    },
-    {
-      "name": "Gabriel Átila",
-      "position": "GOL",
-      "rating": 71,
-      "age": 23
-    },
-    {
-      "name": "Kauã",
-      "position": "GOL",
-      "rating": 70,
-      "age": 19
-    },
-    {
-      "name": "Gil",
-      "position": "ZAG",
-      "rating": 70,
-      "age": 18
-    },
-    {
-      "name": "Marquinhos Gabriel",
-      "position": "MEI",
-      "rating": 70,
-      "age": 35
-    },
-    {
-      "name": "Nathan",
-      "position": "MEI",
-      "rating": 70,
-      "age": 20
-    },
-    {
-      "name": "Ryan Lima",
-      "position": "ATA",
-      "rating": 70,
-      "age": 25
-    },
-    {
-      "name": "Tiago",
-      "position": "ZAG",
-      "rating": 69,
-      "age": 36
-    },
-    {
-      "name": "André Luis",
-      "position": "ATA",
-      "rating": 69,
-      "age": 29
+      "age": 27
     },
     {
       "name": "Emerson Lima",
       "position": "ATA",
-      "rating": 69,
+      "rating": 72,
       "age": 25
     },
     {
-      "name": "Gustavo Puskas Pinheiro Lemos",
+      "name": "Hayner",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 30
+    },
+    {
+      "name": "Elias Lira Nogueira Junior",
+      "position": "ZAG",
+      "rating": 71,
+      "age": 27
+    },
+    {
+      "name": "Willian Maranhão",
+      "position": "MEI",
+      "rating": 71,
+      "age": 30
+    },
+    {
+      "name": "Dudu",
+      "position": "MEI",
+      "rating": 71,
+      "age": 24
+    },
+    {
+      "name": "Breno Augusto De Azevedo Bora",
+      "position": "MEI",
+      "rating": 70,
+      "age": 26
+    },
+    {
+      "name": "Enzo",
+      "position": "MEI",
+      "rating": 70,
+      "age": 23
+    },
+    {
+      "name": "Willian Prado Camargo",
+      "position": "ZAG",
+      "rating": 68,
+      "age": 31
+    },
+    {
+      "name": "André Luis",
       "position": "ATA",
-      "rating": 69,
-      "age": 18
+      "rating": 68,
+      "age": 29
+    },
+    {
+      "name": "Rafael Silva",
+      "position": "ATA",
+      "rating": 68,
+      "age": 34
+    },
+    {
+      "name": "Ryan Lima",
+      "position": "ATA",
+      "rating": 67,
+      "age": 25
+    },
+    {
+      "name": "Bruno Cesar Xavier",
+      "position": "MEI",
+      "rating": 66,
+      "age": 29
+    },
+    {
+      "name": "Tiago",
+      "position": "ZAG",
+      "rating": 65,
+      "age": 36
+    },
+    {
+      "name": "Anderson Jesus",
+      "position": "ZAG",
+      "rating": 65,
+      "age": 31
+    },
+    {
+      "name": "Gabriel Átila",
+      "position": "GOL",
+      "rating": 64,
+      "age": 23
     }
   ]
 }
