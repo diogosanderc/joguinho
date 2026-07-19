@@ -1266,113 +1266,89 @@ const AppContent: React.FC = () => {
                 <div className="pitch-line pitch-penalty-area-bottom" />
 
                 {(() => {
-                  // Determine coordinates (x, y in %) for each role in the 11 starter positions
-                  // x: 0 = left, 100 = right; y: 0 = top (attacker), 100 = bottom (goalkeeper)
-                  // For GK, LE, LD, ZAGs, MEIs, ATAs
-                  const coords: Record<string, { x: number; y: number }[]> = {
+
+
+                  // Dynamically assign current coords by matching players directly to tactical role requirements rather than layout index slots.
+                  // This guarantees that a GOL (GK) is always placed in the goal coordinates, ATAs in the attack coordinates, etc.
+                  // regardless of the order they appear inside the starters state array!
+                  
+                  // Setup coordinate mapping slots for each role
+                  const roleCoords: Record<string, { role: 'GOL' | 'LE' | 'LD' | 'ZAG' | 'MEI' | 'ATA'; x: number; y: number }[]> = {
                     '4-4-2': [
-                      { x: 50, y: 88 }, // GOL
-                      { x: 12, y: 72 }, // LE
-                      { x: 37, y: 74 }, // ZAG 1
-                      { x: 63, y: 74 }, // ZAG 2
-                      { x: 88, y: 72 }, // LD
-                      { x: 15, y: 46 }, // MEI Left (Jadson position)
-                      { x: 38, y: 52 }, // MEI Center-Left (Denilson)
-                      { x: 62, y: 52 }, // MEI Center-Right (Paulo Assunção)
-                      { x: 85, y: 46 }, // MEI Right (Maicon)
-                      { x: 35, y: 20 }, // AT Left (Luis Fabiano)
-                      { x: 65, y: 20 }  // AT Right (Lucas)
+                      { role: 'GOL', x: 50, y: 88 },
+                      { role: 'LE', x: 12, y: 72 },
+                      { role: 'ZAG', x: 37, y: 74 },
+                      { role: 'ZAG', x: 63, y: 74 },
+                      { role: 'LD', x: 88, y: 72 },
+                      { role: 'MEI', x: 15, y: 46 }, // Jadson position
+                      { role: 'MEI', x: 38, y: 52 }, // Denilson
+                      { role: 'MEI', x: 62, y: 52 }, // Paulo Assunção
+                      { role: 'MEI', x: 85, y: 46 }, // Maicon
+                      { role: 'ATA', x: 35, y: 20 }, // Luis Fabiano
+                      { role: 'ATA', x: 65, y: 20 }  // Lucas
                     ],
                     '3-5-2': [
-                      { x: 50, y: 88 }, // GOL
-                      { x: 25, y: 74 }, // ZAG Left (Rhodolfo)
-                      { x: 50, y: 76 }, // ZAG Center (Toloi)
-                      { x: 75, y: 74 }, // ZAG Right (João Filipe)
-                      { x: 10, y: 48 }, // LE (Cortez, acting as wing-back)
-                      { x: 90, y: 48 }, // LD (Douglas, acting as wing-back)
-                      { x: 30, y: 44 }, // MEI Center-Left (Jadson)
-                      { x: 50, y: 56 }, // MEI Defensive (Denilson)
-                      { x: 70, y: 44 }, // MEI Center-Right (Maicon)
-                      { x: 35, y: 20 }, // AT Left (Luis Fabiano)
-                      { x: 65, y: 20 }  // AT Right (Lucas)
+                      { role: 'GOL', x: 50, y: 88 },
+                      { role: 'ZAG', x: 25, y: 74 }, // Rhodolfo
+                      { role: 'ZAG', x: 50, y: 76 }, // Toloi
+                      { role: 'ZAG', x: 75, y: 74 }, // João Filipe
+                      { role: 'LE', x: 10, y: 48 },  // Cortez (Left wing)
+                      { role: 'LD', x: 90, y: 48 },  // Douglas (Right wing)
+                      { role: 'MEI', x: 30, y: 44 },  // Jadson
+                      { role: 'MEI', x: 50, y: 56 },  // Denilson
+                      { role: 'MEI', x: 70, y: 44 },  // Maicon
+                      { role: 'ATA', x: 35, y: 20 },  // Luis Fabiano
+                      { role: 'ATA', x: 65, y: 20 }   // Lucas
                     ],
                     '4-3-3': [
-                      { x: 50, y: 88 }, // GOL
-                      { x: 12, y: 72 }, // LE (Cortez)
-                      { x: 37, y: 74 }, // ZAG 1 (Rhodolfo)
-                      { x: 63, y: 74 }, // ZAG 2 (Toloi)
-                      { x: 88, y: 72 }, // LD (Wellington)
-                      { x: 25, y: 48 }, // MEI Left (Jadson)
-                      { x: 50, y: 56 }, // MEI Center (Denilson)
-                      { x: 75, y: 48 }, // MEI Right (Maicon)
-                      { x: 18, y: 24 }, // AT Left (Osvaldo)
-                      { x: 50, y: 16 }, // AT Center (Luis Fabiano)
-                      { x: 82, y: 24 }  // AT Right (Lucas)
+                      { role: 'GOL', x: 50, y: 88 },
+                      { role: 'LE', x: 12, y: 72 },  // Cortez
+                      { role: 'ZAG', x: 37, y: 74 }, // Rhodolfo
+                      { role: 'ZAG', x: 63, y: 74 }, // Toloi
+                      { role: 'LD', x: 88, y: 72 },  // Wellington
+                      { role: 'MEI', x: 25, y: 48 },  // Jadson
+                      { role: 'MEI', x: 50, y: 56 },  // Denilson
+                      { role: 'MEI', x: 75, y: 48 },  // Maicon
+                      { role: 'ATA', x: 18, y: 24 },  // Osvaldo
+                      { role: 'ATA', x: 50, y: 16 },  // Luis Fabiano
+                      { role: 'ATA', x: 82, y: 24 }   // Lucas
                     ]
                   };
 
-                  const currentCoords = coords[selectedTactic] || coords['4-4-2'];
+                  const currentSlots = roleCoords[selectedTactic] || roleCoords['4-4-2'];
+                  
+                  // Keep track of which starters have already been placed in a slot
+                  const placedIds = new Set<string>();
 
-                  // Group and order starters so they match the template coordinate assignments perfectly:
-                  // 1. GK -> index 0
-                  // 2. ZAG, LE, LD (DFs) -> ZAGs in center, LE on left, LD on right
-                  // 3. MFs (MEI, and LE/LD if 3-5-2 wings)
-                  // 4. ATAs -> AT
-                  const gks = starters.filter(p => p.position === 'GK');
-                  const zags = starters.filter(p => p.subPosition === 'ZAG');
-                  const les = starters.filter(p => p.subPosition === 'LE');
-                  const lds = starters.filter(p => p.subPosition === 'LD');
-                  const meis = starters.filter(p => p.subPosition === 'MEI');
-                  const atas = starters.filter(p => p.subPosition === 'ATA');
+                  // Match each slot coordinate with a starter player matching that subPosition (or position)
+                  return currentSlots.map((slot, index) => {
+                    // Try to find a starter that fits this slot's subPosition role
+                    let matchingPlayer = starters.find(p => {
+                      if (placedIds.has(p.id)) return false;
+                      // GOL matches position === 'GK' or subPosition === 'GOL'
+                      if (slot.role === 'GOL') return p.position === 'GK' || p.subPosition === 'GOL';
+                      // ATA matches subPosition === 'ATA' or position === 'FW'
+                      if (slot.role === 'ATA') return p.subPosition === 'ATA' || p.position === 'FW';
+                      return p.subPosition === slot.role;
+                    });
 
-                  let orderedStarters: Player[] = [];
-                  if (selectedTactic === '3-5-2') {
-                    // 3-5-2 Order: 
-                    // index 0: GOL
-                    // index 1,2,3: 3 ZAGs (sorted left to right by their default names or index to keep visual consistency)
-                    // index 4: LE (Cortez - left wing-back)
-                    // index 5: LD (Douglas - right wing-back)
-                    // index 6,7,8: 3 MEIs (Jadson, Denilson, Maicon)
-                    // index 9,10: 2 ATAs (Luis Fabiano, Lucas)
-                    orderedStarters = [
-                      ...gks.slice(0, 1),
-                      ...zags.slice(0, 3),
-                      ...les.slice(0, 1),
-                      ...lds.slice(0, 1),
-                      ...meis.slice(0, 3),
-                      ...atas.slice(0, 2)
-                    ];
-                  } else if (selectedTactic === '4-3-3') {
-                    // 4-3-3 Order: GOL, LE, 2 ZAGs, LD, 3 MEIs, 3 ATAs
-                    orderedStarters = [
-                      ...gks.slice(0, 1),
-                      ...les.slice(0, 1),
-                      ...zags.slice(0, 2),
-                      ...lds.slice(0, 1),
-                      ...meis.slice(0, 3),
-                      ...atas.slice(0, 3)
-                    ];
-                  } else {
-                    // 4-4-2 Order: GOL, LE, 2 ZAGs, LD, 4 MEIs, 2 ATAs
-                    orderedStarters = [
-                      ...gks.slice(0, 1),
-                      ...les.slice(0, 1),
-                      ...zags.slice(0, 2),
-                      ...lds.slice(0, 1),
-                      ...meis.slice(0, 4),
-                      ...atas.slice(0, 2)
-                    ];
-                  }
+                    // Fallback to any unplaced player if none matching the exact subPosition (safeguard)
+                    if (!matchingPlayer) {
+                      matchingPlayer = starters.find(p => !placedIds.has(p.id));
+                    }
 
-                  // Fill in any missing spots up to 11 with remaining starters
-                  if (orderedStarters.length < 11) {
-                    const ids = new Set(orderedStarters.map(p => p.id));
-                    const rest = starters.filter(p => !ids.has(p.id));
-                    orderedStarters = [...orderedStarters, ...rest].slice(0, 11);
-                  }
+                    if (!matchingPlayer) {
+                      // Empty slot placeholder (should not happen with 11 starters, but good for safety)
+                      return (
+                        <div key={`empty-${index}`} style={{ position: 'absolute', left: `${slot.x}%`, top: `${slot.y}%`, transform: 'translate(-50%, -50%)' }}>
+                          <div className="token-circle empty">?</div>
+                        </div>
+                      );
+                    }
 
-                  return orderedStarters.map((p, idx) => {
-                    const coord = currentCoords[idx] || { x: 50, y: 50 };
+                    placedIds.add(matchingPlayer.id);
+
+                    const p = matchingPlayer;
                     let sideLabel: string = p.subPosition || 'ZAG';
                     if (p.position === 'GK') sideLabel = 'GOL';
                     else if (p.subPosition === 'ATA') sideLabel = 'AT';
@@ -1393,8 +1369,8 @@ const AppContent: React.FC = () => {
                         onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}
                         style={{
                           position: 'absolute',
-                          left: `${coord.x}%`,
-                          top: `${coord.y}%`,
+                          left: `${slot.x}%`,
+                          top: `${slot.y}%`,
                           transform: 'translate(-50%, -50%)',
                           zIndex: 10
                         }}
