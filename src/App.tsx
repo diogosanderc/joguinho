@@ -1442,7 +1442,7 @@ const AppContent: React.FC = () => {
               </div>
 
             {/* List of squad players */}
-            <div className="card-title"><Users size={18} color="var(--accent-green)" /> Todos os Jogadores ({userClub.squad.length}/22)</div>
+            <div className="card-title"><Users size={18} color="var(--accent-green)" /> Todos os Jogadores ({userClub.squad.length}/22-26)</div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {userClub.squad.map(player => {
