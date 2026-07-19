@@ -1142,9 +1142,6 @@ const AppContent: React.FC = () => {
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>Esquema Tático</span>
-                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                  Força do Time: DEF {startersForces.defense} | ATA {startersForces.attack}
-                </div>
               </div>
               
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -1254,10 +1251,15 @@ const AppContent: React.FC = () => {
                   💤 Poupar Cansados
                 </button>
               </div>
+
+              {/* Force Summary (under buttons) */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-green)', background: 'rgba(255,255,255,0.02)', padding: '6px', borderRadius: '6px' }}>
+                Força do Time: DEF {startersForces.defense} | ATA {startersForces.attack}
+              </div>
             </div>
 
-              {/* Soccer pitch representation */}
-              <div className="pitch-container" style={{ position: 'relative', width: '100%', height: '350px', background: 'radial-gradient(circle, var(--pitch-green-light) 0%, var(--pitch-green) 100%)', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)' }}>
+            {/* Soccer pitch representation (height expanded to 440px to prevent labels squeezing) */}
+            <div className="pitch-container" style={{ position: 'relative', width: '100%', height: '440px', background: 'radial-gradient(circle, var(--pitch-green-light) 0%, var(--pitch-green) 100%)', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)' }}>
                 <div className="pitch-line pitch-center-circle" />
                 <div className="pitch-line pitch-midline" />
                 <div className="pitch-line pitch-penalty-area-top" />
@@ -1389,8 +1391,8 @@ const AppContent: React.FC = () => {
                         }}
                       >
                         <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : labelColor }}>{p.rating}</div>
-                        <span className="token-name" style={{ fontSize: '0.6rem', padding: '1px 3px', borderRadius: '4px', background: 'rgba(0,0,0,0.6)', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                          <strong style={{ color: labelColor, marginRight: '2px' }}>{sideLabel}</strong> 
+                        <span className="token-name" style={{ fontSize: '0.6rem', padding: '1px 3px', borderRadius: '4px', background: 'rgba(0,0,0,0.6)', whiteSpace: 'nowrap', marginTop: '2px', fontWeight: 'normal' }}>
+                          <span style={{ color: labelColor, marginRight: '2px', fontWeight: 'normal' }}>{sideLabel}</span> 
                           {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]}
                         </span>
                       </div>
