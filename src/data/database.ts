@@ -18,7 +18,7 @@ export interface Player {
   benchRounds?: number;
   contractLockYears?: number; // Number of years contract is locked
   performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
-  subPosition?: 'GK' | 'ZAG' | 'LE' | 'LD' | 'MF' | 'FW';
+  subPosition?: 'GK' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA';
 }
 
 export interface Club {
@@ -2518,8 +2518,8 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
   });
   squad.forEach(p => {
     if (p.position === 'GK') p.subPosition = 'GK';
-    else if (p.position === 'MF') p.subPosition = 'MF';
-    else if (p.position === 'FW') p.subPosition = 'FW';
+    else if (p.position === 'MF') p.subPosition = 'MEI';
+    else if (p.position === 'FW') p.subPosition = 'ATA';
   });
 
   const posOrder = { GK: 0, DF: 1, MF: 2, FW: 3 };

@@ -172,6 +172,25 @@ export const simulateMatch = (
     }
   };
 
+  // Elastic Goal Scaling: 
+  // If attack is 30% higher than defense, boost scoring rate.
+  let homeConversionRate = 0.35;
+  let awayConversionRate = 0.35;
+  
+  if (homeAtt >= awayDef * 1.3) {
+    homeConversionRate += 0.08;
+  }
+  if (awayDef <= homeAtt * 0.7) {
+    homeConversionRate += 0.08;
+  }
+  
+  if (awayAtt >= homeDef * 1.3) {
+    awayConversionRate += 0.08;
+  }
+  if (homeDef <= awayAtt * 0.7) {
+    awayConversionRate += 0.08;
+  }
+
   // Blowout / Goleada chance check (5% chance to trigger extra attack strength if one team takes a 2-goal lead)
   let blowoutTriggered = false;
 
@@ -194,7 +213,7 @@ export const simulateMatch = (
     }
 
     // Standard event check (approx 6-8 events per match)
-    if (Math.random() < 0.08) {
+    if (Math.random() < 0.11) {
       const homePossessionChance = homeMid / (homeMid + awayMid);
       const isHomeAttack = Math.random() < homePossessionChance;
       if (isHomeAttack) {
@@ -207,8 +226,7 @@ export const simulateMatch = (
         
         // Let's decide if it's a Goal, Saved, or Miss
         const attackRoll = Math.random();
-        if (attackRoll < attackChance * 0.28) { // Increased base conversion for higher force gap
-          homeScore++;
+        if (attackRoll < attackChance * homeConversionRate) { // Elastic conversion applied\n          homeScore++;
           const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
           events.push({
             minute: min,
@@ -244,8 +262,7 @@ export const simulateMatch = (
         const attackChance = Math.pow(baseAttackChance, 1.6);
         
         const attackRoll = Math.random();
-        if (attackRoll < attackChance * 0.28) { // Goal!
-          awayScore++;
+        if (attackRoll < attackChance * awayConversionRate) { // Goal!\n          awayScore++;
           const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
           events.push({
             minute: min,

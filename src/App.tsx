@@ -26,7 +26,7 @@ const AppContent: React.FC = () => {
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
 
   // Squad selection states
-  const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '4-3-3' | '3-5-2' | '4-5-1' | '5-3-2'>('4-4-2');
+  const [selectedTactic, setSelectedTactic] = useState<'4-2-3-1' | '3-4-3' | '4-5-1' | '4-4-2 (Diamond)' | '4-3-3' | '4-4-1-1' | '3-3-1-3' | '4-4-2' | '3-5-2'>('4-4-2');
   const [starters, setStarters] = useState<Player[]>([]);
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [subslotIndex, setSubslotIndex] = useState<number | null>(null);
@@ -36,7 +36,7 @@ const AppContent: React.FC = () => {
   const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'HISTORY'>('TABLE');
 
   // Market filter states
-  const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | 'GK' | 'DF' | 'MF' | 'FW'>('ALL');
+  const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | 'GK' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'>('ALL');
 
   // Match Simulation variables
   const [simMinute, setSimMinute] = useState(0);
@@ -87,7 +87,7 @@ const AppContent: React.FC = () => {
   // Auto-fill selectedSearchClubId when division or clubs list changes
   useEffect(() => {
     if (clubs.length > 0) {
-      const divClubs = clubs.filter(c => c.division === selectedSearchDiv && c.id !== userClubId);
+      const divClubs = clubs.filter(c => c.division === selectedSearchDiv && c.id !== userClubId).sort((a, b) => a.name.localeCompare(b.name));
       if (divClubs.length > 0) {
         setSelectedSearchClubId(divClubs[0].id);
       }
@@ -117,12 +117,19 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (userClub) {
       const getTacticNeeds = (tactic: string) => {
-        let targetDF = 4, targetMF = 4, targetFW = 2;
-        if (tactic === '4-3-3') { targetDF = 4; targetMF = 3; targetFW = 3; }
-        else if (tactic === '3-5-2') { targetDF = 3; targetMF = 5; targetFW = 2; }
-        else if (tactic === '4-5-1') { targetDF = 4; targetMF = 5; targetFW = 1; }
-        else if (tactic === '5-3-2') { targetDF = 5; targetMF = 3; targetFW = 2; }
-        return { targetDF, targetMF, targetFW };
+        let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
+        if (tactic === '4-2-3-1' || tactic === '4-5-1' || tactic === '4-4-1-1') {
+          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 5; targetATA = 1;
+        } else if (tactic === '4-3-3') {
+          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
+        } else if (tactic === '4-4-2' || tactic === '4-4-2 (Diamond)') {
+          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
+        } else if (tactic === '3-4-3' || tactic === '3-3-1-3') {
+          targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 2; targetATA = 3;
+        } else if (tactic === '3-5-2') {
+          targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
+        }
+        return { targetZAG, targetLE, targetLD, targetMEI, targetATA };
       };
 
       if (startersPerTactic[selectedTactic] && startersPerTactic[selectedTactic].length > 0) {
@@ -131,7 +138,7 @@ const AppContent: React.FC = () => {
         const validated = saved.map(p => {
           const found = userClub.squad.find(s => s.id === p.id);
           if (!found || found.isInjured) {
-            const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !saved.some(x => x.id === s.id));
+            const replacement = userClub.squad.find(s => s.subPosition === p.subPosition && !s.isInjured && !saved.some(x => x.id === s.id));
             return replacement || userClub.squad.find(s => !s.isInjured && !saved.some(x => x.id === s.id)) || p;
           }
           return found;
@@ -140,17 +147,23 @@ const AppContent: React.FC = () => {
         setMidMatchStarters(validated);
       } else {
         // Auto-pick best 11 matching the new scheme criteria
-        const { targetDF, targetMF, targetFW } = getTacticNeeds(selectedTactic);
-        const gks = userClub.squad.filter(p => p.position === 'GK' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-        const dfs = userClub.squad.filter(p => p.position === 'DF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-        const mfs = userClub.squad.filter(p => p.position === 'MF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-        const fws = userClub.squad.filter(p => p.position === 'FW' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-
+        const { targetZAG, targetLE, targetLD, targetMEI, targetATA } = getTacticNeeds(selectedTactic);
+        const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
         const selected: Player[] = [];
+        const gks = pool.filter(p => p.subPosition === 'GK');
         if (gks[0]) selected.push(gks[0]);
-        for (let i = 0; i < Math.min(targetDF, dfs.length); i++) selected.push(dfs[i]);
-        for (let i = 0; i < Math.min(targetMF, mfs.length); i++) selected.push(mfs[i]);
-        for (let i = 0; i < Math.min(targetFW, fws.length); i++) selected.push(fws[i]);
+
+        const zags = pool.filter(p => p.subPosition === 'ZAG');
+        const les = pool.filter(p => p.subPosition === 'LE');
+        const lds = pool.filter(p => p.subPosition === 'LD');
+        const meis = pool.filter(p => p.subPosition === 'MEI');
+        const atas = pool.filter(p => p.subPosition === 'ATA');
+
+        for (let i = 0; i < Math.min(targetZAG, zags.length); i++) selected.push(zags[i]);
+        for (let i = 0; i < Math.min(targetLE, les.length); i++) selected.push(les[i]);
+        for (let i = 0; i < Math.min(targetLD, lds.length); i++) selected.push(lds[i]);
+        for (let i = 0; i < Math.min(targetMEI, meis.length); i++) selected.push(meis[i]);
+        for (let i = 0; i < Math.min(targetATA, atas.length); i++) selected.push(atas[i]);
 
         if (selected.length < 11) {
           const ids = new Set(selected.map(p => p.id));
@@ -172,7 +185,7 @@ const AppContent: React.FC = () => {
         const found = userClub.squad.find(s => s.id === p.id);
         if (!found || found.isInjured) {
           changed = true;
-          const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !starters.some(x => x.id === s.id));
+          const replacement = userClub.squad.find(s => s.subPosition === p.subPosition && !s.isInjured && !starters.some(x => x.id === s.id));
           return replacement || userClub.squad.find(s => !s.isInjured && !starters.some(x => x.id === s.id)) || p;
         }
         if (found.rating !== p.rating || found.energy !== p.energy) {
@@ -334,7 +347,7 @@ const AppContent: React.FC = () => {
         const potentialPlayers = userClub.squad.filter(p => !p.isInjured && !p.contractLocked && (p.isStar || p.rating >= 75 || p.goals >= 3));
         if (potentialPlayers.length > 0) {
           const targetPlayer = potentialPlayers[Math.floor(Math.random() * potentialPlayers.length)];
-          const otherClubs = clubs.filter(c => c.id !== userClubId);
+          const otherClubs = clubs.filter(c => c.id !== userClubId).sort((a, b) => a.name.localeCompare(b.name));
           if (otherClubs.length > 0) {
             const buyer = otherClubs[Math.floor(Math.random() * otherClubs.length)];
             // Offer is around 90% to 125% of market value
@@ -471,7 +484,7 @@ const AppContent: React.FC = () => {
 
   // --- START SCREEN RENDER ---
   if (gameState === 'START') {
-    const cClubs = CLUB_DEFINITIONS.filter(c => c.division === 'C');
+    const cClubs = CLUB_DEFINITIONS.filter(c => c.division === 'C').sort((a, b) => a.name.localeCompare(b.name));
 
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
@@ -1138,7 +1151,7 @@ const AppContent: React.FC = () => {
               </div>
               
               <div style={{ display: 'flex', gap: '6px' }}>
-                {(['4-4-2', '4-3-3', '3-5-2', '4-5-1', '5-3-2'] as const).map(tac => (
+                {(['4-2-3-1', '3-4-3', '4-5-1', '4-4-2 (Diamond)', '4-3-3', '4-4-1-1', '3-3-1-3', '4-4-2', '3-5-2'] as const).map(tac => (
                   <button
                     key={tac}
                     onClick={() => setSelectedTactic(tac)}
@@ -1158,22 +1171,35 @@ const AppContent: React.FC = () => {
                   onClick={() => {
                     if (!userClub) return;
                     // Helper logic to grab target tactic sizes
-                    let targetDF = 4, targetMF = 4, targetFW = 2;
-                    if (selectedTactic === '4-3-3') { targetDF = 4; targetMF = 3; targetFW = 3; }
-                    else if (selectedTactic === '3-5-2') { targetDF = 3; targetMF = 5; targetFW = 2; }
-                    else if (selectedTactic === '4-5-1') { targetDF = 4; targetMF = 5; targetFW = 1; }
-                    else if (selectedTactic === '5-3-2') { targetDF = 5; targetMF = 3; targetFW = 2; }
+                    let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
+                    if (selectedTactic === '4-2-3-1' || selectedTactic === '4-5-1' || selectedTactic === '4-4-1-1') {
+                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 5; targetATA = 1;
+                    } else if (selectedTactic === '4-3-3') {
+                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
+                    } else if (selectedTactic === '4-4-2' || selectedTactic === '4-4-2 (Diamond)') {
+                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
+                    } else if (selectedTactic === '3-4-3' || selectedTactic === '3-3-1-3') {
+                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 2; targetATA = 3;
+                    } else if (selectedTactic === '3-5-2') {
+                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
+                    }
 
-                    const gks = userClub.squad.filter(p => p.position === 'GK' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-                    const dfs = userClub.squad.filter(p => p.position === 'DF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-                    const mfs = userClub.squad.filter(p => p.position === 'MF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-                    const fws = userClub.squad.filter(p => p.position === 'FW' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-
+                    const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
                     const bestSelected: Player[] = [];
+                    const gks = pool.filter(p => p.subPosition === 'GK');
                     if (gks[0]) bestSelected.push(gks[0]);
-                    for (let i = 0; i < Math.min(targetDF, dfs.length); i++) bestSelected.push(dfs[i]);
-                    for (let i = 0; i < Math.min(targetMF, mfs.length); i++) bestSelected.push(mfs[i]);
-                    for (let i = 0; i < Math.min(targetFW, fws.length); i++) bestSelected.push(fws[i]);
+
+                    const zags = pool.filter(p => p.subPosition === 'ZAG');
+                    const les = pool.filter(p => p.subPosition === 'LE');
+                    const lds = pool.filter(p => p.subPosition === 'LD');
+                    const meis = pool.filter(p => p.subPosition === 'MEI');
+                    const atas = pool.filter(p => p.subPosition === 'ATA');
+
+                    for (let i = 0; i < Math.min(targetZAG, zags.length); i++) bestSelected.push(zags[i]);
+                    for (let i = 0; i < Math.min(targetLE, les.length); i++) bestSelected.push(les[i]);
+                    for (let i = 0; i < Math.min(targetLD, lds.length); i++) bestSelected.push(lds[i]);
+                    for (let i = 0; i < Math.min(targetMEI, meis.length); i++) bestSelected.push(meis[i]);
+                    for (let i = 0; i < Math.min(targetATA, atas.length); i++) bestSelected.push(atas[i]);
 
                     // Fill to 11 if needed
                     if (bestSelected.length < 11) {
@@ -1195,28 +1221,38 @@ const AppContent: React.FC = () => {
                   onClick={() => {
                     if (!userClub) return;
                     // Rotate fatigued players: replace players with energy < 75 with best rested bench players
-                    let targetDF = 4, targetMF = 4, targetFW = 2;
-                    if (selectedTactic === '4-3-3') { targetDF = 4; targetMF = 3; targetFW = 3; }
-                    else if (selectedTactic === '3-5-2') { targetDF = 3; targetMF = 5; targetFW = 2; }
-                    else if (selectedTactic === '4-5-1') { targetDF = 4; targetMF = 5; targetFW = 1; }
-                    else if (selectedTactic === '5-3-2') { targetDF = 5; targetMF = 3; targetFW = 2; }
+                    let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
+                    if (selectedTactic === '4-2-3-1' || selectedTactic === '4-5-1' || selectedTactic === '4-4-1-1') {
+                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 5; targetATA = 1;
+                    } else if (selectedTactic === '4-3-3') {
+                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
+                    } else if (selectedTactic === '4-4-2' || selectedTactic === '4-4-2 (Diamond)') {
+                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
+                    } else if (selectedTactic === '3-4-3' || selectedTactic === '3-3-1-3') {
+                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 2; targetATA = 3;
+                    } else if (selectedTactic === '3-5-2') {
+                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
+                    }
 
                     // Sort all non-injured squad by energy level (higher energy first), then by rating
                     const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.energy - a.energy || b.rating - a.rating);
                     
                     const selected: Player[] = [];
                     // Force pick the gk with best energy
-                    const gks = pool.filter(p => p.position === 'GK');
+                    const gks = pool.filter(p => p.subPosition === 'GK');
                     if (gks[0]) selected.push(gks[0]);
 
-                    const dfs = pool.filter(p => p.position === 'DF');
-                    for (let i = 0; i < Math.min(targetDF, dfs.length); i++) selected.push(dfs[i]);
+                    const zags = pool.filter(p => p.subPosition === 'ZAG');
+                    const les = pool.filter(p => p.subPosition === 'LE');
+                    const lds = pool.filter(p => p.subPosition === 'LD');
+                    const meis = pool.filter(p => p.subPosition === 'MEI');
+                    const atas = pool.filter(p => p.subPosition === 'ATA');
 
-                    const mfs = pool.filter(p => p.position === 'MF');
-                    for (let i = 0; i < Math.min(targetMF, mfs.length); i++) selected.push(mfs[i]);
-
-                    const fws = pool.filter(p => p.position === 'FW');
-                    for (let i = 0; i < Math.min(targetFW, fws.length); i++) selected.push(fws[i]);
+                    for (let i = 0; i < Math.min(targetZAG, zags.length); i++) selected.push(zags[i]);
+                    for (let i = 0; i < Math.min(targetLE, les.length); i++) selected.push(les[i]);
+                    for (let i = 0; i < Math.min(targetLD, lds.length); i++) selected.push(lds[i]);
+                    for (let i = 0; i < Math.min(targetMEI, meis.length); i++) selected.push(meis[i]);
+                    for (let i = 0; i < Math.min(targetATA, atas.length); i++) selected.push(atas[i]);
 
                     // Fill to 11
                     if (selected.length < 11) {
@@ -1245,7 +1281,7 @@ const AppContent: React.FC = () => {
               <div className="tactical-grid">
                 {/* Forwards row */}
                 <div className="tactical-row">
-                  {starters.filter(p => p.position === 'FW').map(p => (
+                  {starters.filter(p => p.subPosition === 'ATA').map(p => (
                     <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
                       <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-red)' }}>{p.rating}</div>
                       <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
@@ -1255,10 +1291,19 @@ const AppContent: React.FC = () => {
 
                 {/* Midfielders row */}
                 <div className="tactical-row">
-                  {starters.filter(p => p.position === 'MF').map(p => (
+                  {starters.filter(p => {
+                    const is3DF = selectedTactic.startsWith('3-');
+                    if (is3DF) {
+                      return p.subPosition === 'MEI' || p.subPosition === 'LE' || p.subPosition === 'LD';
+                    }
+                    return p.subPosition === 'MEI';
+                  }).map(p => (
                     <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
                       <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-green)' }}>{p.rating}</div>
-                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                      <span className="token-name">
+                        <strong style={{ color: 'var(--accent-green)', marginRight: '2px' }}>{p.subPosition}</strong> 
+                        {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1266,23 +1311,13 @@ const AppContent: React.FC = () => {
                 {/* Defenders row */}
                 <div className="tactical-row">
                   {(() => {
-                    const dfs = starters.filter(p => p.position === 'DF');
-                    return dfs.map((p, idx) => {
-                      // Use assigned subPosition or fallback dynamically to index label
+                    const is3DF = selectedTactic.startsWith('3-');
+                    const dfs = starters.filter(p => {
+                      if (is3DF) return p.subPosition === 'ZAG';
+                      return p.subPosition === 'ZAG' || p.subPosition === 'LE' || p.subPosition === 'LD';
+                    });
+                    return dfs.map((p) => {
                       let sideLabel = p.subPosition || 'ZAG';
-                      if (!p.subPosition) {
-                        if (dfs.length === 3) {
-                          if (idx === 0) sideLabel = 'LE';
-                          if (idx === 2) sideLabel = 'LD';
-                        } else if (dfs.length === 4) {
-                          if (idx === 0) sideLabel = 'LE';
-                          if (idx === 3) sideLabel = 'LD';
-                        } else if (dfs.length === 5) {
-                          if (idx === 0) sideLabel = 'LE';
-                          if (idx === 4) sideLabel = 'LD';
-                        }
-                      }
-                      
                       return (
                         <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
                           <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-blue)' }}>{p.rating}</div>
@@ -1496,7 +1531,7 @@ const AppContent: React.FC = () => {
               <>
                 {/* Filter buttons */}
                 <div className="sub-tabs" style={{ marginBottom: '12px' }}>
-                  {(['ALL', 'GK', 'DF', 'MF', 'FW'] as const).map(pos => (
+                  {(['ALL', 'GK', 'ZAG', 'LE', 'LD', 'MEI', 'ATA'] as const).map(pos => (
                     <button
                       key={pos}
                       onClick={() => setMarketPosFilter(pos)}
@@ -1511,7 +1546,7 @@ const AppContent: React.FC = () => {
                 <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Comprar Jogadores (Transferências)</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                   {marketPlayers
-                    .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
+                    .filter(p => marketPosFilter === 'ALL' || p.subPosition === marketPosFilter)
                     .map(player => (
                       <div key={player.id} className="player-row">
                         <span className={`pos-badge ${player.position}`}>{player.position}</span>
