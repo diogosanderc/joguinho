@@ -48,7 +48,7 @@ export interface ClubDefinition {
   stadiumCapacity: number;
   stadiumName: string;
   reputation: number;
-  stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW'; rating: number }[];
+  stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW' | 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'; rating: number }[];
 }
 
 const FIRST_NAMES = [
@@ -65,7 +65,7 @@ const LAST_NAMES = [
   'Pinto', 'Cabral', 'Castro', 'Cardoso', 'Cavalcanti', 'Fontes', 'Borges', 'Neves', 'Motta', 'Miranda'
 ];
 
-export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' | 'MF' | 'FW'; rating: number }[]> = {
+export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' | 'MF' | 'FW' | 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'; rating: number }[]> = {
   amazonas: [
     { name: "Renan", position: "GK", rating: 53 },
     { name: "João Lopes", position: "GK", rating: 53 },
@@ -981,12 +981,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Ignácio", position: "DF", rating: 78 },
     { name: "Igor Rabello", position: "DF", rating: 77 },
     { name: "Thiago Silva", position: "DF", rating: 75 },
-    { name: "Davi Schuindt", position: "DF", rating: 75 },
-    { name: "Guilherme Arana", position: "DF", rating: 80 },
-    { name: "Renê", position: "DF", rating: 75 },
-    { name: "Guga", position: "DF", rating: 78 },
-    { name: "Julio Fidelis", position: "DF", rating: 75 },
-    { name: "Samuel Xavier", position: "DF", rating: 75 },
+    { name: "Davi Schuindt", position: "LD", rating: 75 },
+    { name: "Guilherme Arana", position: "LE", rating: 80 },
+    { name: "Renê", position: "LE", rating: 75 },
+    { name: "Guga", position: "LD", rating: 78 },
+    { name: "Julio Fidelis", position: "LD", rating: 75 },
+    { name: "Samuel Xavier", position: "LD", rating: 75 },
     { name: "Martinelli", position: "MF", rating: 83 },
     { name: "Otávio", position: "MF", rating: 77 },
     { name: "Hércules", position: "MF", rating: 83 },
@@ -2403,7 +2403,7 @@ const calculatePlayerValueAndSalary = (rating: number, age: number, position: st
   return { value, salary };
 };
 
-export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW'; rating: number }[] = []): Player[] => {
+export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW' | 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'; rating: number }[] = []): Player[] => {
   const squad: Player[] = [];
   let idCounter = 1;
 
@@ -2414,12 +2414,20 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
   
   stars.forEach(star => {
     const age = randomRange(19, 34);
-    const { value, salary } = calculatePlayerValueAndSalary(star.rating, age, star.position);
+    
+    // Map custom subposition to base positions for calculations
+    let basePos: 'GK' | 'DF' | 'MF' | 'FW' = 'MF';
+    if (star.position === 'GK' || star.position === 'GOL') basePos = 'GK';
+    else if (star.position === 'DF' || star.position === 'ZAG' || star.position === 'LE' || star.position === 'LD') basePos = 'DF';
+    else if (star.position === 'MF' || star.position === 'MEI') basePos = 'MF';
+    else if (star.position === 'FW' || star.position === 'ATA') basePos = 'FW';
+
+    const { value, salary } = calculatePlayerValueAndSalary(star.rating, age, basePos);
     squad.push({
       id: `${clubId}_p_${idCounter++}`,
       name: star.name,
       age,
-      position: star.position,
+      position: basePos,
       rating: star.rating,
       energy: 100,
       value,
@@ -2429,9 +2437,11 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
       redCards: 0,
       isInjured: false,
       isStar: star.rating >= 80,
-      contractLocked: star.rating >= 83
+      contractLocked: star.rating >= 83,
+      // Temporarily write the custom subposition so post-processing doesn't override it
+      subPosition: (['GOL', 'ZAG', 'LE', 'LD', 'MEI', 'ATA'].includes(star.position) ? star.position : undefined) as any
     });
-    usedPositions[star.position]++;
+    usedPositions[basePos]++;
   });
 
   const positionTargets = { GK: 2, DF: 6, MF: 6, FW: 6 };
@@ -2476,18 +2486,18 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
   });
 
   // Post-process to assign subPositions (LE, LD, ZAG for DF; GK, MF, FW for others)
-  // Mapping lists based on real Serie A and Serie B fullbacks and common names
+  // Mapping lists based on real Serie A, B, and C player names and positions from Transfermarkt
   const REAL_LE_NAMES = [
     // Serie A
     'Ayrton Lucas', 'Alex Sandro', 'Joaquín Piquerez', 'Jefté', 'Arthur Gabriel', 'Enzo Díaz', 'Wendell', 
     'Matheus Bidu', 'Hugo', 'Fabrizio Angileri', 'Alex Telles', 'Fernando Marçal', 'Jhoan Hernández', 'Caio Roque', 'Paulinho',
     'Reinaldo', 'Renan Lodi', 'Marlon', 'Guilherme Arana', 'Rubens', 'Wellington', 'Cuiabano', 'Marçal',
     'Renê', 'Bernabei', 'Samuel Xavier', 'Marcelo', 'Diogo Barbosa', 'Piton', 'Lucas Piton', 'Victor Luis',
-    'Dalbert', 'Tobias Ostchega', 'Carlinhos', 'Kaiki', 'Egídio',
-    // Serie B
+    'Dalbert', 'Tobias Ostchega', 'Carlinhos', 'Kaiki', 'Egídio', 'Felipe Jonatan', 'Cortez', 'Miranda', 'Romário',
+    // Serie B & C
     'Emerson Barbosa', 'Renan Castro', 'Kevyson', 'Danilo Barcelos', 'Diego Porfírio', 'Felipinho', 'Davi Gabriel', 
-    'Rafinha', 'Edson Lucas', 'Felipe Jonatan', 'João Almeida', 'Bruno Melo', 'Luiz Paulo', 'Igor Fernandes', 
-    'Léo Jance', 'Djalma Silva', 'Sánchez', 'Fernando', 'Yuri', 'Ramon'
+    'Rafinha', 'Edson Lucas', 'João Almeida', 'Bruno Melo', 'Luiz Paulo', 'Igor Fernandes', 'Djalma Silva',
+    'Léo Jance', 'Sánchez', 'Fernando', 'Yuri', 'Ramon', 'Jeferson', 'Marlon', 'Guilherme', 'Kadu', 'Patryck'
   ];
 
   const REAL_LD_NAMES = [
@@ -2495,11 +2505,49 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
     'Varela', 'Guillermo Varela', 'Emerson Royal', 'Agustín Giay', 'Khellven', 'João Moreira', 'Lucas Ramon', 
     'Maik', 'Igor Felisberto', 'Aurélio Buta', 'Matheuzinho', 'Pedro Milans', 'Vitinho', 'Mateo Ponte', 'Igor Vinícius',
     'William', 'Fagner', 'Marcos Rocha', 'Mayke', 'Guga', 'Samuel Xavier', 'Wesley', 'Calegari', 'Bustos', 
-    'Fabricio Bustos', 'Puma Rodríguez', 'Nathan', 'Léo Mana', 'João Pedro'
+    'Fabricio Bustos', 'Puma Rodríguez', 'Nathan', 'Léo Mana', 'João Pedro', 'Wellington', 'Gabriel', 'Bainano',
+    // Serie B & C
+    'Rai', 'Zeca', 'Diogo Batista', 'Douglas Pelé', 'Alex Silva', 'Heitor', 'Léo Alaba', 'Ewerthon', 'Arnaldo',
+    'Reginaldo', 'Mateus', 'Lucas Abbade', 'Aderlan', 'Hayner', 'Dudu', 'Daniel Guedes', 'Poli', 'Chiquinho'
+  ];
+
+  const REAL_MEI_NAMES = [
+    // Defensive/Central/Offensive Midfielders (Volantes, Meias Central e Ofensivos)
+    'Marlon Freitas', 'Emiliano Martínez', 'Luis Pacheco', 'Andreas Pereira', 'Lucas Evangelista', 'Larson',
+    'Alan Patrick', 'Arrascaeta', 'De la Cruz', 'Pulgar', 'Gerson', 'Allan', 'Igor Gomes', 'Rodrigo Nestor',
+    'Alisson', 'Luiz Gustavo', 'Bobadilla', 'Galoppo', 'Michel Araujo', 'Zaracho', 'Battaglia', 'Otávio',
+    'Gustavo Scarpa', 'Igor Gomes', 'Edenilson', 'Maurício', 'Rios', 'Richard Ríos', 'Zé Rafael', 'Aníbal Moreno',
+    'Caio Alexandre', 'Jean Lucas', 'Everton Ribeiro', 'Yago Felipe', 'Cauly', 'Thaciano', 'Lucho Rodríguez',
+    'Lucas Silva', 'Matheus Pereira', 'Ramiro', 'Japa', 'Walace', 'Matheus Henrique', 'Barreal', 'Villasanti',
+    'Carballo', 'Pepê', 'Cristaldo', 'Du Queiroz', 'Dodi', 'Hernani', 'Garro', 'Rodrigo Garro', 'Raniele',
+    'Breno Bidon', 'Coronado', 'Igor Coronado', 'Ryan', 'Alex Santana', 'Charles', 'Martinez', 'Sforza',
+    'Hugo Moura', 'Payet', 'Dimitri Payet', 'Galdames', 'Praxedes', 'Mateus Carvalho', 'Adson', 'JP', 'Lucas Eduardo',
+    'Lucas Lima', 'Nenê', 'Jean Lucas', 'Nonato', 'Hércules', 'Pochettino', 'Calebe', 'Kervin Andrade', 'Lucas Sasha',
+    'Zanocelo', 'Matheus Rossetto', 'Alan Ruiz', 'Fellipe Mateus', 'Barreto', 'Ronald', 'Newton', 'Matheusinho',
+    'Alan', 'Diego', 'Fabio', 'Mauri', 'Maurício', 'Alan', 'Marlon', 'Fabrício Isidoro', 'Ian Luccas', 'Jota',
+    'Kauan Rodrigues', 'Yago Santos', 'Gian Cabezas', 'Gustavinho', 'Kauan Lindes', 'Pedro Oliveira', 'Alexandre Pena'
+  ];
+
+  const REAL_ATA_NAMES = [
+    // Wingers and Strikers (Ponta Esquerda/Direita e Centroavante)
+    'Sassá', 'Wellington', 'Victor', 'Dudu', 'Luis Fabiano', 'Lucas', 'Osvaldo', 'Jadson', 'Maicon', 'Denilson',
+    'Pedro', 'Gabigol', 'Gabriel Barbosa', 'Carlinhos', 'Bruno Henrique', 'Luiz Araújo', 'Cebolinha', 'Everton',
+    'Calleri', 'Jonathan Calleri', 'Luciano', 'Ferreira', 'André Silva', 'Erick', 'Wellington Rato', 'Paulino',
+    'Hulk', 'Kardec', 'Deyverson', 'Alisson', 'Vargas', 'Cadu', 'Flaco López', 'Rony', 'Estêvão', 'Lázaro',
+    'Luighi', 'Thalys', 'Everaldo', 'Biel', 'Ademir', 'Rafael Ratão', 'Luciano Rodríguez', 'Ytalo', 'Dinamite',
+    'Enner Valencia', 'Borré', 'Alario', 'Lucca', 'Wanderson', 'Wesley', 'Gustavo Nunes', 'Diego Costa',
+    'Pavón', 'Soteldo', 'Nathan Fernandes', 'Júnior Santos', 'Tiquinho', 'Tiquinho Soares', 'Júnior Santos',
+    'Luiz Henrique', 'Matheus Martins', 'Savaninho', 'Yuri Alberto', 'Romero', 'Ángel Romero', 'Pedro Raul',
+    'Giovane', 'Wesley', 'Garro', 'Pedro Henrique', 'Vegetti', 'Pablo Vegetti', 'David', 'Rayan', 'Emerson Rodríguez',
+    'GB', 'Rossi', 'Lucero', 'Moisés', 'Kervin', 'Breno Lopes', 'Machuca', 'Renato Kayzer', 'Bolassie', 'Yannick Bolasye',
+    'Eder', 'Felipe Vizeu', 'Arthur Caíke', 'Allano', 'Léo Chú', 'Dixon Vera', 'Otávio Freitas', 'Ruan Assis',
+    'João Adriano', 'Max', 'Leandro Alves', 'Bruninho', 'Ronaldo Tavares', 'Wilinton Aponzá', 'Gustavão'
   ];
 
   const dfs = squad.filter(p => p.position === 'DF');
   dfs.forEach((p, idx) => {
+    if (p.subPosition) return; // Preserve manual definitions
+
     // 1. Check if name matches known LE list
     const hasLEMatch = REAL_LE_NAMES.some(leName => p.name.toLowerCase().includes(leName.toLowerCase()));
     // 2. Check if name matches known LD list
@@ -2516,10 +2564,56 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
       else p.subPosition = 'ZAG';
     }
   });
+
   squad.forEach(p => {
-    if (p.position === 'GK') p.subPosition = 'GOL';
-    else if (p.position === 'MF') p.subPosition = 'MEI';
-    else if (p.position === 'FW') p.subPosition = 'ATA';
+    // If subPosition was already set manually in the stars configuration (e.g. parsed from transfermarkt), preserve it!
+    if (p.subPosition) {
+      // Synchronize base position to match custom subPosition
+      if (p.subPosition === 'GOL') p.position = 'GK';
+      else if (['ZAG', 'LE', 'LD'].includes(p.subPosition)) p.position = 'DF';
+      else if (p.subPosition === 'MEI') p.position = 'MF';
+      else if (p.subPosition === 'ATA') p.position = 'FW';
+      return; 
+    }
+
+    if (p.position === 'GK') {
+      p.subPosition = 'GOL';
+    } else if (p.position === 'MF') {
+      p.subPosition = 'MEI';
+    } else if (p.position === 'FW') {
+      p.subPosition = 'ATA';
+    } else if (p.position === 'DF' && !p.subPosition) {
+      p.subPosition = 'ZAG';
+    }
+
+    // Double check specific name-based corrections for all positions
+    const nameLower = p.name.toLowerCase();
+    
+    // 1. Goleiros
+    if (nameLower.includes('goleiro') || nameLower.includes('gato') || nameLower.includes('bento') || nameLower.includes('everson') || nameLower.includes('carlos miguel') || nameLower.includes('lomba') || nameLower.includes('drosny')) {
+      p.position = 'GK';
+      p.subPosition = 'GOL';
+    }
+    // 2. Laterais Esquerdos
+    else if (REAL_LE_NAMES.some(le => nameLower.includes(le.toLowerCase()))) {
+      p.position = 'DF';
+      p.subPosition = 'LE';
+    }
+    // 3. Laterais Direitos
+    else if (REAL_LD_NAMES.some(ld => nameLower.includes(ld.toLowerCase()))) {
+      p.position = 'DF';
+      p.subPosition = 'LD';
+    }
+    // 4. Meio-campistas
+    else if (REAL_MEI_NAMES.some(m => nameLower.includes(m.toLowerCase()))) {
+      p.position = 'MF';
+      p.subPosition = 'MEI';
+    }
+    // 5. Atacantes
+    else if (REAL_ATA_NAMES.some(a => nameLower.includes(a.toLowerCase()))) {
+      p.position = 'FW';
+      p.subPosition = 'ATA';
+    }
   });
 
   const posOrder = { GK: 0, DF: 1, MF: 2, FW: 3 };
