@@ -113,22 +113,60 @@ const AppContent: React.FC = () => {
     }
   }, [userClubId, lastUserClubId]);
 
+  // Helper to determine positional requirements for each tactic
+  const getTacticNeeds = (tactic: string) => {
+    let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
+    if (tactic === '4-3-3') {
+      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
+    } else if (tactic === '3-5-2') {
+      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
+    } else {
+      // Default 4-4-2
+      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
+    }
+    return { targetZAG, targetLE, targetLD, targetMEI, targetATA };
+  };
+
+  // Helper function to check if the club has enough healthy players for a tactic
+  const isTacticAvailable = (tactic: string, squadList: Player[]) => {
+    const { targetZAG, targetLE, targetLD, targetMEI, targetATA } = getTacticNeeds(tactic);
+    const healthy = squadList.filter(p => !p.isInjured);
+    
+    const healthyGOL = healthy.filter(p => p.position === 'GK' || p.subPosition === 'GOL').length;
+    const healthyZAG = healthy.filter(p => p.subPosition === 'ZAG').length;
+    const healthyLE = healthy.filter(p => p.subPosition === 'LE').length;
+    const healthyLD = healthy.filter(p => p.subPosition === 'LD').length;
+    const healthyMEI = healthy.filter(p => p.subPosition === 'MEI').length;
+    const healthyATA = healthy.filter(p => p.subPosition === 'ATA').length;
+
+    return (
+      healthyGOL >= 1 &&
+      healthyZAG >= targetZAG &&
+      healthyLE >= targetLE &&
+      healthyLD >= targetLD &&
+      healthyMEI >= targetMEI &&
+      healthyATA >= targetATA
+    );
+  };
+
+  // Auto-switch selectedTactic if the current one is not available
+  useEffect(() => {
+    if (userClub) {
+      const activeTacticAvailable = isTacticAvailable(selectedTactic, userClub.squad);
+      if (!activeTacticAvailable) {
+        // Find the first tactic that is available
+        const tactics: ('4-4-2' | '3-5-2' | '4-3-3')[] = ['4-4-2', '3-5-2', '4-3-3'];
+        const fallback = tactics.find(t => isTacticAvailable(t, userClub.squad));
+        if (fallback) {
+          setSelectedTactic(fallback);
+        }
+      }
+    }
+  }, [userClubId, userClub?.squad]);
+
   // Load or pick starters when tactic changes — preserves current starters by position
   useEffect(() => {
     if (userClub) {
-      const getTacticNeeds = (tactic: string) => {
-        let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
-        if (tactic === '4-3-3') {
-          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
-        } else if (tactic === '3-5-2') {
-          targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
-        } else {
-          // Default 4-4-2
-          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
-        }
-        return { targetZAG, targetLE, targetLD, targetMEI, targetATA };
-      };
-
       if (startersPerTactic[selectedTactic] && startersPerTactic[selectedTactic].length > 0) {
         // Saved lineup for this tactic — validate (injures / sold players)
         const saved = startersPerTactic[selectedTactic];
@@ -1145,16 +1183,33 @@ const AppContent: React.FC = () => {
               </div>
               
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {(['4-4-2', '3-5-2', '4-3-3'] as const).map(tac => (
-                  <button
-                    key={tac}
-                    onClick={() => setSelectedTactic(tac)}
-                    className={`sub-tab-btn ${selectedTactic === tac ? 'active' : ''}`}
-                    style={{ flex: '1 1 auto', padding: '8px 12px', fontSize: '0.8rem', minWidth: '80px', textAlign: 'center' }}
-                  >
-                    {tac}
-                  </button>
-                ))}
+                {(['4-4-2', '3-5-2', '4-3-3'] as const).map(tac => {
+                  const available = userClub ? isTacticAvailable(tac, userClub.squad) : true;
+                  return (
+                    <button
+                      key={tac}
+                      onClick={() => setSelectedTactic(tac)}
+                      disabled={!available}
+                      className={`sub-tab-btn ${selectedTactic === tac ? 'active' : ''}`}
+                      style={{ 
+                        flex: '1 1 auto', 
+                        padding: '8px 12px', 
+                        fontSize: '0.8rem', 
+                        minWidth: '80px', 
+                        textAlign: 'center',
+                        opacity: available ? 1 : 0.4,
+                        cursor: available ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                      title={available ? `Selecionar tática ${tac}` : `Tática Indisponível: Sem jogadores saudáveis suficientes para o esquema ${tac}`}
+                    >
+                      {tac} {!available && <span style={{ fontSize: '0.7rem' }}>🔒</span>}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Squad optimization buttons */}
