@@ -26,7 +26,7 @@ const AppContent: React.FC = () => {
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
 
   // Squad selection states
-  const [selectedTactic, setSelectedTactic] = useState<'4-2-3-1' | '3-4-3' | '4-5-1' | '4-4-2 (Diamond)' | '4-3-3' | '4-4-1-1' | '3-3-1-3' | '4-4-2' | '3-5-2'>('4-4-2');
+  const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '3-5-2' | '4-3-3'>('4-4-2');
   const [starters, setStarters] = useState<Player[]>([]);
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [subslotIndex, setSubslotIndex] = useState<number | null>(null);
@@ -118,16 +118,13 @@ const AppContent: React.FC = () => {
     if (userClub) {
       const getTacticNeeds = (tactic: string) => {
         let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
-        if (tactic === '4-2-3-1' || tactic === '4-5-1' || tactic === '4-4-1-1') {
-          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 5; targetATA = 1;
-        } else if (tactic === '4-3-3') {
+        if (tactic === '4-3-3') {
           targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
-        } else if (tactic === '4-4-2' || tactic === '4-4-2 (Diamond)') {
-          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
-        } else if (tactic === '3-4-3' || tactic === '3-3-1-3') {
-          targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 2; targetATA = 3;
         } else if (tactic === '3-5-2') {
           targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
+        } else {
+          // Default 4-4-2
+          targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
         }
         return { targetZAG, targetLE, targetLD, targetMEI, targetATA };
       };
@@ -1151,12 +1148,12 @@ const AppContent: React.FC = () => {
               </div>
               
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {(['4-2-3-1', '3-4-3', '4-5-1', '4-4-2 (Diamond)', '4-3-3', '4-4-1-1', '3-3-1-3', '4-4-2', '3-5-2'] as const).map(tac => (
+                {(['4-4-2', '3-5-2', '4-3-3'] as const).map(tac => (
                   <button
                     key={tac}
                     onClick={() => setSelectedTactic(tac)}
                     className={`sub-tab-btn ${selectedTactic === tac ? 'active' : ''}`}
-                    style={{ flex: '1 1 auto', padding: '6px 8px', fontSize: '0.72rem', minWidth: '60px', textAlign: 'center' }}
+                    style={{ flex: '1 1 auto', padding: '8px 12px', fontSize: '0.8rem', minWidth: '80px', textAlign: 'center' }}
                   >
                     {tac}
                   </button>
@@ -1172,14 +1169,8 @@ const AppContent: React.FC = () => {
                     if (!userClub) return;
                     // Helper logic to grab target tactic sizes
                     let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
-                    if (selectedTactic === '4-2-3-1' || selectedTactic === '4-5-1' || selectedTactic === '4-4-1-1') {
-                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 5; targetATA = 1;
-                    } else if (selectedTactic === '4-3-3') {
+                    if (selectedTactic === '4-3-3') {
                       targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
-                    } else if (selectedTactic === '4-4-2' || selectedTactic === '4-4-2 (Diamond)') {
-                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
-                    } else if (selectedTactic === '3-4-3' || selectedTactic === '3-3-1-3') {
-                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 2; targetATA = 3;
                     } else if (selectedTactic === '3-5-2') {
                       targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
                     }
@@ -1222,14 +1213,8 @@ const AppContent: React.FC = () => {
                     if (!userClub) return;
                     // Rotate fatigued players: replace players with energy < 75 with best rested bench players
                     let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
-                    if (selectedTactic === '4-2-3-1' || selectedTactic === '4-5-1' || selectedTactic === '4-4-1-1') {
-                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 5; targetATA = 1;
-                    } else if (selectedTactic === '4-3-3') {
+                    if (selectedTactic === '4-3-3') {
                       targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
-                    } else if (selectedTactic === '4-4-2' || selectedTactic === '4-4-2 (Diamond)') {
-                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
-                    } else if (selectedTactic === '3-4-3' || selectedTactic === '3-3-1-3') {
-                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 2; targetATA = 3;
                     } else if (selectedTactic === '3-5-2') {
                       targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
                     }
