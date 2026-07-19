@@ -1256,100 +1256,148 @@ const AppContent: React.FC = () => {
               </div>
             </div>
 
-            {/* Soccer pitch representation */}
-            <div className="pitch-container">
-              <div className="pitch-line pitch-center-circle" />
-              <div className="pitch-line pitch-midline" />
-              <div className="pitch-line pitch-penalty-area-top" />
-              <div className="pitch-line pitch-penalty-area-bottom" />
+              {/* Soccer pitch representation */}
+              <div className="pitch-container" style={{ position: 'relative', width: '100%', height: '350px', background: 'radial-gradient(circle, var(--pitch-green-light) 0%, var(--pitch-green) 100%)', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)' }}>
+                <div className="pitch-line pitch-center-circle" />
+                <div className="pitch-line pitch-midline" />
+                <div className="pitch-line pitch-penalty-area-top" />
+                <div className="pitch-line pitch-penalty-area-bottom" />
 
-              <div className="tactical-grid">
-                {/* Forwards row */}
-                <div className="tactical-row">
-                  {starters.filter(p => p.subPosition === 'ATA').map(p => (
-                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
-                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-red)' }}>{p.rating}</div>
-                      <span className="token-name" style={{ fontSize: '0.62rem' }}>
-                        <strong style={{ color: 'var(--accent-red)', marginRight: '2px' }}>AT</strong>
-                        {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {(() => {
+                  // Determine coordinates (x, y in %) for each role in the 11 starter positions
+                  // x: 0 = left, 100 = right; y: 0 = top (attacker), 100 = bottom (goalkeeper)
+                  // For GK, LE, LD, ZAGs, MEIs, ATAs
+                  const coords: Record<string, { x: number; y: number }[]> = {
+                    '4-4-2': [
+                      { x: 50, y: 88 }, // GOL
+                      { x: 12, y: 72 }, // LE
+                      { x: 37, y: 74 }, // ZAG 1
+                      { x: 63, y: 74 }, // ZAG 2
+                      { x: 88, y: 72 }, // LD
+                      { x: 15, y: 46 }, // MEI Left (Jadson position)
+                      { x: 38, y: 52 }, // MEI Center-Left (Denilson)
+                      { x: 62, y: 52 }, // MEI Center-Right (Paulo Assunção)
+                      { x: 85, y: 46 }, // MEI Right (Maicon)
+                      { x: 35, y: 20 }, // AT Left (Luis Fabiano)
+                      { x: 65, y: 20 }  // AT Right (Lucas)
+                    ],
+                    '3-5-2': [
+                      { x: 50, y: 88 }, // GOL
+                      { x: 25, y: 74 }, // ZAG Left (Rhodolfo)
+                      { x: 50, y: 76 }, // ZAG Center (Toloi)
+                      { x: 75, y: 74 }, // ZAG Right (João Filipe)
+                      { x: 10, y: 48 }, // LE (Cortez, acting as wing-back)
+                      { x: 90, y: 48 }, // LD (Douglas, acting as wing-back)
+                      { x: 30, y: 44 }, // MEI Center-Left (Jadson)
+                      { x: 50, y: 56 }, // MEI Defensive (Denilson)
+                      { x: 70, y: 44 }, // MEI Center-Right (Maicon)
+                      { x: 35, y: 20 }, // AT Left (Luis Fabiano)
+                      { x: 65, y: 20 }  // AT Right (Lucas)
+                    ],
+                    '4-3-3': [
+                      { x: 50, y: 88 }, // GOL
+                      { x: 12, y: 72 }, // LE (Cortez)
+                      { x: 37, y: 74 }, // ZAG 1 (Rhodolfo)
+                      { x: 63, y: 74 }, // ZAG 2 (Toloi)
+                      { x: 88, y: 72 }, // LD (Wellington)
+                      { x: 25, y: 48 }, // MEI Left (Jadson)
+                      { x: 50, y: 56 }, // MEI Center (Denilson)
+                      { x: 75, y: 48 }, // MEI Right (Maicon)
+                      { x: 18, y: 24 }, // AT Left (Osvaldo)
+                      { x: 50, y: 16 }, // AT Center (Luis Fabiano)
+                      { x: 82, y: 24 }  // AT Right (Lucas)
+                    ]
+                  };
 
-                {/* Midfielders row */}
-                <div className="tactical-row">
-                  {(() => {
-                    const is3DF = selectedTactic.startsWith('3-');
-                    const mids = starters.filter(p => {
-                      if (is3DF) {
-                        return p.subPosition === 'MEI' || p.subPosition === 'LE' || p.subPosition === 'LD';
-                      }
-                      return p.subPosition === 'MEI';
-                    });
-                    
-                    // Sort midfield elements: LE on left, MEI in center, LD on right
-                    const sortedMids = [...mids].sort((a, b) => {
-                      const getOrder = (pos?: string) => pos === 'LE' ? 0 : pos === 'MEI' ? 1 : 2;
-                      return getOrder(a.subPosition) - getOrder(b.subPosition);
-                    });
+                  const currentCoords = coords[selectedTactic] || coords['4-4-2'];
 
-                    return sortedMids.map(p => (
-                      <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
-                        <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-green)' }}>{p.rating}</div>
-                        <span className="token-name" style={{ fontSize: '0.62rem' }}>
-                          <strong style={{ color: 'var(--accent-green)', marginRight: '2px' }}>{p.subPosition === 'LE' ? 'LE' : p.subPosition === 'LD' ? 'LD' : 'MEI'}</strong> 
-                          {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
+                  // Group and order starters so they match the template coordinate assignments perfectly:
+                  // 1. GK -> index 0
+                  // 2. ZAG, LE, LD (DFs) -> ZAGs in center, LE on left, LD on right
+                  // 3. MFs (MEI, and LE/LD if 3-5-2 wings)
+                  // 4. ATAs -> AT
+                  const gks = starters.filter(p => p.position === 'GK');
+                  const zags = starters.filter(p => p.subPosition === 'ZAG');
+                  const les = starters.filter(p => p.subPosition === 'LE');
+                  const lds = starters.filter(p => p.subPosition === 'LD');
+                  const meis = starters.filter(p => p.subPosition === 'MEI');
+                  const atas = starters.filter(p => p.subPosition === 'ATA');
+
+                  let orderedStarters: Player[] = [];
+                  if (selectedTactic === '3-5-2') {
+                    // 3-5-2 Order: GOL, 3 ZAGs, LE (left wing), LD (right wing), 3 MEIs, 2 ATAs
+                    orderedStarters = [
+                      ...gks.slice(0, 1),
+                      ...zags.slice(0, 3),
+                      ...les.slice(0, 1),
+                      ...lds.slice(0, 1),
+                      ...meis.slice(0, 3),
+                      ...atas.slice(0, 2)
+                    ];
+                  } else if (selectedTactic === '4-3-3') {
+                    // 4-3-3 Order: GOL, LE, 2 ZAGs, LD, 3 MEIs, 3 ATAs (where index 8 is left-wing, 9 is center, 10 is right-wing)
+                    orderedStarters = [
+                      ...gks.slice(0, 1),
+                      ...les.slice(0, 1),
+                      ...zags.slice(0, 2),
+                      ...lds.slice(0, 1),
+                      ...meis.slice(0, 3),
+                      ...atas.slice(0, 3)
+                    ];
+                  } else {
+                    // 4-4-2 Order: GOL, LE, 2 ZAGs, LD, 4 MEIs, 2 ATAs
+                    orderedStarters = [
+                      ...gks.slice(0, 1),
+                      ...les.slice(0, 1),
+                      ...zags.slice(0, 2),
+                      ...lds.slice(0, 1),
+                      ...meis.slice(0, 4),
+                      ...atas.slice(0, 2)
+                    ];
+                  }
+
+                  // Fill in any missing spots up to 11 with remaining starters
+                  if (orderedStarters.length < 11) {
+                    const ids = new Set(orderedStarters.map(p => p.id));
+                    const rest = starters.filter(p => !ids.has(p.id));
+                    orderedStarters = [...orderedStarters, ...rest].slice(0, 11);
+                  }
+
+                  return orderedStarters.map((p, idx) => {
+                    const coord = currentCoords[idx] || { x: 50, y: 50 };
+                    let sideLabel: string = p.subPosition || 'ZAG';
+                    if (p.position === 'GK') sideLabel = 'GOL';
+                    else if (p.subPosition === 'ATA') sideLabel = 'AT';
+
+                    let labelColor = 'var(--accent-blue)';
+                    if (sideLabel === 'GOL') labelColor = '#ffa726';
+                    else if (sideLabel === 'MEI') labelColor = 'var(--accent-green)';
+                    else if (sideLabel === 'LE' || sideLabel === 'LD') labelColor = '#29b6f6';
+                    else if (sideLabel === 'AT') labelColor = 'var(--accent-red)';
+
+                    return (
+                      <div 
+                        key={p.id} 
+                        className="player-token" 
+                        onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}
+                        style={{
+                          position: 'absolute',
+                          left: `${coord.x}%`,
+                          top: `${coord.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: 10
+                        }}
+                      >
+                        <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : labelColor }}>{p.rating}</div>
+                        <span className="token-name" style={{ fontSize: '0.6rem', padding: '1px 3px', borderRadius: '4px', background: 'rgba(0,0,0,0.6)', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                          <strong style={{ color: labelColor, marginRight: '2px' }}>{sideLabel}</strong> 
+                          {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]}
                         </span>
                       </div>
-                    ));
-                  })()}
-                </div>
-
-                {/* Defenders row */}
-                <div className="tactical-row">
-                  {(() => {
-                    const is3DF = selectedTactic.startsWith('3-');
-                    const dfs = starters.filter(p => {
-                      if (is3DF) return p.subPosition === 'ZAG';
-                      return p.subPosition === 'ZAG' || p.subPosition === 'LE' || p.subPosition === 'LD';
-                    });
-                    
-                    // Sort defense elements: LE on left, ZAG in middle, LD on right
-                    const sortedDfs = [...dfs].sort((a, b) => {
-                      const getOrder = (pos?: string) => pos === 'LE' ? 0 : pos === 'ZAG' ? 1 : 2;
-                      return getOrder(a.subPosition) - getOrder(b.subPosition);
-                    });
-
-                    return sortedDfs.map((p) => {
-                      let sideLabel = p.subPosition || 'ZAG';
-                      return (
-                        <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
-                          <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-blue)' }}>{p.rating}</div>
-                          <span className="token-name" style={{ fontSize: '0.62rem' }}>
-                            <strong style={{ color: 'var(--accent-blue)', marginRight: '2px' }}>{sideLabel}</strong> 
-                            {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
-                          </span>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-
-                {/* Goalkeeper row */}
-                <div className="tactical-row">
-                  {starters.filter(p => p.position === 'GK').map(p => (
-                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
-                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : '#ffa726' }}>{p.rating}</div>
-                      <span className="token-name" style={{ fontSize: '0.62rem' }}>
-                        <strong style={{ color: '#ffa726', marginRight: '2px' }}>GOL</strong>
-                        {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    );
+                  });
+                })()}
               </div>
-            </div>
 
             {/* List of squad players */}
             <div className="card-title"><Users size={18} color="var(--accent-green)" /> Todos os Jogadores ({userClub.squad.length}/22)</div>
