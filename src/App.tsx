@@ -1327,7 +1327,13 @@ const AppContent: React.FC = () => {
 
                   let orderedStarters: Player[] = [];
                   if (selectedTactic === '3-5-2') {
-                    // 3-5-2 Order: GOL, 3 ZAGs, LE (left wing), LD (right wing), 3 MEIs, 2 ATAs
+                    // 3-5-2 Order: 
+                    // index 0: GOL
+                    // index 1,2,3: 3 ZAGs (sorted left to right by their default names or index to keep visual consistency)
+                    // index 4: LE (Cortez - left wing-back)
+                    // index 5: LD (Douglas - right wing-back)
+                    // index 6,7,8: 3 MEIs (Jadson, Denilson, Maicon)
+                    // index 9,10: 2 ATAs (Luis Fabiano, Lucas)
                     orderedStarters = [
                       ...gks.slice(0, 1),
                       ...zags.slice(0, 3),
@@ -1337,7 +1343,7 @@ const AppContent: React.FC = () => {
                       ...atas.slice(0, 2)
                     ];
                   } else if (selectedTactic === '4-3-3') {
-                    // 4-3-3 Order: GOL, LE, 2 ZAGs, LD, 3 MEIs, 3 ATAs (where index 8 is left-wing, 9 is center, 10 is right-wing)
+                    // 4-3-3 Order: GOL, LE, 2 ZAGs, LD, 3 MEIs, 3 ATAs
                     orderedStarters = [
                       ...gks.slice(0, 1),
                       ...les.slice(0, 1),
@@ -1371,10 +1377,13 @@ const AppContent: React.FC = () => {
                     if (p.position === 'GK') sideLabel = 'GOL';
                     else if (p.subPosition === 'ATA') sideLabel = 'AT';
 
+                    // Highlight LE/LD color as green (MEI) only in 3-5-2 scheme to indicate they play as wings/midfielders
                     let labelColor = 'var(--accent-blue)';
                     if (sideLabel === 'GOL') labelColor = '#ffa726';
                     else if (sideLabel === 'MEI') labelColor = 'var(--accent-green)';
-                    else if (sideLabel === 'LE' || sideLabel === 'LD') labelColor = '#29b6f6';
+                    else if (sideLabel === 'LE' || sideLabel === 'LD') {
+                      labelColor = selectedTactic === '3-5-2' ? 'var(--accent-green)' : '#29b6f6';
+                    }
                     else if (sideLabel === 'AT') labelColor = 'var(--accent-red)';
 
                     return (
