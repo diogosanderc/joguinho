@@ -150,7 +150,7 @@ const AppContent: React.FC = () => {
         const { targetZAG, targetLE, targetLD, targetMEI, targetATA } = getTacticNeeds(selectedTactic);
         const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
         const selected: Player[] = [];
-        const gks = pool.filter(p => p.subPosition === 'GK');
+        const gks = pool.filter(p => p.subPosition === 'GOL');
         if (gks[0]) selected.push(gks[0]);
 
         const zags = pool.filter(p => p.subPosition === 'ZAG');
@@ -1150,13 +1150,13 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                 {(['4-2-3-1', '3-4-3', '4-5-1', '4-4-2 (Diamond)', '4-3-3', '4-4-1-1', '3-3-1-3', '4-4-2', '3-5-2'] as const).map(tac => (
                   <button
                     key={tac}
                     onClick={() => setSelectedTactic(tac)}
                     className={`sub-tab-btn ${selectedTactic === tac ? 'active' : ''}`}
-                    style={{ flex: 1, padding: '8px 2px', fontSize: '0.75rem', minWidth: '45px', textAlign: 'center' }}
+                    style={{ flex: '1 1 auto', padding: '6px 8px', fontSize: '0.72rem', minWidth: '60px', textAlign: 'center' }}
                   >
                     {tac}
                   </button>
@@ -1186,7 +1186,7 @@ const AppContent: React.FC = () => {
 
                     const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
                     const bestSelected: Player[] = [];
-                    const gks = pool.filter(p => p.subPosition === 'GK');
+                    const gks = pool.filter(p => p.subPosition === 'GOL');
                     if (gks[0]) bestSelected.push(gks[0]);
 
                     const zags = pool.filter(p => p.subPosition === 'ZAG');
@@ -1239,7 +1239,7 @@ const AppContent: React.FC = () => {
                     
                     const selected: Player[] = [];
                     // Force pick the gk with best energy
-                    const gks = pool.filter(p => p.subPosition === 'GK');
+                    const gks = pool.filter(p => p.subPosition === 'GOL');
                     if (gks[0]) selected.push(gks[0]);
 
                     const zags = pool.filter(p => p.subPosition === 'ZAG');
@@ -1284,28 +1284,41 @@ const AppContent: React.FC = () => {
                   {starters.filter(p => p.subPosition === 'ATA').map(p => (
                     <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
                       <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-red)' }}>{p.rating}</div>
-                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                      <span className="token-name" style={{ fontSize: '0.62rem' }}>
+                        <strong style={{ color: 'var(--accent-red)', marginRight: '2px' }}>AT</strong>
+                        {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
+                      </span>
                     </div>
                   ))}
                 </div>
 
                 {/* Midfielders row */}
                 <div className="tactical-row">
-                  {starters.filter(p => {
+                  {(() => {
                     const is3DF = selectedTactic.startsWith('3-');
-                    if (is3DF) {
-                      return p.subPosition === 'MEI' || p.subPosition === 'LE' || p.subPosition === 'LD';
-                    }
-                    return p.subPosition === 'MEI';
-                  }).map(p => (
-                    <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
-                      <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-green)' }}>{p.rating}</div>
-                      <span className="token-name">
-                        <strong style={{ color: 'var(--accent-green)', marginRight: '2px' }}>{p.subPosition}</strong> 
-                        {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
-                      </span>
-                    </div>
-                  ))}
+                    const mids = starters.filter(p => {
+                      if (is3DF) {
+                        return p.subPosition === 'MEI' || p.subPosition === 'LE' || p.subPosition === 'LD';
+                      }
+                      return p.subPosition === 'MEI';
+                    });
+                    
+                    // Sort midfield elements: LE on left, MEI in center, LD on right
+                    const sortedMids = [...mids].sort((a, b) => {
+                      const getOrder = (pos?: string) => pos === 'LE' ? 0 : pos === 'MEI' ? 1 : 2;
+                      return getOrder(a.subPosition) - getOrder(b.subPosition);
+                    });
+
+                    return sortedMids.map(p => (
+                      <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
+                        <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : 'var(--accent-green)' }}>{p.rating}</div>
+                        <span className="token-name" style={{ fontSize: '0.62rem' }}>
+                          <strong style={{ color: 'var(--accent-green)', marginRight: '2px' }}>{p.subPosition === 'LE' ? 'LE' : p.subPosition === 'LD' ? 'LD' : 'MEI'}</strong> 
+                          {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
+                        </span>
+                      </div>
+                    ));
+                  })()}
                 </div>
 
                 {/* Defenders row */}
@@ -1316,7 +1329,14 @@ const AppContent: React.FC = () => {
                       if (is3DF) return p.subPosition === 'ZAG';
                       return p.subPosition === 'ZAG' || p.subPosition === 'LE' || p.subPosition === 'LD';
                     });
-                    return dfs.map((p) => {
+                    
+                    // Sort defense elements: LE on left, ZAG in middle, LD on right
+                    const sortedDfs = [...dfs].sort((a, b) => {
+                      const getOrder = (pos?: string) => pos === 'LE' ? 0 : pos === 'ZAG' ? 1 : 2;
+                      return getOrder(a.subPosition) - getOrder(b.subPosition);
+                    });
+
+                    return sortedDfs.map((p) => {
                       let sideLabel = p.subPosition || 'ZAG';
                       return (
                         <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
@@ -1336,7 +1356,10 @@ const AppContent: React.FC = () => {
                   {starters.filter(p => p.position === 'GK').map(p => (
                     <div key={p.id} className="player-token" onClick={() => { setSubslotIndex(starters.indexOf(p)); setSubModalOpen(true); }}>
                       <div className="token-circle" style={{ borderColor: p.isStar ? 'var(--accent-gold)' : '#ffa726' }}>{p.rating}</div>
-                      <span className="token-name">{p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})</span>
+                      <span className="token-name" style={{ fontSize: '0.62rem' }}>
+                        <strong style={{ color: '#ffa726', marginRight: '2px' }}>GOL</strong>
+                        {p.isStar ? '★ ' : ''}{p.name.split(' ')[0]} ({p.age})
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1527,29 +1550,33 @@ const AppContent: React.FC = () => {
               </button>
             </div>
 
+            {/* General Position filter buttons (used by both Free Agents and Club Squad view) */}
+            <div className="sub-tabs" style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {(['ALL', 'GOL', 'ZAG', 'LE', 'LD', 'MEI', 'ATA'] as const).map(pos => (
+                <button
+                  key={pos}
+                  onClick={() => setMarketPosFilter(pos === 'GOL' ? 'GK' as any : pos)}
+                  className={`sub-tab-btn ${((marketPosFilter === 'GK' && pos === 'GOL') || (marketPosFilter === pos)) ? 'active' : ''}`}
+                  style={{ flex: '1 1 auto', padding: '6px 10px', fontSize: '0.72rem', minWidth: '42px', textAlign: 'center' }}
+                >
+                  {pos === 'ALL' ? 'Todos' : pos}
+                </button>
+              ))}
+            </div>
+
             {marketViewMode === 'FREE_AGENTS' ? (
               <>
-                {/* Filter buttons */}
-                <div className="sub-tabs" style={{ marginBottom: '12px' }}>
-                  {(['ALL', 'GK', 'ZAG', 'LE', 'LD', 'MEI', 'ATA'] as const).map(pos => (
-                    <button
-                      key={pos}
-                      onClick={() => setMarketPosFilter(pos)}
-                      className={`sub-tab-btn ${marketPosFilter === pos ? 'active' : ''}`}
-                    >
-                      {pos === 'ALL' ? 'Todos' : pos}
-                    </button>
-                  ))}
-                </div>
-
                 {/* BUY LIST */}
                 <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Comprar Jogadores (Transferências)</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                   {marketPlayers
-                    .filter(p => marketPosFilter === 'ALL' || p.subPosition === marketPosFilter)
+                    .filter(p => {
+                      const filterPos = marketPosFilter === 'GK' ? 'GOL' : marketPosFilter;
+                      return marketPosFilter === 'ALL' || p.subPosition === filterPos;
+                    })
                     .map(player => (
                       <div key={player.id} className="player-row">
-                        <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                        <span className={`pos-badge ${player.position}`}>{player.subPosition || player.position}</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Salário: {formatCurrency(player.salary)}/sem</span>
@@ -1618,12 +1645,17 @@ const AppContent: React.FC = () => {
                   const searchedClub = clubs.find(c => c.id === selectedSearchClubId);
                   if (!searchedClub) return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Selecione um clube para visualizar o elenco.</p>;
                   
+                  const filteredSquad = searchedClub.squad.filter(p => {
+                    const filterPos = marketPosFilter === 'GK' ? 'GOL' : marketPosFilter;
+                    return marketPosFilter === 'ALL' || p.subPosition === filterPos;
+                  });
+
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                       <div className="card-title">Elenco do {searchedClub.name}</div>
-                      {searchedClub.squad.map(player => (
+                      {filteredSquad.map(player => (
                         <div key={player.id} className="player-row">
-                          <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                          <span className={`pos-badge ${player.position}`}>{player.subPosition || player.position}</span>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                             <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Valor: {formatCurrency(player.value)}</span>
@@ -1653,6 +1685,9 @@ const AppContent: React.FC = () => {
                           </div>
                         </div>
                       ))}
+                      {filteredSquad.length === 0 && (
+                        <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Nenhum jogador encontrado com a posição filtrada.</p>
+                      )}
                     </div>
                   );
                 })()}

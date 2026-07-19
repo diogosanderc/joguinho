@@ -261,6 +261,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
 
+      // Map subPosition details correctly
+      let subPosition: 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA' = 'ZAG';
+      if (pos === 'GK') subPosition = 'GOL';
+      else if (pos === 'MF') subPosition = 'MEI';
+      else if (pos === 'FW') subPosition = 'ATA';
+      else {
+        const randSide = Math.random();
+        if (randSide < 0.33) subPosition = 'LE';
+        else if (randSide < 0.66) subPosition = 'LD';
+        else subPosition = 'ZAG';
+      }
+
       list.push({
         id: `market_${Date.now()}_${i}`,
         name,
@@ -275,7 +287,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redCards: 0,
         isInjured: false,
         isStar: false,
-        contractLocked: false
+        contractLocked: false,
+        subPosition
       });
     }
     return list;
