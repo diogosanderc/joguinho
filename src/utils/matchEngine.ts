@@ -31,23 +31,36 @@ export interface MatchResult {
 
 // Auto-selects 11 starters for non-player clubs (default 4-4-2: 2 ZAG, 1 LD, 1 LE, 2 VOL, 2 MEI, 2 CA)
 export const getAutoStarters = (club: Club): Player[] => {
-  const fit = (pos: PlayerPosition) => club.squad.filter(p => p.position === pos && !p.isInjured).sort((a, b) => b.rating - a.rating);
+  const usedIds = new Set<string>();
+  const fit = (pos: PlayerPosition) => club.squad.filter(p => p.position === pos && !p.isInjured && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
 
   const starters: Player[] = [];
-  const targets: [PlayerPosition, number][] = [['GOL', 1], ['ZAG', 2], ['LD', 1], ['LE', 1], ['VOL', 2], ['MEI', 2], ['CA', 2]];
-  targets.forEach(([pos, count]) => {
+  // CA falls back to PON: a winger can play as a makeshift centre-forward when the club
+  // has no natural striker at all, rather than pulling in a defender/keeper as filler.
+  const targets: [PlayerPosition, number, PlayerPosition?][] = [
+    ['GOL', 1], ['ZAG', 2], ['LD', 1], ['LE', 1], ['VOL', 2], ['MEI', 2], ['CA', 2, 'PON']
+  ];
+  targets.forEach(([pos, count, fallbackPos]) => {
     const pool = fit(pos);
-    for (let i = 0; i < Math.min(count, pool.length); i++) starters.push(pool[i]);
+    const take = Math.min(count, pool.length);
+    for (let i = 0; i < take; i++) { starters.push(pool[i]); usedIds.add(pool[i].id); }
+
+    const remaining = count - take;
+    if (remaining > 0 && fallbackPos) {
+      const fallbackPool = fit(fallbackPos);
+      const take2 = Math.min(remaining, fallbackPool.length);
+      for (let i = 0; i < take2; i++) { starters.push(fallbackPool[i]); usedIds.add(fallbackPool[i].id); }
+    }
   });
 
   // Fill any remaining slots with the best available player regardless of position --
-  // real squads can genuinely have gaps now (e.g. zero natural CA), so this triggers often.
+  // real squads can genuinely have gaps now (e.g. zero natural CA or PON), so this triggers often.
   if (starters.length < 11) {
-    const ids = new Set(starters.map(p => p.id));
-    const rest = club.squad.filter(p => !p.isInjured && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
+    const rest = club.squad.filter(p => !p.isInjured && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
     const need = 11 - starters.length; // captured once -- starters.length changes inside the loop below
     for (let i = 0; i < Math.min(need, rest.length); i++) {
       starters.push(rest[i]);
+      usedIds.add(rest[i].id);
     }
   }
 

@@ -173,6 +173,8 @@ const AppContent: React.FC = () => {
     const healthy = squadList.filter(p => !p.isInjured);
     const count = (pos: PlayerPosition) => healthy.filter(p => p.position === pos).length;
 
+    // PON and CA cover for each other: a winger can play as a makeshift centre-forward (and
+    // vice versa) until the club buys a natural fit, so only the combined total needs to add up.
     return (
       count('GOL') >= 1 &&
       count('ZAG') >= targetZAG &&
@@ -180,8 +182,7 @@ const AppContent: React.FC = () => {
       count('LE') >= targetLE &&
       count('VOL') >= targetVOL &&
       count('MEI') >= targetMEI &&
-      count('PON') >= targetPON &&
-      count('CA') >= targetCA
+      count('PON') + count('CA') >= targetPON + targetCA
     );
   };
 
@@ -1618,6 +1619,15 @@ const AppContent: React.FC = () => {
                     for (let i = 0; i < Math.min(targetPON, pons.length); i++) bestSelected.push(pons[i]);
                     for (let i = 0; i < Math.min(targetCA, cas.length); i++) bestSelected.push(cas[i]);
 
+                    // PON and CA cover for each other: a winger can play as a makeshift
+                    // centre-forward (and vice versa) when the club lacks a natural fit.
+                    const ponCaShort = (targetPON + targetCA) - bestSelected.filter(p => p.position === 'PON' || p.position === 'CA').length;
+                    if (ponCaShort > 0) {
+                      const usedIds = new Set(bestSelected.map(p => p.id));
+                      const extra = [...pons, ...cas].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+                      for (let i = 0; i < Math.min(ponCaShort, extra.length); i++) bestSelected.push(extra[i]);
+                    }
+
                     // Fill to 11 if needed
                     if (bestSelected.length < 11) {
                       const ids = new Set(bestSelected.map(p => p.id));
@@ -1663,6 +1673,15 @@ const AppContent: React.FC = () => {
                     for (let i = 0; i < Math.min(targetMEI, meis.length); i++) selected.push(meis[i]);
                     for (let i = 0; i < Math.min(targetPON, pons.length); i++) selected.push(pons[i]);
                     for (let i = 0; i < Math.min(targetCA, cas.length); i++) selected.push(cas[i]);
+
+                    // PON and CA cover for each other: a winger can play as a makeshift
+                    // centre-forward (and vice versa) when the club lacks a natural fit.
+                    const ponCaShort = (targetPON + targetCA) - selected.filter(p => p.position === 'PON' || p.position === 'CA').length;
+                    if (ponCaShort > 0) {
+                      const usedIds = new Set(selected.map(p => p.id));
+                      const extra = [...pons, ...cas].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+                      for (let i = 0; i < Math.min(ponCaShort, extra.length); i++) selected.push(extra[i]);
+                    }
 
                     // Fill to 11
                     if (selected.length < 11) {
