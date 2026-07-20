@@ -210,8 +210,14 @@ const AppContent: React.FC = () => {
         const validated = saved.map(p => {
           const found = userClub.squad.find(s => s.id === p.id);
           if (!found || found.isInjured) {
-            const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !saved.some(x => x.id === s.id));
-            return replacement || userClub.squad.find(s => !s.isInjured && !saved.some(x => x.id === s.id)) || p;
+            const excludeIds = new Set(saved.map(x => x.id));
+            let replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !excludeIds.has(s.id));
+            // PON and CA cover for each other before resorting to a completely mismatched position
+            if (!replacement && (p.position === 'CA' || p.position === 'PON')) {
+              const sibling = p.position === 'CA' ? 'PON' : 'CA';
+              replacement = userClub.squad.find(s => s.position === sibling && !s.isInjured && !excludeIds.has(s.id));
+            }
+            return replacement || userClub.squad.find(s => !s.isInjured && !excludeIds.has(s.id)) || p;
           }
           return found;
         });
@@ -240,6 +246,15 @@ const AppContent: React.FC = () => {
         for (let i = 0; i < Math.min(targetMEI, meis.length); i++) selected.push(meis[i]);
         for (let i = 0; i < Math.min(targetPON, pons.length); i++) selected.push(pons[i]);
         for (let i = 0; i < Math.min(targetCA, cas.length); i++) selected.push(cas[i]);
+
+        // PON and CA cover for each other: a winger can play as a makeshift centre-forward
+        // (and vice versa) when the club lacks a natural fit -- nobody else fills attack.
+        const ponCaShort = (targetPON + targetCA) - selected.filter(p => p.position === 'PON' || p.position === 'CA').length;
+        if (ponCaShort > 0) {
+          const usedIds = new Set(selected.map(p => p.id));
+          const extra = [...pons, ...cas].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+          for (let i = 0; i < Math.min(ponCaShort, extra.length); i++) selected.push(extra[i]);
+        }
 
         if (selected.length < 11) {
           const ids = new Set(selected.map(p => p.id));
@@ -1783,6 +1798,13 @@ const AppContent: React.FC = () => {
                   // Match each slot coordinate with a starter player matching that exact position
                   return currentSlots.map((slot, index) => {
                     let matchingPlayer = starters.find(p => !placedIds.has(p.id) && p.position === slot.role);
+
+                    // PON and CA cover for each other (a winger playing as makeshift striker,
+                    // or vice versa) before resorting to a totally mismatched position below.
+                    if (!matchingPlayer && (slot.role === 'CA' || slot.role === 'PON')) {
+                      const sibling = slot.role === 'CA' ? 'PON' : 'CA';
+                      matchingPlayer = starters.find(p => !placedIds.has(p.id) && p.position === sibling);
+                    }
 
                     // Fallback to any unplaced player if none matching the exact position (safeguard)
                     if (!matchingPlayer) {
