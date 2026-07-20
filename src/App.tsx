@@ -1303,8 +1303,21 @@ const AppContent: React.FC = () => {
               </div>
 
               {/* Force Summary (under buttons) */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-green)', background: 'rgba(255,255,255,0.02)', padding: '6px', borderRadius: '6px' }}>
-                Força do Time: DEF {startersForces.defense} | ATA {startersForces.attack}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(41, 182, 246, 0.08)', border: '1px solid rgba(41, 182, 246, 0.25)', borderRadius: '10px', padding: '8px 12px' }}>
+                  <Shield size={18} color="#29B6F6" />
+                  <div>
+                    <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 700, letterSpacing: '0.5px' }}>DEFESA</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#29B6F6', lineHeight: 1.1 }}>{startersForces.defense}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.25)', borderRadius: '10px', padding: '8px 12px' }}>
+                  <TrendingUp size={18} color="#EF5350" />
+                  <div>
+                    <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 700, letterSpacing: '0.5px' }}>ATAQUE</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#EF5350', lineHeight: 1.1 }}>{startersForces.attack}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1614,13 +1627,13 @@ const AppContent: React.FC = () => {
             </div>
 
             {/* General Position filter buttons (used by both Free Agents and Club Squad view) */}
-            <div className="sub-tabs" style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            <div style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
               {(['ALL', 'GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'] as const).map(pos => (
                 <button
                   key={pos}
                   onClick={() => setMarketPosFilter(pos)}
                   className={`sub-tab-btn ${marketPosFilter === pos ? 'active' : ''}`}
-                  style={{ flex: '1 1 auto', padding: '6px 10px', fontSize: '0.72rem', minWidth: '42px', textAlign: 'center' }}
+                  style={{ padding: '7px 4px', fontSize: '0.75rem', textAlign: 'center' }}
                 >
                   {pos === 'ALL' ? 'Todos' : pos}
                 </button>

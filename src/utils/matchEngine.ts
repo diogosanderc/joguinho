@@ -1,6 +1,5 @@
 import type { Player, Club, PlayerPosition } from '../data/database';
 
-const DEFENSE_POSITIONS: PlayerPosition[] = ['ZAG', 'LD', 'LE'];
 const MIDFIELD_POSITIONS: PlayerPosition[] = ['VOL', 'MEI'];
 const ATTACK_POSITIONS: PlayerPosition[] = ['PON', 'CA'];
 
@@ -51,23 +50,46 @@ export const getAutoStarters = (club: Club): Player[] => {
   return starters;
 };
 
-// Calculate defensive, midfield, and attacking forces of a team
+// Calculate defensive, midfield, and attacking forces of a team.
+// Each position feeds defense/midfield/attack with a different weight:
+// - GOL, ZAG: fully defensive.
+// - LD, LE: split evenly between defense and attack (they cover the flank both ways).
+// - VOL: the best volante anchors the defense; any extra volante feeds midfield instead.
+// - MEI: mostly an attacking contributor (80%), with a smaller defensive role (20%).
+// - PON, CA: fully attacking.
 export const calculateTeamForces = (starters: Player[]) => {
-  const gk = starters.find(p => p.position === 'GOL') || starters[0];
-  const dfs = starters.filter(p => DEFENSE_POSITIONS.includes(p.position));
-  const mfs = starters.filter(p => MIDFIELD_POSITIONS.includes(p.position));
-  const fws = starters.filter(p => ATTACK_POSITIONS.includes(p.position));
+  let defSum = 0, defWeight = 0;
+  let midSum = 0, midWeight = 0;
+  let atkSum = 0, atkWeight = 0;
 
-  const gkRating = gk ? gk.rating : 40;
-  
-  const avgDef = dfs.length > 0 ? dfs.reduce((acc, p) => acc + p.rating, 0) / dfs.length : 40;
-  const avgMid = mfs.length > 0 ? mfs.reduce((acc, p) => acc + p.rating, 0) / mfs.length : 40;
-  const avgAtt = fws.length > 0 ? fws.reduce((acc, p) => acc + p.rating, 0) / fws.length : 40;
+  const addDef = (rating: number, weight: number) => { defSum += rating * weight; defWeight += weight; };
+  const addMid = (rating: number, weight: number) => { midSum += rating * weight; midWeight += weight; };
+  const addAtk = (rating: number, weight: number) => { atkSum += rating * weight; atkWeight += weight; };
 
-  // Defense force is weighted between GK and DFs (GK: 25%, DF: 75%)
-  const defense = Math.round(gkRating * 0.25 + avgDef * 0.75);
-  const midfield = Math.round(avgMid);
-  const attack = Math.round(avgAtt);
+  starters.forEach(p => {
+    if (p.position === 'GOL' || p.position === 'ZAG') {
+      addDef(p.rating, 1);
+    } else if (p.position === 'LD' || p.position === 'LE') {
+      addDef(p.rating, 0.5);
+      addAtk(p.rating, 0.5);
+    } else if (p.position === 'MEI') {
+      addDef(p.rating, 0.2);
+      addAtk(p.rating, 0.8);
+    } else if (p.position === 'PON' || p.position === 'CA') {
+      addAtk(p.rating, 1);
+    }
+  });
+
+  // Volantes: the best one anchors the defense, extra volantes reinforce midfield
+  const vols = starters.filter(p => p.position === 'VOL').sort((a, b) => b.rating - a.rating);
+  vols.forEach((v, idx) => {
+    if (idx === 0) addDef(v.rating, 1);
+    else addMid(v.rating, 1);
+  });
+
+  const defense = defWeight > 0 ? Math.round(defSum / defWeight) : 40;
+  const midfield = midWeight > 0 ? Math.round(midSum / midWeight) : 40;
+  const attack = atkWeight > 0 ? Math.round(atkSum / atkWeight) : 40;
   const overall = Math.round((defense + midfield + attack) / 3);
 
   return { defense, midfield, attack, overall };
