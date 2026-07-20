@@ -2605,7 +2605,7 @@ const AppContent: React.FC = () => {
                         key={entry.clubId}
                         className={`table-row ${highlightClass} ${isUser ? 'user-team-row' : ''}`}
                       >
-                        <span style={{ fontWeight: 800 }}>{isUser ? '👉 ' : ''}{idx + 1}</span>
+                        <span style={{ fontWeight: 800 }}>{idx + 1}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span className="club-badge-mini" style={{ backgroundColor: clubs.find(c=>c.id===entry.clubId)?.primaryColor }} />
                           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.clubName}</span>
