@@ -460,10 +460,14 @@ body {
   text-align: center;
 }
 
-.pos-badge.GK { background-color: rgba(255, 167, 38, 0.15); color: #FFA726; border: 1px solid rgba(255, 167, 38, 0.25); }
-.pos-badge.DF { background-color: rgba(41, 182, 246, 0.15); color: #29B6F6; border: 1px solid rgba(41, 182, 246, 0.25); }
-.pos-badge.MF { background-color: rgba(102, 187, 106, 0.15); color: #66BB6A; border: 1px solid rgba(102, 187, 106, 0.25); }
-.pos-badge.FW { background-color: rgba(239, 83, 80, 0.15); color: #EF5350; border: 1px solid rgba(239, 83, 80, 0.25); }
+.pos-badge.GOL { background-color: rgba(255, 167, 38, 0.15); color: #FFA726; border: 1px solid rgba(255, 167, 38, 0.25); }
+.pos-badge.ZAG { background-color: rgba(41, 182, 246, 0.15); color: #29B6F6; border: 1px solid rgba(41, 182, 246, 0.25); }
+.pos-badge.LD { background-color: rgba(79, 195, 247, 0.15); color: #4FC3F7; border: 1px solid rgba(79, 195, 247, 0.25); }
+.pos-badge.LE { background-color: rgba(2, 136, 209, 0.15); color: #0288D1; border: 1px solid rgba(2, 136, 209, 0.25); }
+.pos-badge.VOL { background-color: rgba(46, 125, 50, 0.15); color: #2E7D32; border: 1px solid rgba(46, 125, 50, 0.25); }
+.pos-badge.MEI { background-color: rgba(102, 187, 106, 0.15); color: #66BB6A; border: 1px solid rgba(102, 187, 106, 0.25); }
+.pos-badge.PON { background-color: rgba(255, 112, 67, 0.15); color: #FF7043; border: 1px solid rgba(255, 112, 67, 0.25); }
+.pos-badge.CA { background-color: rgba(239, 83, 80, 0.15); color: #EF5350; border: 1px solid rgba(239, 83, 80, 0.25); }
 
 .rating-badge {
   font-weight: 800;

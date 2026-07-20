@@ -1,8 +1,19 @@
+// GOL Goleiro, ZAG Zagueiro, LD Lateral-Direito, LE Lateral-Esquerdo,
+// VOL Volante, MEI Meia, PON Ponta, CA Centroavante
+export type PlayerPosition = 'GOL' | 'ZAG' | 'LD' | 'LE' | 'VOL' | 'MEI' | 'PON' | 'CA';
+
+export const getPositionGroup = (position: PlayerPosition): 'GK' | 'DF' | 'MF' | 'FW' => {
+  if (position === 'GOL') return 'GK';
+  if (position === 'ZAG' || position === 'LD' || position === 'LE') return 'DF';
+  if (position === 'VOL' || position === 'MEI') return 'MF';
+  return 'FW'; // PON, CA
+};
+
 export interface Player {
   id: string;
   name: string;
   age: number;
-  position: 'GK' | 'DF' | 'MF' | 'FW';
+  position: PlayerPosition;
   rating: number;
   energy: number;
   value: number;
@@ -18,7 +29,6 @@ export interface Player {
   benchRounds?: number;
   contractLockYears?: number; // Number of years contract is locked
   performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
-  subPosition?: 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA';
 }
 
 export interface Club {
@@ -48,7 +58,7 @@ export interface ClubDefinition {
   stadiumCapacity: number;
   stadiumName: string;
   reputation: number;
-  stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW' | 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'; rating: number; age?: number }[];
+  stars: { name: string; position: PlayerPosition; rating: number; age?: number }[];
 }
 
 const FIRST_NAMES = [
@@ -65,7 +75,7 @@ const LAST_NAMES = [
   'Pinto', 'Cabral', 'Castro', 'Cardoso', 'Cavalcanti', 'Fontes', 'Borges', 'Neves', 'Motta', 'Miranda'
 ];
 
-export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' | 'MF' | 'FW' | 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'; rating: number; age?: number }[]> = {
+export const STAR_PLAYERS: Record<string, { name: string; position: PlayerPosition; rating: number; age?: number }[]> = {
   amazonas: [
     { name: "Renan", position: "GOL", rating: 53 },
     { name: "João Lopes", position: "GOL", rating: 53 },
@@ -99,20 +109,20 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Rafael Tavares", position: "MEI", rating: 57 },
     { name: "Patricio Núñez", position: "MEI", rating: 53 },
     { name: "Bernardo Paias", position: "MEI", rating: 54 },
-    { name: "Nicolás Schiappacasse", position: "ATA", rating: 56 },
-    { name: "Victor Jesus", position: "ATA", rating: 62 },
-    { name: "Léo Guerra", position: "ATA", rating: 54 },
-    { name: "Cocote", position: "ATA", rating: 58 },
-    { name: "Gabriel Cipriano", position: "ATA", rating: 59 },
-    { name: "Marcelo Cirino", position: "ATA", rating: 59 },
-    { name: "Vinícius Leite", position: "ATA", rating: 59 },
-    { name: "Kayan", position: "ATA", rating: 53 },
-    { name: "Ronaldo", position: "ATA", rating: 62 },
-    { name: "William Barbio", position: "ATA", rating: 53 },
-    { name: "Ezequiel", position: "ATA", rating: 62 },
-    { name: "Adrien Graffin", position: "ATA", rating: 58 },
-    { name: "Alison Matheus", position: "ATA", rating: 61 },
-    { name: "Bernardo Daciolo", position: "ATA", rating: 55 }
+    { name: "Nicolás Schiappacasse", position: "CA", rating: 56 },
+    { name: "Victor Jesus", position: "CA", rating: 62 },
+    { name: "Léo Guerra", position: "CA", rating: 54 },
+    { name: "Cocote", position: "CA", rating: 58 },
+    { name: "Gabriel Cipriano", position: "CA", rating: 59 },
+    { name: "Marcelo Cirino", position: "CA", rating: 59 },
+    { name: "Vinícius Leite", position: "CA", rating: 59 },
+    { name: "Kayan", position: "CA", rating: 53 },
+    { name: "Ronaldo", position: "CA", rating: 62 },
+    { name: "William Barbio", position: "CA", rating: 53 },
+    { name: "Ezequiel", position: "CA", rating: 62 },
+    { name: "Adrien Graffin", position: "CA", rating: 58 },
+    { name: "Alison Matheus", position: "CA", rating: 61 },
+    { name: "Bernardo Daciolo", position: "CA", rating: 55 }
   ],
   america_mg: [
     { name: "Gustavo", position: "GOL", rating: 72, age: 33 },
@@ -127,12 +137,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Fernando Elizari", position: "MEI", rating: 72, age: 35 },
     { name: "Gabriel Domingos", position: "MEI", rating: 72, age: 25 },
     { name: "Gabriel Oliveira Santos", position: "MEI", rating: 72, age: 26 },
-    { name: "Everton Sidnei De Brito", position: "ATA", rating: 73, age: 31 },
-    { name: "Willian", position: "ATA", rating: 72, age: 39 },
-    { name: "Matías Segovia", position: "ATA", rating: 71, age: 23 },
-    { name: "Gonzalo Mastriani", position: "ATA", rating: 69, age: 33 },
-    { name: "Paulo Victor", position: "ATA", rating: 67, age: 25 },
-    { name: "Gabriel De Sousa Barros", position: "ATA", rating: 64, age: 24 },
+    { name: "Everton Sidnei De Brito", position: "CA", rating: 73, age: 31 },
+    { name: "Willian", position: "CA", rating: 72, age: 39 },
+    { name: "Matías Segovia", position: "CA", rating: 71, age: 23 },
+    { name: "Gonzalo Mastriani", position: "CA", rating: 69, age: 33 },
+    { name: "Paulo Victor", position: "CA", rating: 67, age: 25 },
+    { name: "Gabriel De Sousa Barros", position: "CA", rating: 64, age: 24 },
     { name: "Reserva LD 1", position: "LD", rating: 69, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 65, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 66, age: 24 },
@@ -172,48 +182,43 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Kauan Lindes", position: "MEI", rating: 66 },
     { name: "Pedro Oliveira", position: "MEI", rating: 69 },
     { name: "Alexandre Pena", position: "MEI", rating: 73 },
-    { name: "Léo Chú", position: "ATA", rating: 70 },
-    { name: "Dixon Vera", position: "ATA", rating: 68 },
-    { name: "Otávio Freitas", position: "ATA", rating: 69 },
-    { name: "Ruan Assis", position: "ATA", rating: 66 },
-    { name: "João Adriano", position: "ATA", rating: 65 },
-    { name: "Max", position: "ATA", rating: 65 },
-    { name: "Leandro Alves", position: "ATA", rating: 65 },
-    { name: "Bruninho", position: "ATA", rating: 69 },
-    { name: "Carlinhos", position: "ATA", rating: 68 },
-    { name: "Ronaldo Tavares", position: "ATA", rating: 68 },
-    { name: "Wilinton Aponzá", position: "ATA", rating: 65 },
-    { name: "Gustavão", position: "ATA", rating: 65 },
-    { name: "Samuel Otusanya", position: "ATA", rating: 67 },
-    { name: "Gabriel Moysés", position: "ATA", rating: 68 }
+    { name: "Léo Chú", position: "CA", rating: 70 },
+    { name: "Dixon Vera", position: "CA", rating: 68 },
+    { name: "Otávio Freitas", position: "CA", rating: 69 },
+    { name: "Ruan Assis", position: "CA", rating: 66 },
+    { name: "João Adriano", position: "CA", rating: 65 },
+    { name: "Max", position: "CA", rating: 65 },
+    { name: "Leandro Alves", position: "CA", rating: 65 },
+    { name: "Bruninho", position: "CA", rating: 69 },
+    { name: "Carlinhos", position: "CA", rating: 68 },
+    { name: "Ronaldo Tavares", position: "CA", rating: 68 },
+    { name: "Wilinton Aponzá", position: "CA", rating: 65 },
+    { name: "Gustavão", position: "CA", rating: 65 },
+    { name: "Samuel Otusanya", position: "CA", rating: 67 },
+    { name: "Gabriel Moysés", position: "CA", rating: 68 }
   ],
   athletico_pr: [
     { name: "Mycael", position: "GOL", rating: 83, age: 22 },
     { name: "Santos", position: "GOL", rating: 79, age: 36 },
     { name: "Filipinho", position: "ZAG", rating: 83, age: 24 },
-    { name: "Lucas Esquivel", position: "ZAG", rating: 82, age: 24 },
     { name: "Léo", position: "ZAG", rating: 81, age: 30 },
     { name: "Juan Felipe Aguirre", position: "ZAG", rating: 81, age: 29 },
-    { name: "Juan Portilla", position: "MEI", rating: 81, age: 27 },
-    { name: "Luiz Gustavo", position: "MEI", rating: 80, age: 38 },
+    { name: "Carlos Terán", position: "ZAG", rating: 79, age: 25 },
+    { name: "Dudu", position: "ZAG", rating: 75, age: 29 },
+    { name: "Hayen Palacios", position: "ZAG", rating: 74, age: 26 },
+    { name: "Madson", position: "LD", rating: 77, age: 31 },
+    { name: "Lucas Esquivel", position: "LE", rating: 82, age: 24 },
+    { name: "Juan Portilla", position: "VOL", rating: 81, age: 27 },
+    { name: "Luiz Gustavo", position: "VOL", rating: 80, age: 38 },
     { name: "Bruno Zapelli", position: "MEI", rating: 80, age: 24 },
     { name: "Jádson", position: "MEI", rating: 76, age: 32 },
     { name: "Alejandro García", position: "MEI", rating: 76, age: 25 },
-    { name: "Renan", position: "ATA", rating: 83, age: 26 },
-    { name: "Julimar", position: "ATA", rating: 81, age: 25 },
-    { name: "Isaac", position: "ATA", rating: 81, age: 22 },
-    { name: "Stiven Mendoza", position: "ATA", rating: 77, age: 34 },
-    { name: "Kevin Viveros", position: "ATA", rating: 77, age: 26 },
-    { name: "Renan", position: "ATA", rating: 77, age: 23 },
-    { name: "Reserva LD 1", position: "LD", rating: 80, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 78, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 80, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 75, age: 25 },
-    { name: "Reserva MEI 1", position: "MEI", rating: 78, age: 24 },
-    { name: "Carlos Terán", position: "ZAG", rating: 79, age: 25 },
-    { name: "Leozinho", position: "ATA", rating: 77, age: 27 },
-    { name: "Dudu", position: "ZAG", rating: 75, age: 29 },
-    { name: "Hayen Palacios", position: "ZAG", rating: 74, age: 26 }
+    { name: "Kevin Viveros", position: "PON", rating: 77, age: 26 },
+    { name: "Stiven Mendoza", position: "PON", rating: 77, age: 34 },
+    { name: "Leozinho", position: "PON", rating: 77, age: 27 },
+    { name: "Renan", position: "CA", rating: 83, age: 26 },
+    { name: "Julimar", position: "CA", rating: 81, age: 25 },
+    { name: "Isaac", position: "CA", rating: 81, age: 22 }
   ],
   atletico_go: [
     { name: "Paulo Vítor", position: "GOL", rating: 65 },
@@ -237,43 +242,39 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Igor Henrique", position: "MEI", rating: 65 },
     { name: "Guilherme", position: "MEI", rating: 65 },
     { name: "Assis", position: "MEI", rating: 70 },
-    { name: "Guilherme Henrique", position: "ATA", rating: 70 },
-    { name: "Marrony", position: "ATA", rating: 68 },
-    { name: "Bruno José", position: "ATA", rating: 66 },
-    { name: "Léo Tocantins", position: "ATA", rating: 66 },
-    { name: "Lima", position: "ATA", rating: 66 },
-    { name: "Gustavo Coutinho", position: "ATA", rating: 70 },
-    { name: "Daniel Lima", position: "ATA", rating: 68 },
-    { name: "Léo Jacó", position: "ATA", rating: 66 },
-    { name: "Geovany Soares", position: "ATA", rating: 71 }
+    { name: "Guilherme Henrique", position: "CA", rating: 70 },
+    { name: "Marrony", position: "CA", rating: 68 },
+    { name: "Bruno José", position: "CA", rating: 66 },
+    { name: "Léo Tocantins", position: "CA", rating: 66 },
+    { name: "Lima", position: "CA", rating: 66 },
+    { name: "Gustavo Coutinho", position: "CA", rating: 70 },
+    { name: "Daniel Lima", position: "CA", rating: 68 },
+    { name: "Léo Jacó", position: "CA", rating: 66 },
+    { name: "Geovany Soares", position: "CA", rating: 71 }
   ],
   atletico_mg: [
     { name: "Éverson", position: "GOL", rating: 79, age: 35 },
     { name: "Gabriel Delfim", position: "GOL", rating: 75, age: 24 },
     { name: "Lyanco", position: "ZAG", rating: 82, age: 29 },
-    { name: "Renan Lodi", position: "ZAG", rating: 82, age: 28 },
-    { name: "Júnior Alonso", position: "ZAG", rating: 81, age: 33 },
-    { name: "Rômulo", position: "ZAG", rating: 80, age: 22 },
-    { name: "Maycon", position: "MEI", rating: 83, age: 29 },
-    { name: "Victor Hugo", position: "MEI", rating: 83, age: 22 },
-    { name: "Alexsander", position: "MEI", rating: 83, age: 22 },
-    { name: "Alan Franco", position: "MEI", rating: 82, age: 27 },
-    { name: "Igor Gomes", position: "MEI", rating: 82, age: 27 },
-    { name: "Gustavo Scarpa", position: "MEI", rating: 79, age: 32 },
-    { name: "Mateo Casierra", position: "ATA", rating: 83, age: 29 },
-    { name: "Tomás Cuello", position: "ATA", rating: 82, age: 26 },
-    { name: "Alan Minda", position: "ATA", rating: 79, age: 23 },
-    { name: "Dudu", position: "ATA", rating: 77, age: 34 },
-    { name: "Reserva LD 1", position: "LD", rating: 79, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 81, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 76, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 77, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 77, age: 24 },
-    { name: "Reserva ATA 2", position: "ATA", rating: 78, age: 25 },
     { name: "Vitor Hugo", position: "ZAG", rating: 79, age: 35 },
-    { name: "Ángelo Preciado", position: "ZAG", rating: 78, age: 28 },
-    { name: "Natanael", position: "ZAG", rating: 78, age: 24 },
-    { name: "Bernard", position: "MEI", rating: 77, age: 33 }
+    { name: "Ruan Tressoldi", position: "ZAG", rating: 80, age: 25 },
+    { name: "Léo Duarte", position: "ZAG", rating: 78, age: 33 },
+    { name: "Rômulo", position: "ZAG", rating: 80, age: 22 },
+    { name: "Ángelo Preciado", position: "LD", rating: 78, age: 30 },
+    { name: "Natanael", position: "LD", rating: 78, age: 24 },
+    { name: "Renan Lodi", position: "LE", rating: 82, age: 28 },
+    { name: "Maycon", position: "VOL", rating: 83, age: 30 },
+    { name: "Alexsander", position: "VOL", rating: 83, age: 22 },
+    { name: "Victor Hugo", position: "VOL", rating: 83, age: 22 },
+    { name: "Alan Franco", position: "VOL", rating: 82, age: 29 },
+    { name: "Igor Gomes", position: "MEI", rating: 82, age: 27 },
+    { name: "Gustavo Scarpa", position: "MEI", rating: 79, age: 33 },
+    { name: "Bernard", position: "MEI", rating: 77, age: 33 },
+    { name: "Tomás Cuello", position: "PON", rating: 82, age: 28 },
+    { name: "Alan Minda", position: "PON", rating: 79, age: 24 },
+    { name: "Dudu", position: "PON", rating: 77, age: 35 },
+    { name: "Mateo Casierra", position: "CA", rating: 83, age: 29 },
+    { name: "Hulk", position: "CA", rating: 86, age: 40 }
   ],
   avai: [
     { name: "Otávio", position: "GOL", rating: 74, age: 33 },
@@ -288,16 +289,16 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Hyan", position: "MEI", rating: 71, age: 22 },
     { name: "Luiz Henrique", position: "MEI", rating: 69, age: 27 },
     { name: "Zé Ricardo", position: "MEI", rating: 69, age: 30 },
-    { name: "Léo Gamalho", position: "ATA", rating: 72, age: 40 },
-    { name: "Bilu", position: "ATA", rating: 65, age: 27 },
-    { name: "Cristiano", position: "ATA", rating: 65, age: 39 },
+    { name: "Léo Gamalho", position: "CA", rating: 72, age: 40 },
+    { name: "Bilu", position: "CA", rating: 65, age: 27 },
+    { name: "Cristiano", position: "CA", rating: 65, age: 39 },
     { name: "Reserva LD 1", position: "LD", rating: 68, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 68, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 68, age: 24 },
     { name: "Reserva LE 2", position: "LE", rating: 70, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 69, age: 24 },
-    { name: "Reserva ATA 2", position: "ATA", rating: 65, age: 25 },
-    { name: "Reserva ATA 3", position: "ATA", rating: 65, age: 26 },
+    { name: "Reserva ATA 1", position: "CA", rating: 69, age: 24 },
+    { name: "Reserva ATA 2", position: "CA", rating: 65, age: 25 },
+    { name: "Reserva ATA 3", position: "CA", rating: 65, age: 26 },
     { name: "Igor José Bohn", position: "GOL", rating: 68, age: 30 },
     { name: "Douglas", position: "ZAG", rating: 67, age: 25 },
     { name: "Allyson", position: "ZAG", rating: 66, age: 35 },
@@ -306,58 +307,53 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
   bahia: [
     { name: "Léo", position: "GOL", rating: 78, age: 35 },
     { name: "Ronaldo", position: "GOL", rating: 76, age: 29 },
+    { name: "Iuri Jean Carlo Neres Dos Santos", position: "GOL", rating: 76, age: 26 },
     { name: "Santiago Ramos", position: "ZAG", rating: 83, age: 24 },
     { name: "Marcos Victor", position: "ZAG", rating: 83, age: 24 },
-    { name: "Gilberto", position: "ZAG", rating: 80, age: 33 },
-    { name: "David Duarte", position: "ZAG", rating: 79, age: 31 },
+    { name: "David Duarte", position: "ZAG", rating: 79, age: 33 },
+    { name: "Kanu", position: "ZAG", rating: 79, age: 29 },
+    { name: "Marco Moreno", position: "ZAG", rating: 78, age: 23 },
+    { name: "Gilberto", position: "LD", rating: 80, age: 33 },
+    { name: "Iago", position: "LD", rating: 77, age: 29 },
+    { name: "Luciano Juba", position: "LE", rating: 78, age: 29 },
+    { name: "Román Gómez", position: "LE", rating: 77, age: 27 },
+    { name: "Nicolás Acevedo", position: "VOL", rating: 78, age: 27 },
+    { name: "Caio Alexandre", position: "VOL", rating: 76, age: 27 },
     { name: "Erick", position: "MEI", rating: 82, age: 28 },
     { name: "Michel Araújo", position: "MEI", rating: 79, age: 29 },
-    { name: "Nicolás Acevedo", position: "MEI", rating: 78, age: 27 },
-    { name: "Éverton Ribeiro", position: "MEI", rating: 76, age: 37 },
+    { name: "Éverton Ribeiro", position: "MEI", rating: 76, age: 36 },
     { name: "Rodrigo Nestor", position: "MEI", rating: 76, age: 25 },
-    { name: "Caio Alexandre", position: "MEI", rating: 76, age: 27 },
-    { name: "Cristian Olivera", position: "ATA", rating: 82, age: 24 },
-    { name: "Erick Pulga", position: "ATA", rating: 82, age: 25 },
-    { name: "Willian José", position: "ATA", rating: 80, age: 34 },
-    { name: "Ademir", position: "ATA", rating: 80, age: 31 },
-    { name: "Mateo Sanabria", position: "ATA", rating: 78, age: 22 },
-    { name: "Everaldo", position: "ATA", rating: 77, age: 35 },
-    { name: "Reserva LD 1", position: "LD", rating: 76, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 78, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 77, age: 25 },
-    { name: "Kanu", position: "ZAG", rating: 79, age: 29 },
-    { name: "Iago", position: "ZAG", rating: 77, age: 29 },
-    { name: "Iuri Jean Carlo Neres Dos Santos", position: "GOL", rating: 76, age: 26 },
-    { name: "Luciano Juba", position: "ZAG", rating: 75, age: 26 }
+    { name: "Cristian Olivera", position: "PON", rating: 82, age: 24 },
+    { name: "Erick Pulga", position: "PON", rating: 82, age: 25 },
+    { name: "Willian José", position: "CA", rating: 80, age: 35 },
+    { name: "Ademir", position: "CA", rating: 80, age: 31 },
+    { name: "Mateo Sanabria", position: "CA", rating: 78, age: 22 },
+    { name: "Everaldo", position: "CA", rating: 77, age: 35 },
+    { name: "Alejo Véliz", position: "CA", rating: 80, age: 23 }
   ],
   botafogo: [
-    { name: "Leo Linck", position: "GOL", rating: 79, age: 25 },
-    { name: "Raul", position: "GOL", rating: 78, age: 28 },
-    { name: "Caio Roque", position: "ZAG", rating: 83, age: 24 },
-    { name: "Alex Telles", position: "ZAG", rating: 80, age: 33 },
-    { name: "Nahuel Ferraresi", position: "ZAG", rating: 80, age: 27 },
-    { name: "Vitinho", position: "ZAG", rating: 79, age: 26 },
-    { name: "Allan", position: "MEI", rating: 83, age: 35 },
+    { name: "Leo Linck", position: "GOL", rating: 79, age: 26 },
+    { name: "Raul", position: "GOL", rating: 78, age: 29 },
+    { name: "Nahuel Ferraresi", position: "ZAG", rating: 80, age: 28 },
+    { name: "Alexander Barboza", position: "ZAG", rating: 79, age: 28 },
+    { name: "Bastos", position: "ZAG", rating: 78, age: 37 },
+    { name: "Vitinho", position: "LD", rating: 83, age: 33 },
+    { name: "Mateo Ponte", position: "LD", rating: 78, age: 23 },
+    { name: "Alex Telles", position: "LE", rating: 80, age: 33 },
+    { name: "Fernando Marçal", position: "LE", rating: 77, age: 37 },
+    { name: "Allan", position: "VOL", rating: 83, age: 35 },
+    { name: "Danilo Santos", position: "VOL", rating: 78, age: 26 },
+    { name: "Newton", position: "VOL", rating: 75, age: 26 },
+    { name: "Cristian Medina", position: "MEI", rating: 78, age: 23 },
     { name: "Edenilson", position: "MEI", rating: 83, age: 36 },
-    { name: "Danilo Santos", position: "MEI", rating: 78, age: 25 },
-    { name: "Santiago Rodríguez", position: "MEI", rating: 76, age: 26 },
-    { name: "Newton", position: "MEI", rating: 75, age: 26 },
-    { name: "Cristian Medina", position: "MEI", rating: 74, age: 24 },
-    { name: "Arthur Cabral", position: "ATA", rating: 83, age: 28 },
-    { name: "Elias Manoel", position: "ATA", rating: 82, age: 24 },
-    { name: "Matheus Martins", position: "ATA", rating: 78, age: 23 },
-    { name: "Matheus Nascimento", position: "ATA", rating: 76, age: 22 },
-    { name: "Joaquín Correa", position: "ATA", rating: 76, age: 31 },
-    { name: "Júnior Santos", position: "ATA", rating: 75, age: 31 },
-    { name: "Reserva LD 1", position: "LD", rating: 81, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 74, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 74, age: 25 },
-    { name: "Bastos", position: "ZAG", rating: 78, age: 35 },
-    { name: "Mateo Ponte", position: "ZAG", rating: 78, age: 23 },
-    { name: "Lucas Villalba", position: "ZAG", rating: 78, age: 31 },
-    { name: "Fernando Marçal", position: "ZAG", rating: 77, age: 37 }
+    { name: "Santiago Rodríguez", position: "MEI", rating: 76, age: 27 },
+    { name: "Elias Manoel", position: "PON", rating: 82, age: 25 },
+    { name: "Matheus Martins", position: "PON", rating: 78, age: 24 },
+    { name: "Joaquín Correa", position: "PON", rating: 76, age: 31 },
+    { name: "Lucas Villalba", position: "PON", rating: 78, age: 28 },
+    { name: "Arthur Cabral", position: "CA", rating: 83, age: 28 },
+    { name: "Matheus Nascimento", position: "CA", rating: 76, age: 22 },
+    { name: "Júnior Santos", position: "CA", rating: 75, age: 33 }
   ],
   botafogo_pb: [
     { name: "Luiz Daniel", position: "GOL", rating: 53 },
@@ -387,15 +383,15 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Giovanni", position: "MEI", rating: 63 },
     { name: "Riquelmo", position: "MEI", rating: 53 },
     { name: "Romário", position: "MEI", rating: 55 },
-    { name: "Felipe Azevedo", position: "ATA", rating: 54 },
-    { name: "Dudu Hatamoto", position: "ATA", rating: 60 },
-    { name: "Mosquito", position: "ATA", rating: 54 },
-    { name: "Kayon", position: "ATA", rating: 59 },
-    { name: "Henrique Dourado", position: "ATA", rating: 53 },
-    { name: "Rodolfo", position: "ATA", rating: 57 },
-    { name: "Anderson Chaves", position: "ATA", rating: 57 },
-    { name: "Lucca Drummond", position: "ATA", rating: 53 },
-    { name: "Lawan", position: "ATA", rating: 55 }
+    { name: "Felipe Azevedo", position: "CA", rating: 54 },
+    { name: "Dudu Hatamoto", position: "CA", rating: 60 },
+    { name: "Mosquito", position: "CA", rating: 54 },
+    { name: "Kayon", position: "CA", rating: 59 },
+    { name: "Henrique Dourado", position: "CA", rating: 53 },
+    { name: "Rodolfo", position: "CA", rating: 57 },
+    { name: "Anderson Chaves", position: "CA", rating: 57 },
+    { name: "Lucca Drummond", position: "CA", rating: 53 },
+    { name: "Lawan", position: "CA", rating: 55 }
   ],
   botafogo_sp: [
     { name: "Brenno Faro Klippel", position: "GOL", rating: 74, age: 23 },
@@ -410,12 +406,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Rafael Gava", position: "MEI", rating: 70, age: 33 },
     { name: "Marquinho", position: "MEI", rating: 70, age: 24 },
     { name: "Guilherme Queiroz", position: "MEI", rating: 69, age: 36 },
-    { name: "Hugo", position: "ATA", rating: 73, age: 26 },
-    { name: "Arthur Caike", position: "ATA", rating: 70, age: 34 },
-    { name: "Luiz Guilherme Vieira Da Silva", position: "ATA", rating: 70, age: 23 },
-    { name: "Wesley Pinheiro", position: "ATA", rating: 69, age: 25 },
-    { name: "Hygor", position: "ATA", rating: 68, age: 33 },
-    { name: "Jefferson Nem", position: "ATA", rating: 66, age: 30 },
+    { name: "Hugo", position: "CA", rating: 73, age: 26 },
+    { name: "Arthur Caike", position: "CA", rating: 70, age: 34 },
+    { name: "Luiz Guilherme Vieira Da Silva", position: "CA", rating: 70, age: 23 },
+    { name: "Wesley Pinheiro", position: "CA", rating: 69, age: 25 },
+    { name: "Hygor", position: "CA", rating: 68, age: 33 },
+    { name: "Jefferson Nem", position: "CA", rating: 66, age: 30 },
     { name: "Reserva LD 1", position: "LD", rating: 64, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 65, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 67, age: 24 },
@@ -424,6 +420,29 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Victor Souza", position: "ZAG", rating: 68, age: 25 },
     { name: "Ericson", position: "ZAG", rating: 68, age: 27 },
     { name: "Vilar", position: "ZAG", rating: 67, age: 26 }
+  ],
+  bragantino: [
+    { name: "Cleiton", position: "GOL", rating: 82, age: 29 },
+    { name: "Tiago Volpi", position: "GOL", rating: 83, age: 36 },
+    { name: "Fabrício", position: "GOL", rating: 74, age: 27 },
+    { name: "Pedro Henrique", position: "ZAG", rating: 78, age: 24 },
+    { name: "Gustavo Marques", position: "ZAG", rating: 80, age: 24 },
+    { name: "Guzmán Rodríguez", position: "ZAG", rating: 79, age: 26 },
+    { name: "Alix Vinícius", position: "ZAG", rating: 77, age: 24 },
+    { name: "Douglas Mendes", position: "ZAG", rating: 75, age: 24 },
+    { name: "Agustín Sant'Anna", position: "LD", rating: 78, age: 25 },
+    { name: "Andrés Hurtado", position: "LD", rating: 77, age: 24 },
+    { name: "Juninho Capixaba", position: "LE", rating: 80, age: 28 },
+    { name: "Eric Ramires", position: "VOL", rating: 79, age: 25 },
+    { name: "Fabinho", position: "VOL", rating: 76, age: 30 },
+    { name: "Gabriel Girotto", position: "VOL", rating: 81, age: 33 },
+    { name: "Nacho Sosa", position: "MEI", rating: 78, age: 27 },
+    { name: "Rodriguinho", position: "MEI", rating: 80, age: 37 },
+    { name: "Lucas Barbosa", position: "PON", rating: 77, age: 23 },
+    { name: "Vinicinho", position: "PON", rating: 79, age: 22 },
+    { name: "Isidro Pitta", position: "CA", rating: 84, age: 27 },
+    { name: "Fernando", position: "CA", rating: 76, age: 26 },
+    { name: "Eduardo Sasha", position: "CA", rating: 82, age: 33 }
   ],
   brusque: [
     { name: "Matheus Nogueira", position: "GOL", rating: 55 },
@@ -454,19 +473,19 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "João Prado", position: "MEI", rating: 55 },
     { name: "Rafa Fonseca", position: "MEI", rating: 61 },
     { name: "Coxa", position: "MEI", rating: 60 },
-    { name: "João Pedro", position: "ATA", rating: 62 },
-    { name: "Petterson", position: "ATA", rating: 57 },
-    { name: "Adriano Filho", position: "ATA", rating: 62 },
-    { name: "Renan Henrique", position: "ATA", rating: 61 },
-    { name: "Guga", position: "ATA", rating: 54 },
-    { name: "Luizinho", position: "ATA", rating: 59 },
-    { name: "Udeh Clinton", position: "ATA", rating: 61 },
-    { name: "Luizão", position: "ATA", rating: 55 },
-    { name: "Olavio", position: "ATA", rating: 54 },
-    { name: "Héber", position: "ATA", rating: 63 },
-    { name: "Álvaro", position: "ATA", rating: 62 },
-    { name: "Marlyson", position: "ATA", rating: 62 },
-    { name: "Macário", position: "ATA", rating: 61 }
+    { name: "João Pedro", position: "CA", rating: 62 },
+    { name: "Petterson", position: "CA", rating: 57 },
+    { name: "Adriano Filho", position: "CA", rating: 62 },
+    { name: "Renan Henrique", position: "CA", rating: 61 },
+    { name: "Guga", position: "CA", rating: 54 },
+    { name: "Luizinho", position: "CA", rating: 59 },
+    { name: "Udeh Clinton", position: "CA", rating: 61 },
+    { name: "Luizão", position: "CA", rating: 55 },
+    { name: "Olavio", position: "CA", rating: 54 },
+    { name: "Héber", position: "CA", rating: 63 },
+    { name: "Álvaro", position: "CA", rating: 62 },
+    { name: "Marlyson", position: "CA", rating: 62 },
+    { name: "Macário", position: "CA", rating: 61 }
   ],
   caxias: [
     { name: "Gustavo Busatto", position: "GOL", rating: 59 },
@@ -501,20 +520,20 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Tomas Bastos", position: "MEI", rating: 63 },
     { name: "Ravanelli", position: "MEI", rating: 60 },
     { name: "Matheus Anjos", position: "MEI", rating: 58 },
-    { name: "Gaspar", position: "ATA", rating: 55 },
-    { name: "Calyson", position: "ATA", rating: 57 },
-    { name: "Vitor Feijão", position: "ATA", rating: 60 },
-    { name: "Luis Miguel", position: "ATA", rating: 54 },
-    { name: "Andrew", position: "ATA", rating: 63 },
-    { name: "João Lucas", position: "ATA", rating: 62 },
-    { name: "Douglas Skilo", position: "ATA", rating: 56 },
-    { name: "Jeam", position: "ATA", rating: 55 },
-    { name: "Salatiel", position: "ATA", rating: 54 },
-    { name: "Gustavo Nescau", position: "ATA", rating: 59 },
-    { name: "Arthur Viana", position: "ATA", rating: 55 },
-    { name: "Jhonatan Ribeiro", position: "ATA", rating: 58 },
-    { name: "Felipe Rangel", position: "ATA", rating: 59 },
-    { name: "Kaio Chrystian Portela Torres", position: "ATA", rating: 58 }
+    { name: "Gaspar", position: "CA", rating: 55 },
+    { name: "Calyson", position: "CA", rating: 57 },
+    { name: "Vitor Feijão", position: "CA", rating: 60 },
+    { name: "Luis Miguel", position: "CA", rating: 54 },
+    { name: "Andrew", position: "CA", rating: 63 },
+    { name: "João Lucas", position: "CA", rating: 62 },
+    { name: "Douglas Skilo", position: "CA", rating: 56 },
+    { name: "Jeam", position: "CA", rating: 55 },
+    { name: "Salatiel", position: "CA", rating: 54 },
+    { name: "Gustavo Nescau", position: "CA", rating: 59 },
+    { name: "Arthur Viana", position: "CA", rating: 55 },
+    { name: "Jhonatan Ribeiro", position: "CA", rating: 58 },
+    { name: "Felipe Rangel", position: "CA", rating: 59 },
+    { name: "Kaio Chrystian Portela Torres", position: "CA", rating: 58 }
   ],
   ceara: [
     { name: "Jorge Meurer", position: "GOL", rating: 73, age: 25 },
@@ -528,49 +547,47 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Vinicius", position: "MEI", rating: 65, age: 35 },
     { name: "Richardson", position: "MEI", rating: 65, age: 34 },
     { name: "Vinicius", position: "MEI", rating: 64, age: 25 },
-    { name: "Lucca", position: "ATA", rating: 70, age: 23 },
-    { name: "Wendel", position: "ATA", rating: 68, age: 25 },
-    { name: "Juan Alano", position: "ATA", rating: 65, age: 29 },
+    { name: "Lucca", position: "CA", rating: 70, age: 23 },
+    { name: "Wendel", position: "CA", rating: 68, age: 25 },
+    { name: "Juan Alano", position: "CA", rating: 65, age: 29 },
     { name: "Reserva LD 1", position: "LD", rating: 66, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 67, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 67, age: 24 },
     { name: "Reserva LE 2", position: "LE", rating: 68, age: 25 },
     { name: "Reserva MEI 1", position: "MEI", rating: 64, age: 24 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 66, age: 24 },
-    { name: "Reserva ATA 2", position: "ATA", rating: 67, age: 25 },
-    { name: "Reserva ATA 3", position: "ATA", rating: 70, age: 26 },
+    { name: "Reserva ATA 1", position: "CA", rating: 66, age: 24 },
+    { name: "Reserva ATA 2", position: "CA", rating: 67, age: 25 },
+    { name: "Reserva ATA 3", position: "CA", rating: 70, age: 26 },
     { name: "Bryan", position: "ZAG", rating: 69, age: 29 },
     { name: "Bruno", position: "GOL", rating: 68, age: 32 },
     { name: "Ronald", position: "ZAG", rating: 68, age: 26 },
     { name: "Rafael Ramos", position: "ZAG", rating: 67, age: 31 }
   ],
   chapecoense: [
-    { name: "Anderson Paixão", position: "GOL", rating: 76, age: 28 },
-    { name: "Matheus", position: "GOL", rating: 75, age: 27 },
+    { name: "Rafael Santos", position: "GOL", rating: 76, age: 28 },
+    { name: "Anderson", position: "GOL", rating: 75, age: 27 },
+    { name: "Léo Vieira", position: "GOL", rating: 73, age: 29 },
     { name: "Kauan", position: "ZAG", rating: 83, age: 23 },
     { name: "João Paulo", position: "ZAG", rating: 82, age: 29 },
-    { name: "Da Silva", position: "ZAG", rating: 80, age: 26 },
-    { name: "Rafael Thyere", position: "ZAG", rating: 79, age: 33 },
-    { name: "Jean", position: "MEI", rating: 82, age: 34 },
-    { name: "Higor Matheus Meritão", position: "MEI", rating: 80, age: 32 },
-    { name: "Ênio", position: "MEI", rating: 80, age: 25 },
-    { name: "Giovanni Augusto", position: "MEI", rating: 78, age: 36 },
-    { name: "Bruno Matias", position: "MEI", rating: 78, age: 27 },
-    { name: "Camilo", position: "MEI", rating: 78, age: 27 },
-    { name: "Marcinho", position: "ATA", rating: 82, age: 31 },
-    { name: "Kevin Ramírez", position: "ATA", rating: 82, age: 32 },
-    { name: "Robert Santos", position: "ATA", rating: 81, age: 22 },
-    { name: "Yannick Bolasie", position: "ATA", rating: 78, age: 37 },
-    { name: "Rafael Cavalheira", position: "ATA", rating: 78, age: 27 },
-    { name: "Italo", position: "ATA", rating: 78, age: 23 },
-    { name: "Reserva LD 1", position: "LD", rating: 78, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 76, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 80, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 75, age: 25 },
+    { name: "Rafael Thyere", position: "ZAG", rating: 79, age: 32 },
     { name: "Eduardo Doma", position: "ZAG", rating: 79, age: 27 },
     { name: "Bruno Pacheco", position: "ZAG", rating: 78, age: 34 },
     { name: "Mancha", position: "ZAG", rating: 78, age: 25 },
-    { name: "João Vitor", position: "MEI", rating: 78, age: 28 }
+    { name: "Marcos Vinícius", position: "LD", rating: 78, age: 28 },
+    { name: "Gustavo Talles", position: "LE", rating: 76, age: 25 },
+    { name: "Ênio", position: "VOL", rating: 80, age: 25 },
+    { name: "Higor Matheus Meritão", position: "VOL", rating: 80, age: 32 },
+    { name: "Jean", position: "MEI", rating: 82, age: 34 },
+    { name: "Giovanni Augusto", position: "MEI", rating: 78, age: 36 },
+    { name: "Camilo", position: "MEI", rating: 78, age: 27 },
+    { name: "Robert", position: "MEI", rating: 76, age: 22 },
+    { name: "João Vitor", position: "MEI", rating: 78, age: 28 },
+    { name: "Bruno Matias", position: "PON", rating: 78, age: 27 },
+    { name: "Ítalo Vargas", position: "PON", rating: 78, age: 22 },
+    { name: "Marcinho", position: "CA", rating: 82, age: 30 },
+    { name: "Kevin Ramírez", position: "CA", rating: 82, age: 32 },
+    { name: "Yannick Bolasie", position: "CA", rating: 78, age: 36 },
+    { name: "Rafael Cavalheira", position: "CA", rating: 78, age: 27 }
   ],
   confianca: [
     { name: "Matheus Emiliano", position: "GOL", rating: 56 },
@@ -602,71 +619,69 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "PK", position: "MEI", rating: 61 },
     { name: "Wendel", position: "MEI", rating: 62 },
     { name: "Nicholas", position: "MEI", rating: 58 },
-    { name: "Danielzinho", position: "ATA", rating: 53 },
-    { name: "João Pedro", position: "ATA", rating: 57 },
-    { name: "Iago", position: "ATA", rating: 53 },
-    { name: "Breiner Camilo", position: "ATA", rating: 62 },
-    { name: "Maikon Aquino", position: "ATA", rating: 55 },
-    { name: "Andrey Quintino", position: "ATA", rating: 60 },
-    { name: "Renanzinho", position: "ATA", rating: 62 },
-    { name: "Sassá", position: "ATA", rating: 62 },
-    { name: "Keirrison", position: "ATA", rating: 60 }
+    { name: "Danielzinho", position: "CA", rating: 53 },
+    { name: "João Pedro", position: "CA", rating: 57 },
+    { name: "Iago", position: "CA", rating: 53 },
+    { name: "Breiner Camilo", position: "CA", rating: 62 },
+    { name: "Maikon Aquino", position: "CA", rating: 55 },
+    { name: "Andrey Quintino", position: "CA", rating: 60 },
+    { name: "Renanzinho", position: "CA", rating: 62 },
+    { name: "Sassá", position: "CA", rating: 62 },
+    { name: "Keirrison", position: "CA", rating: 60 }
   ],
   corinthians: [
     { name: "Hugo Souza", position: "GOL", rating: 83, age: 27 },
     { name: "Kauê Camargo", position: "GOL", rating: 82, age: 22 },
+    { name: "Matheus Donelli", position: "GOL", rating: 77, age: 24 },
     { name: "João Pedro", position: "ZAG", rating: 83, age: 22 },
     { name: "Hugo", position: "ZAG", rating: 80, age: 28 },
     { name: "Pedro Milans", position: "ZAG", rating: 78, age: 24 },
-    { name: "Gustavo Henrique", position: "ZAG", rating: 76, age: 33 },
+    { name: "Gustavo Henrique", position: "ZAG", rating: 76, age: 34 },
+    { name: "Gabriel Paulista", position: "ZAG", rating: 76, age: 35 },
+    { name: "Matheuzinho", position: "LD", rating: 79, age: 25 },
+    { name: "Rafael Ramos", position: "LD", rating: 80, age: 28 },
+    { name: "Fabrizio Angileri", position: "LE", rating: 78, age: 33 },
+    { name: "Matheus Bidu", position: "LE", rating: 75, age: 23 },
+    { name: "Alex Santana", position: "VOL", rating: 82, age: 31 },
+    { name: "Raniele", position: "VOL", rating: 81, age: 29 },
+    { name: "Allan", position: "VOL", rating: 77, age: 35 },
+    { name: "Charles", position: "VOL", rating: 77, age: 30 },
     { name: "Matheus Pereira", position: "MEI", rating: 83, age: 30 },
     { name: "Jesse Lingard", position: "MEI", rating: 82, age: 33 },
-    { name: "Alex Santana", position: "MEI", rating: 82, age: 31 },
-    { name: "Raniele", position: "MEI", rating: 81, age: 29 },
     { name: "Rodrigo Garro", position: "MEI", rating: 80, age: 28 },
-    { name: "André Carrillo", position: "MEI", rating: 77, age: 35 },
-    { name: "Yuri Alberto", position: "ATA", rating: 83, age: 25 },
-    { name: "Zakaria Labyad", position: "ATA", rating: 78, age: 33 },
-    { name: "Kaio", position: "ATA", rating: 78, age: 22 },
-    { name: "Kayke Ferrari", position: "ATA", rating: 76, age: 22 },
-    { name: "Memphis Depay", position: "ATA", rating: 74, age: 32 },
-    { name: "Vitinho", position: "ATA", rating: 74, age: 32 },
-    { name: "Reserva LD 1", position: "LD", rating: 79, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 80, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 76, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 79, age: 25 },
-    { name: "Matheus Donelli", position: "GOL", rating: 77, age: 24 },
-    { name: "Allan", position: "MEI", rating: 77, age: 29 },
-    { name: "Charles", position: "MEI", rating: 77, age: 30 },
-    { name: "Gabriel Paulista", position: "ZAG", rating: 76, age: 35 }
+    { name: "Zakaria Labyad", position: "MEI", rating: 78, age: 33 },
+    { name: "André Carrillo", position: "PON", rating: 77, age: 35 },
+    { name: "Kayke Ferrari", position: "PON", rating: 76, age: 22 },
+    { name: "Vitinho", position: "PON", rating: 74, age: 32 },
+    { name: "Yuri Alberto", position: "CA", rating: 83, age: 25 },
+    { name: "Memphis Depay", position: "CA", rating: 74, age: 32 },
+    { name: "Pedro Raul", position: "CA", rating: 76, age: 29 }
   ],
   coritiba: [
     { name: "Benassi", position: "GOL", rating: 82, age: 22 },
     { name: "Gabriel Leite", position: "GOL", rating: 81, age: 38 },
-    { name: "Bruno Melo", position: "ZAG", rating: 82, age: 33 },
+    { name: "Keiller", position: "GOL", rating: 81, age: 29 },
+    { name: "Pedro Rangel", position: "GOL", rating: 78, age: 26 },
     { name: "Rodrigo Moledo", position: "ZAG", rating: 81, age: 38 },
     { name: "Maicon", position: "ZAG", rating: 80, age: 37 },
     { name: "Tiago", position: "ZAG", rating: 79, age: 22 },
+    { name: "Thiago Santos", position: "ZAG", rating: 78, age: 30 },
+    { name: "Tinga", position: "LD", rating: 79, age: 32 },
+    { name: "Natanael", position: "LD", rating: 75, age: 34 },
+    { name: "Bruno Melo", position: "LE", rating: 82, age: 33 },
+    { name: "Felipe Jonatan", position: "LE", rating: 77, age: 28 },
+    { name: "Fernando Sobral", position: "VOL", rating: 81, age: 31 },
+    { name: "Willian Oliveira", position: "VOL", rating: 78, age: 29 },
     { name: "Gustavo", position: "MEI", rating: 82, age: 23 },
     { name: "Josué Pesqueira", position: "MEI", rating: 81, age: 35 },
-    { name: "Fernando Sobral", position: "MEI", rating: 81, age: 31 },
     { name: "Wallison Luiz", position: "MEI", rating: 80, age: 28 },
-    { name: "Geovane Santana Meurer", position: "MEI", rating: 78, age: 24 },
     { name: "Willian", position: "MEI", rating: 77, age: 33 },
-    { name: "Keno", position: "ATA", rating: 82, age: 36 },
-    { name: "Rodrigo Rodrigues", position: "ATA", rating: 82, age: 30 },
-    { name: "Breno", position: "ATA", rating: 81, age: 30 },
-    { name: "Éberth", position: "ATA", rating: 80, age: 23 },
-    { name: "Renato Marques", position: "ATA", rating: 77, age: 22 },
-    { name: "Vini Paulista", position: "ATA", rating: 76, age: 25 },
-    { name: "Reserva LD 1", position: "LD", rating: 77, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 74, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 80, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 79, age: 25 },
-    { name: "Keiller", position: "GOL", rating: 81, age: 29 },
-    { name: "Pedro Luccas", position: "GOL", rating: 81, age: 22 },
-    { name: "Pedro Rangel", position: "GOL", rating: 78, age: 26 },
-    { name: "Felipe Jonatan", position: "ZAG", rating: 77, age: 28 }
+    { name: "Keno", position: "PON", rating: 82, age: 36 },
+    { name: "Éberth", position: "PON", rating: 80, age: 23 },
+    { name: "Vini Paulista", position: "PON", rating: 76, age: 25 },
+    { name: "Rodrigo Rodrigues", position: "CA", rating: 82, age: 30 },
+    { name: "Breno", position: "CA", rating: 81, age: 30 },
+    { name: "Renato Marques", position: "CA", rating: 77, age: 22 }
   ],
   crb: [
     { name: "Fábio", position: "GOL", rating: 70, age: 23 },
@@ -681,12 +696,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Crystopher", position: "MEI", rating: 67, age: 28 },
     { name: "Patrick de Lucca", position: "MEI", rating: 67, age: 26 },
     { name: "Geovane", position: "MEI", rating: 65, age: 27 },
-    { name: "Mikael", position: "ATA", rating: 74, age: 27 },
-    { name: "Joao Neto", position: "ATA", rating: 74, age: 23 },
-    { name: "Dadá", position: "ATA", rating: 71, age: 29 },
-    { name: "Luis Vinicius Nunes Cavalcante", position: "ATA", rating: 69, age: 27 },
-    { name: "Guilherme Pato", position: "ATA", rating: 68, age: 25 },
-    { name: "Douglas Baggio", position: "ATA", rating: 65, age: 31 },
+    { name: "Mikael", position: "CA", rating: 74, age: 27 },
+    { name: "Joao Neto", position: "CA", rating: 74, age: 23 },
+    { name: "Dadá", position: "CA", rating: 71, age: 29 },
+    { name: "Luis Vinicius Nunes Cavalcante", position: "CA", rating: 69, age: 27 },
+    { name: "Guilherme Pato", position: "CA", rating: 68, age: 25 },
+    { name: "Douglas Baggio", position: "CA", rating: 65, age: 31 },
     { name: "Reserva LD 1", position: "LD", rating: 68, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 67, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 66, age: 24 },
@@ -709,12 +724,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Eliel", position: "MEI", rating: 72, age: 23 },
     { name: "Eduardo", position: "MEI", rating: 68, age: 29 },
     { name: "Rómulo Otero", position: "MEI", rating: 67, age: 33 },
-    { name: "Cauê", position: "ATA", rating: 74, age: 23 },
-    { name: "João Carlos", position: "ATA", rating: 73, age: 25 },
-    { name: "Diego", position: "ATA", rating: 71, age: 31 },
-    { name: "Romarinho", position: "ATA", rating: 67, age: 32 },
-    { name: "Jhonata Robert", position: "ATA", rating: 67, age: 26 },
-    { name: "Nicolás", position: "ATA", rating: 65, age: 36 },
+    { name: "Cauê", position: "CA", rating: 74, age: 23 },
+    { name: "João Carlos", position: "CA", rating: 73, age: 25 },
+    { name: "Diego", position: "CA", rating: 71, age: 31 },
+    { name: "Romarinho", position: "CA", rating: 67, age: 32 },
+    { name: "Jhonata Robert", position: "CA", rating: 67, age: 26 },
+    { name: "Nicolás", position: "CA", rating: 65, age: 36 },
     { name: "Reserva LD 1", position: "LD", rating: 69, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 70, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 66, age: 24 },
@@ -728,29 +743,27 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Cássio", position: "GOL", rating: 75, age: 39 },
     { name: "Matheus Cunha Queiroz", position: "GOL", rating: 74, age: 25 },
     { name: "Pedro Henrique Franklim Martins", position: "ZAG", rating: 82, age: 22 },
-    { name: "Fabrício Bruno", position: "ZAG", rating: 81, age: 30 },
+    { name: "Fabrício Bruno", position: "ZAG", rating: 81, age: 31 },
     { name: "Lucas Villalba", position: "ZAG", rating: 80, age: 31 },
     { name: "William", position: "ZAG", rating: 80, age: 31 },
-    { name: "Lucas Romero", position: "MEI", rating: 83, age: 32 },
-    { name: "Gerson", position: "MEI", rating: 83, age: 29 },
-    { name: "Matheus Henrique", position: "MEI", rating: 80, age: 28 },
-    { name: "Christian", position: "MEI", rating: 79, age: 25 },
-    { name: "João Wellington", position: "MEI", rating: 79, age: 22 },
-    { name: "Lucas Silva", position: "MEI", rating: 78, age: 33 },
-    { name: "Marquinhos", position: "ATA", rating: 83, age: 23 },
-    { name: "Kaio Jorge", position: "ATA", rating: 80, age: 24 },
-    { name: "Wanderson", position: "ATA", rating: 77, age: 31 },
-    { name: "Bruno Rodrigues", position: "ATA", rating: 75, age: 29 },
-    { name: "Chico", position: "ATA", rating: 74, age: 31 },
-    { name: "Reserva LD 1", position: "LD", rating: 79, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 74, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 74, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 80, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 74, age: 24 },
     { name: "João Marcelo", position: "ZAG", rating: 79, age: 26 },
-    { name: "Matheus Pereira", position: "MEI", rating: 78, age: 30 },
     { name: "Jonathan Jesus", position: "ZAG", rating: 77, age: 22 },
-    { name: "Fagner", position: "ZAG", rating: 76, age: 37 }
+    { name: "Zé Ivaldo", position: "ZAG", rating: 78, age: 25 },
+    { name: "Fagner", position: "LD", rating: 76, age: 37 },
+    { name: "Gabriel Rojas", position: "LE", rating: 78, age: 28 },
+    { name: "Lucas Romero", position: "VOL", rating: 83, age: 33 },
+    { name: "Matheus Henrique", position: "VOL", rating: 80, age: 29 },
+    { name: "João Wellington", position: "VOL", rating: 79, age: 22 },
+    { name: "Lucas Silva", position: "VOL", rating: 78, age: 35 },
+    { name: "Gerson", position: "MEI", rating: 83, age: 29 },
+    { name: "Christian", position: "MEI", rating: 79, age: 25 },
+    { name: "Matheus Pereira", position: "MEI", rating: 78, age: 29 },
+    { name: "Ramiro", position: "MEI", rating: 79, age: 33 },
+    { name: "Marquinhos", position: "CA", rating: 83, age: 23 },
+    { name: "Kaio Jorge", position: "CA", rating: 80, age: 24 },
+    { name: "Chico", position: "PON", rating: 74, age: 31 },
+    { name: "Wanderson", position: "PON", rating: 77, age: 32 },
+    { name: "Bruno Rodrigues", position: "PON", rating: 75, age: 29 }
   ],
   cuiaba: [
     { name: "Marcelo Carné", position: "GOL", rating: 72, age: 36 },
@@ -765,17 +778,17 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Victor", position: "MEI", rating: 71, age: 22 },
     { name: "Weverson", position: "MEI", rating: 68, age: 22 },
     { name: "Marcos Júnior", position: "MEI", rating: 65, age: 33 },
-    { name: "Derik Lacerda", position: "ATA", rating: 74, age: 26 },
-    { name: "Yamil Asad", position: "ATA", rating: 73, age: 31 },
-    { name: "Vinicius Peixoto Trindade Da Silva", position: "ATA", rating: 73, age: 22 },
-    { name: "Pedro", position: "ATA", rating: 72, age: 29 },
-    { name: "Rodrigo", position: "ATA", rating: 69, age: 26 },
-    { name: "Eliel", position: "ATA", rating: 69, age: 23 },
+    { name: "Derik Lacerda", position: "CA", rating: 74, age: 26 },
+    { name: "Yamil Asad", position: "CA", rating: 73, age: 31 },
+    { name: "Vinicius Peixoto Trindade Da Silva", position: "CA", rating: 73, age: 22 },
+    { name: "Pedro", position: "CA", rating: 72, age: 29 },
+    { name: "Rodrigo", position: "CA", rating: 69, age: 26 },
+    { name: "Eliel", position: "CA", rating: 69, age: 23 },
     { name: "Reserva LD 1", position: "LD", rating: 70, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 67, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 65, age: 24 },
     { name: "Reserva LE 2", position: "LE", rating: 66, age: 25 },
-    { name: "Jean Dias", position: "ATA", rating: 67, age: 35 },
+    { name: "Jean Dias", position: "CA", rating: 67, age: 35 },
     { name: "Gabriel Knesowitsch", position: "ZAG", rating: 66, age: 22 },
     { name: "Raul", position: "MEI", rating: 65, age: 30 },
     { name: "João Carlos", position: "GOL", rating: 64, age: 38 }
@@ -812,16 +825,16 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "David", position: "MEI", rating: 59 },
     { name: "Allison", position: "MEI", rating: 62 },
     { name: "Jhonatan Garcia", position: "MEI", rating: 59 },
-    { name: "Denilson", position: "ATA", rating: 62 },
-    { name: "Fábio Soares", position: "ATA", rating: 55 },
-    { name: "Vitor Barreto", position: "ATA", rating: 59 },
-    { name: "Douglas Skilo", position: "ATA", rating: 63 },
-    { name: "Mateus Cantarelli", position: "ATA", rating: 56 },
-    { name: "Felipe Rodrigues", position: "ATA", rating: 53 },
-    { name: "Denilson", position: "ATA", rating: 56 },
-    { name: "Vinni Faria", position: "ATA", rating: 60 },
-    { name: "Pedro Estevam", position: "ATA", rating: 61 },
-    { name: "Thiago Montelo", position: "ATA", rating: 62 }
+    { name: "Denilson", position: "CA", rating: 62 },
+    { name: "Fábio Soares", position: "CA", rating: 55 },
+    { name: "Vitor Barreto", position: "CA", rating: 59 },
+    { name: "Douglas Skilo", position: "CA", rating: 63 },
+    { name: "Mateus Cantarelli", position: "CA", rating: 56 },
+    { name: "Felipe Rodrigues", position: "CA", rating: 53 },
+    { name: "Denilson", position: "CA", rating: 56 },
+    { name: "Vinni Faria", position: "CA", rating: 60 },
+    { name: "Pedro Estevam", position: "CA", rating: 61 },
+    { name: "Thiago Montelo", position: "CA", rating: 62 }
   ],
   figueirense: [
     { name: "Fabrício", position: "GOL", rating: 55 },
@@ -858,50 +871,47 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Choco", position: "MEI", rating: 59 },
     { name: "Wendell", position: "MEI", rating: 62 },
     { name: "Pajé", position: "MEI", rating: 55 },
-    { name: "Mailson", position: "ATA", rating: 55 },
-    { name: "Pablo", position: "ATA", rating: 57 },
-    { name: "Guilherme Vieira", position: "ATA", rating: 56 },
-    { name: "Arthur Martins", position: "ATA", rating: 54 },
-    { name: "Emerson Galego", position: "ATA", rating: 55 },
-    { name: "Felipe Augusto", position: "ATA", rating: 54 },
-    { name: "Silvinho", position: "ATA", rating: 55 },
-    { name: "Igor Bolt", position: "ATA", rating: 53 },
-    { name: "Reifit", position: "ATA", rating: 60 },
-    { name: "Zé Carlos", position: "ATA", rating: 61 },
-    { name: "Lucas Alves", position: "ATA", rating: 55 },
-    { name: "Kayke", position: "ATA", rating: 60 },
-    { name: "Hyuri", position: "ATA", rating: 60 },
-    { name: "João Marcos", position: "ATA", rating: 61 },
-    { name: "Maiky", position: "ATA", rating: 53 },
-    { name: "Thyerry", position: "ATA", rating: 59 }
+    { name: "Mailson", position: "CA", rating: 55 },
+    { name: "Pablo", position: "CA", rating: 57 },
+    { name: "Guilherme Vieira", position: "CA", rating: 56 },
+    { name: "Arthur Martins", position: "CA", rating: 54 },
+    { name: "Emerson Galego", position: "CA", rating: 55 },
+    { name: "Felipe Augusto", position: "CA", rating: 54 },
+    { name: "Silvinho", position: "CA", rating: 55 },
+    { name: "Igor Bolt", position: "CA", rating: 53 },
+    { name: "Reifit", position: "CA", rating: 60 },
+    { name: "Zé Carlos", position: "CA", rating: 61 },
+    { name: "Lucas Alves", position: "CA", rating: 55 },
+    { name: "Kayke", position: "CA", rating: 60 },
+    { name: "Hyuri", position: "CA", rating: 60 },
+    { name: "João Marcos", position: "CA", rating: 61 },
+    { name: "Maiky", position: "CA", rating: 53 },
+    { name: "Thyerry", position: "CA", rating: 59 }
   ],
   flamengo: [
-    { name: "Dyogo Alves", position: "GOL", rating: 81, age: 22 },
-    { name: "Andrew", position: "GOL", rating: 75, age: 25 },
-    { name: "Alex Sandro", position: "ZAG", rating: 81, age: 35 },
+    { name: "Agustín Rossi", position: "GOL", rating: 84, age: 31 },
+    { name: "Dyogo Alves", position: "GOL", rating: 81, age: 23 },
+    { name: "Andrew", position: "GOL", rating: 75, age: 26 },
     { name: "Léo Pereira", position: "ZAG", rating: 80, age: 30 },
-    { name: "Ayrton Lucas", position: "ZAG", rating: 77, age: 29 },
-    { name: "Emerson Royal", position: "ZAG", rating: 77, age: 27 },
-    { name: "Jorge Carrascal", position: "MEI", rating: 83, age: 28 },
+    { name: "Léo Ortiz", position: "ZAG", rating: 78, age: 27 },
+    { name: "Danilo", position: "ZAG", rating: 76, age: 23 },
+    { name: "Vitão", position: "ZAG", rating: 76, age: 26 },
+    { name: "Emerson Royal", position: "LD", rating: 77, age: 27 },
+    { name: "Guillermo Varela", position: "LD", rating: 75, age: 34 },
+    { name: "Alex Sandro", position: "LE", rating: 81, age: 35 },
+    { name: "Ayrton Lucas", position: "LE", rating: 77, age: 29 },
+    { name: "Erick Pulgar", position: "VOL", rating: 76, age: 32 },
+    { name: "Jorginho", position: "VOL", rating: 78, age: 34 },
+    { name: "Evertton Araújo", position: "VOL", rating: 75, age: 23 },
     { name: "Giorgian de Arrascaeta", position: "MEI", rating: 81, age: 32 },
-    { name: "Samuel Lino", position: "MEI", rating: 81, age: 26 },
-    { name: "Saúl Ñíguez", position: "MEI", rating: 80, age: 31 },
+    { name: "Jorge Carrascal", position: "MEI", rating: 83, age: 28 },
     { name: "Nicolás de la Cruz", position: "MEI", rating: 80, age: 29 },
-    { name: "Jorginho", position: "MEI", rating: 78, age: 34 },
-    { name: "Luiz Araújo", position: "ATA", rating: 82, age: 30 },
-    { name: "Everton", position: "ATA", rating: 81, age: 30 },
-    { name: "Pedro", position: "ATA", rating: 79, age: 29 },
-    { name: "Bruno Henrique", position: "ATA", rating: 78, age: 35 },
-    { name: "Gonzalo Plata", position: "ATA", rating: 76, age: 25 },
-    { name: "Reserva LD 1", position: "LD", rating: 78, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 78, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 75, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 76, age: 24 },
-    { name: "Lucas Paquetá", position: "MEI", rating: 77, age: 28 },
-    { name: "Erick Pulgar", position: "MEI", rating: 76, age: 32 },
-    { name: "Danilo", position: "ZAG", rating: 75, age: 35 },
-    { name: "Guillermo Varela", position: "ZAG", rating: 75, age: 33 }
+    { name: "Gerson", position: "MEI", rating: 81, age: 29 },
+    { name: "Luiz Araújo", position: "PON", rating: 82, age: 29 },
+    { name: "Gonzalo Plata", position: "PON", rating: 76, age: 26 },
+    { name: "Everton", position: "PON", rating: 81, age: 30 },
+    { name: "Bruno Henrique", position: "PON", rating: 78, age: 36 },
+    { name: "Pedro", position: "CA", rating: 79, age: 29 }
   ],
   floresta: [
     { name: "Tiepo", position: "GOL", rating: 62 },
@@ -931,44 +941,42 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Bismark", position: "MEI", rating: 61 },
     { name: "Garraty", position: "MEI", rating: 61 },
     { name: "Vitinho", position: "MEI", rating: 57 },
-    { name: "Diogo Mourão", position: "ATA", rating: 62 },
-    { name: "Rafinha", position: "ATA", rating: 54 },
-    { name: "Gustavinho", position: "ATA", rating: 56 },
-    { name: "Matheusinho", position: "ATA", rating: 60 },
-    { name: "Matheus Martins", position: "ATA", rating: 56 },
-    { name: "Jeam", position: "ATA", rating: 62 },
-    { name: "João Celeri", position: "ATA", rating: 59 },
-    { name: "Daniel Troiano", position: "ATA", rating: 56 },
-    { name: "Thailor", position: "ATA", rating: 58 },
-    { name: "Emerson", position: "ATA", rating: 54 }
+    { name: "Diogo Mourão", position: "CA", rating: 62 },
+    { name: "Rafinha", position: "CA", rating: 54 },
+    { name: "Gustavinho", position: "CA", rating: 56 },
+    { name: "Matheusinho", position: "CA", rating: 60 },
+    { name: "Matheus Martins", position: "CA", rating: 56 },
+    { name: "Jeam", position: "CA", rating: 62 },
+    { name: "João Celeri", position: "CA", rating: 59 },
+    { name: "Daniel Troiano", position: "CA", rating: 56 },
+    { name: "Thailor", position: "CA", rating: 58 },
+    { name: "Emerson", position: "CA", rating: 54 }
   ],
   fluminense: [
-    { name: "Fábio", position: "GOL", rating: 83, age: 45 },
+    { name: "Fábio", position: "GOL", rating: 83, age: 46 },
     { name: "Gustavo Ramalho", position: "GOL", rating: 79, age: 23 },
-    { name: "Guga", position: "ZAG", rating: 83, age: 27 },
-    { name: "Ignácio", position: "ZAG", rating: 83, age: 29 },
-    { name: "René", position: "ZAG", rating: 81, age: 33 },
-    { name: "Guilherme Arana", position: "ZAG", rating: 81, age: 29 },
-    { name: "Nonato", position: "MEI", rating: 82, age: 28 },
-    { name: "David Terans", position: "MEI", rating: 78, age: 31 },
-    { name: "Hércules", position: "MEI", rating: 78, age: 25 },
-    { name: "Ganso", position: "MEI", rating: 77, age: 36 },
-    { name: "Alisson", position: "MEI", rating: 77, age: 33 },
-    { name: "Luciano Acosta", position: "MEI", rating: 77, age: 32 },
-    { name: "Hulk", position: "ATA", rating: 83, age: 39 },
-    { name: "Kevin Serna", position: "ATA", rating: 83, age: 28 },
-    { name: "Jefferson Savarino", position: "ATA", rating: 82, age: 29 },
-    { name: "John Kennedy", position: "ATA", rating: 82, age: 24 },
-    { name: "Rodrigo Castillo", position: "ATA", rating: 81, age: 27 },
-    { name: "Yeferson Soteldo", position: "ATA", rating: 78, age: 29 },
-    { name: "Reserva LD 1", position: "LD", rating: 77, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 79, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 76, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 78, age: 25 },
-    { name: "Julian Millan", position: "ZAG", rating: 81, age: 28 },
-    { name: "Vitor Eudes", position: "GOL", rating: 78, age: 27 },
     { name: "Marcelo Pitaluga", position: "GOL", rating: 78, age: 23 },
-    { name: "Davi Schuindt", position: "ZAG", rating: 78, age: 22 }
+    { name: "Ignácio", position: "ZAG", rating: 83, age: 29 },
+    { name: "Julian Millan", position: "ZAG", rating: 81, age: 28 },
+    { name: "Davi Schuindt", position: "ZAG", rating: 78, age: 22 },
+    { name: "Igor Rabello", position: "ZAG", rating: 77, age: 30 },
+    { name: "Juan Freytes", position: "ZAG", rating: 76, age: 27 },
+    { name: "Guga", position: "LD", rating: 83, age: 27 },
+    { name: "Samuel Xavier", position: "LD", rating: 78, age: 30 },
+    { name: "Renê", position: "LE", rating: 81, age: 35 },
+    { name: "Guilherme Arana", position: "LE", rating: 81, age: 29 },
+    { name: "Nonato", position: "VOL", rating: 82, age: 28 },
+    { name: "Hércules", position: "VOL", rating: 78, age: 25 },
+    { name: "Otávio", position: "VOL", rating: 77, age: 32 },
+    { name: "Facundo Bernal", position: "VOL", rating: 76, age: 24 },
+    { name: "David Terans", position: "MEI", rating: 78, age: 31 },
+    { name: "Ganso", position: "MEI", rating: 77, age: 36 },
+    { name: "Kevin Serna", position: "PON", rating: 83, age: 28 },
+    { name: "Yeferson Soteldo", position: "PON", rating: 78, age: 29 },
+    { name: "Canobbio", position: "PON", rating: 78, age: 27 },
+    { name: "Santi Moreno", position: "PON", rating: 74, age: 22 },
+    { name: "John Kennedy", position: "CA", rating: 82, age: 24 },
+    { name: "Keno", position: "CA", rating: 76, age: 31 }
   ],
   fortaleza: [
     { name: "Vinicius", position: "GOL", rating: 72, age: 32 },
@@ -983,16 +991,16 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Ryan", position: "MEI", rating: 71, age: 23 },
     { name: "Rodrigo Santos", position: "MEI", rating: 71, age: 25 },
     { name: "Lucca", position: "MEI", rating: 70, age: 22 },
-    { name: "Vitinho", position: "ATA", rating: 74, age: 25 },
-    { name: "Paulo Baya", position: "ATA", rating: 68, age: 26 },
-    { name: "Welliton", position: "ATA", rating: 66, age: 26 },
-    { name: "Luiz Fernando", position: "ATA", rating: 66, age: 29 },
-    { name: "Juan Miritello", position: "ATA", rating: 65, age: 27 },
+    { name: "Vitinho", position: "CA", rating: 74, age: 25 },
+    { name: "Paulo Baya", position: "CA", rating: 68, age: 26 },
+    { name: "Welliton", position: "CA", rating: 66, age: 26 },
+    { name: "Luiz Fernando", position: "CA", rating: 66, age: 29 },
+    { name: "Juan Miritello", position: "CA", rating: 65, age: 27 },
     { name: "Reserva LD 1", position: "LD", rating: 64, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 68, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 67, age: 24 },
     { name: "Reserva LE 2", position: "LE", rating: 64, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 66, age: 24 },
+    { name: "Reserva ATA 1", position: "CA", rating: 66, age: 24 },
     { name: "Lucas Xavier Gazal", position: "ZAG", rating: 67, age: 26 },
     { name: "Lucas Sasha", position: "MEI", rating: 67, age: 36 },
     { name: "Magrão", position: "GOL", rating: 66, age: 26 },
@@ -1011,16 +1019,16 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Brayann", position: "MEI", rating: 71, age: 28 },
     { name: "Wellington Rato", position: "MEI", rating: 70, age: 34 },
     { name: "Gegê", position: "MEI", rating: 68, age: 32 },
-    { name: "Esli Garcia", position: "ATA", rating: 74, age: 26 },
-    { name: "Cadu", position: "ATA", rating: 68, age: 22 },
-    { name: "Kadu", position: "ATA", rating: 68, age: 24 },
-    { name: "Pedrinho", position: "ATA", rating: 67, age: 22 },
-    { name: "Anselmo Ramon", position: "ATA", rating: 65, age: 38 },
+    { name: "Esli Garcia", position: "CA", rating: 74, age: 26 },
+    { name: "Cadu", position: "CA", rating: 68, age: 22 },
+    { name: "Kadu", position: "CA", rating: 68, age: 24 },
+    { name: "Pedrinho", position: "CA", rating: 67, age: 22 },
+    { name: "Anselmo Ramon", position: "CA", rating: 65, age: 38 },
     { name: "Reserva LD 1", position: "LD", rating: 66, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 66, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 67, age: 24 },
     { name: "Reserva LE 2", position: "LE", rating: 65, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 69, age: 24 },
+    { name: "Reserva ATA 1", position: "CA", rating: 69, age: 24 },
     { name: "Rodrigo", position: "ZAG", rating: 68, age: 33 },
     { name: "Diego Caito", position: "ZAG", rating: 68, age: 22 },
     { name: "Nicolas", position: "ZAG", rating: 67, age: 29 },
@@ -1029,30 +1037,30 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
   gremio: [
     { name: "Gabriel Grando", position: "GOL", rating: 81, age: 26 },
     { name: "Weverton", position: "GOL", rating: 80, age: 38 },
+    { name: "Thiago Stallbaum", position: "GOL", rating: 79, age: 23 },
     { name: "Fabián Balbuena", position: "ZAG", rating: 80, age: 34 },
     { name: "Wálter Kannemann", position: "ZAG", rating: 78, age: 35 },
-    { name: "João Pedro", position: "ZAG", rating: 78, age: 29 },
-    { name: "Caio Paulista", position: "ZAG", rating: 77, age: 28 },
-    { name: "Juan Nardoni", position: "MEI", rating: 83, age: 24 },
-    { name: "Mathías Villasanti", position: "MEI", rating: 80, age: 29 },
-    { name: "Willian", position: "MEI", rating: 78, age: 37 },
-    { name: "Erick Noriega", position: "MEI", rating: 78, age: 24 },
-    { name: "Dodi", position: "MEI", rating: 74, age: 30 },
-    { name: "Miguel Monsalve", position: "MEI", rating: 74, age: 22 },
-    { name: "Martin Braithwaite", position: "ATA", rating: 80, age: 35 },
-    { name: "José Enamorado", position: "ATA", rating: 80, age: 27 },
-    { name: "Cristian Pavón", position: "ATA", rating: 77, age: 30 },
-    { name: "Francis Amuzu", position: "ATA", rating: 75, age: 26 },
-    { name: "Mateus Tetê", position: "ATA", rating: 75, age: 26 },
-    { name: "Carlos Vinícius", position: "ATA", rating: 74, age: 31 },
-    { name: "Reserva LD 1", position: "LD", rating: 74, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 80, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 80, age: 25 },
-    { name: "Thiago Stallbaum", position: "GOL", rating: 79, age: 23 },
     { name: "Wagner Leonardo", position: "ZAG", rating: 77, age: 26 },
-    { name: "Adriel", position: "GOL", rating: 76, age: 25 },
-    { name: "Marcos Rocha", position: "ZAG", rating: 76, age: 37 }
+    { name: "Gustavo Martins", position: "ZAG", rating: 75, age: 24 },
+    { name: "Marcos Rocha", position: "LD", rating: 76, age: 37 },
+    { name: "João Pedro", position: "LD", rating: 78, age: 29 },
+    { name: "Caio Paulista", position: "LE", rating: 77, age: 28 },
+    { name: "Marlon", position: "LE", rating: 78, age: 30 },
+    { name: "Lucas Esteves", position: "LE", rating: 76, age: 24 },
+    { name: "Mathías Villasanti", position: "VOL", rating: 80, age: 29 },
+    { name: "Erick Noriega", position: "VOL", rating: 78, age: 24 },
+    { name: "Dodi", position: "VOL", rating: 74, age: 30 },
+    { name: "Gustavo Cuéllar", position: "VOL", rating: 78, age: 34 },
+    { name: "Juan Nardoni", position: "MEI", rating: 83, age: 24 },
+    { name: "Arthur Melo", position: "MEI", rating: 80, age: 30 },
+    { name: "Willian", position: "PON", rating: 78, age: 37 },
+    { name: "José Enamorado", position: "PON", rating: 80, age: 27 },
+    { name: "Cristian Pavón", position: "PON", rating: 77, age: 30 },
+    { name: "Francis Amuzu", position: "PON", rating: 75, age: 26 },
+    { name: "Mateus Tetê", position: "PON", rating: 75, age: 26 },
+    { name: "Miguel Monsalve", position: "PON", rating: 74, age: 22 },
+    { name: "Martin Braithwaite", position: "CA", rating: 80, age: 35 },
+    { name: "Carlos Vinícius", position: "CA", rating: 74, age: 31 }
   ],
   guarani: [
     { name: "Caíque França", position: "GOL", rating: 54 },
@@ -1084,17 +1092,17 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Isaque", position: "MEI", rating: 62 },
     { name: "Kauã Jesus", position: "MEI", rating: 56 },
     { name: "Kauã Mineiro", position: "MEI", rating: 59 },
-    { name: "Lucca", position: "ATA", rating: 54 },
-    { name: "Éverton Brito", position: "ATA", rating: 56 },
-    { name: "Mirandinha", position: "ATA", rating: 62 },
-    { name: "Guilherme Cachoeira", position: "ATA", rating: 57 },
-    { name: "Dentinho", position: "ATA", rating: 63 },
-    { name: "Herbert", position: "ATA", rating: 56 },
-    { name: "João Victor", position: "ATA", rating: 60 },
-    { name: "Guilherme Parede", position: "ATA", rating: 55 },
-    { name: "Rafael Freitas", position: "ATA", rating: 57 },
-    { name: "Maranhão", position: "ATA", rating: 59 },
-    { name: "Kewen", position: "ATA", rating: 61 }
+    { name: "Lucca", position: "CA", rating: 54 },
+    { name: "Éverton Brito", position: "CA", rating: 56 },
+    { name: "Mirandinha", position: "CA", rating: 62 },
+    { name: "Guilherme Cachoeira", position: "CA", rating: 57 },
+    { name: "Dentinho", position: "CA", rating: 63 },
+    { name: "Herbert", position: "CA", rating: 56 },
+    { name: "João Victor", position: "CA", rating: 60 },
+    { name: "Guilherme Parede", position: "CA", rating: 55 },
+    { name: "Rafael Freitas", position: "CA", rating: 57 },
+    { name: "Maranhão", position: "CA", rating: 59 },
+    { name: "Kewen", position: "CA", rating: 61 }
   ],
   inter_limeira: [
     { name: "Saulo", position: "GOL", rating: 54 },
@@ -1120,41 +1128,40 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Marco Antônio", position: "MEI", rating: 58 },
     { name: "Claudinho", position: "MEI", rating: 61 },
     { name: "Luiz Guilherme", position: "MEI", rating: 59 },
-    { name: "Vitor Leque", position: "ATA", rating: 62 },
-    { name: "Rafael Oller", position: "ATA", rating: 57 },
-    { name: "Robinho", position: "ATA", rating: 60 },
-    { name: "Richard", position: "ATA", rating: 54 },
-    { name: "Miguel Bianconi", position: "ATA", rating: 61 },
-    { name: "Getulio", position: "ATA", rating: 61 },
-    { name: "Zé Eduardo", position: "ATA", rating: 54 }
+    { name: "Vitor Leque", position: "CA", rating: 62 },
+    { name: "Rafael Oller", position: "CA", rating: 57 },
+    { name: "Robinho", position: "CA", rating: 60 },
+    { name: "Richard", position: "CA", rating: 54 },
+    { name: "Miguel Bianconi", position: "CA", rating: 61 },
+    { name: "Getulio", position: "CA", rating: 61 },
+    { name: "Zé Eduardo", position: "CA", rating: 54 }
   ],
   internacional: [
     { name: "Sergio Rochet", position: "GOL", rating: 81, age: 33 },
     { name: "Kauan", position: "GOL", rating: 79, age: 23 },
-    { name: "Brian Aguirre", position: "ZAG", rating: 83, age: 25 },
+    { name: "Anthoni", position: "GOL", rating: 75, age: 24 },
     { name: "Félix Torres", position: "ZAG", rating: 79, age: 29 },
     { name: "Clayton", position: "ZAG", rating: 79, age: 26 },
-    { name: "Matheus Bahia", position: "ZAG", rating: 78, age: 26 },
-    { name: "Bruno Henrique", position: "MEI", rating: 82, age: 36 },
-    { name: "Gabriel Vinicius Oliveira Da Silva", position: "MEI", rating: 82, age: 26 },
-    { name: "Alan Patrick", position: "MEI", rating: 81, age: 35 },
-    { name: "Rodrigo Villagra", position: "MEI", rating: 78, age: 25 },
-    { name: "Bruno Gomes", position: "MEI", rating: 76, age: 25 },
-    { name: "Thiago Maia", position: "MEI", rating: 75, age: 29 },
-    { name: "Alerrando", position: "ATA", rating: 83, age: 26 },
-    { name: "Rafael Borré", position: "ATA", rating: 82, age: 30 },
-    { name: "Kayky Chagas", position: "ATA", rating: 82, age: 23 },
-    { name: "Fabricio Prado", position: "ATA", rating: 81, age: 26 },
-    { name: "Johan Carbonero", position: "ATA", rating: 76, age: 26 },
-    { name: "Bruno Tabata", position: "ATA", rating: 74, age: 29 },
-    { name: "Reserva LD 1", position: "LD", rating: 77, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 76, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 74, age: 25 },
     { name: "Gabriel Mercado", position: "ZAG", rating: 77, age: 39 },
     { name: "Juninho", position: "ZAG", rating: 77, age: 31 },
-    { name: "Anthoni", position: "GOL", rating: 75, age: 24 },
-    { name: "Alexander Bernabei", position: "ZAG", rating: 75, age: 25 }
+    { name: "Victor Gabriel", position: "ZAG", rating: 76, age: 23 },
+    { name: "Braian Aguirre", position: "LD", rating: 83, age: 25 },
+    { name: "Matheus Bahia", position: "LE", rating: 78, age: 26 },
+    { name: "Alexander Bernabei", position: "LE", rating: 75, age: 25 },
+    { name: "Rodrigo Villagra", position: "VOL", rating: 78, age: 25 },
+    { name: "Bruno Gomes", position: "VOL", rating: 76, age: 25 },
+    { name: "Thiago Maia", position: "VOL", rating: 75, age: 29 },
+    { name: "Ronaldo", position: "VOL", rating: 77, age: 29 },
+    { name: "Alan Patrick", position: "MEI", rating: 81, age: 35 },
+    { name: "Bruno Henrique", position: "MEI", rating: 82, age: 36 },
+    { name: "Gabriel Vinicius Oliveira Da Silva", position: "MEI", rating: 82, age: 26 },
+    { name: "Paulinho", position: "MEI", rating: 76, age: 28 },
+    { name: "Kayky Chagas", position: "PON", rating: 82, age: 23 },
+    { name: "Fabrício Prado", position: "PON", rating: 81, age: 26 },
+    { name: "Johan Carbonero", position: "PON", rating: 76, age: 26 },
+    { name: "Bruno Tabata", position: "PON", rating: 74, age: 29 },
+    { name: "Alerrandro", position: "CA", rating: 83, age: 26 },
+    { name: "Rafael Borré", position: "CA", rating: 82, age: 30 }
   ],
   itabaiana: [
     { name: "Jefferson", position: "GOL", rating: 60 },
@@ -1189,18 +1196,18 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Cleiton", position: "MEI", rating: 57 },
     { name: "Kayan", position: "MEI", rating: 53 },
     { name: "Igor Lemos", position: "MEI", rating: 54 },
-    { name: "Romário Baldé", position: "ATA", rating: 53 },
-    { name: "Leilson", position: "ATA", rating: 57 },
-    { name: "Rodrigo Alves", position: "ATA", rating: 62 },
-    { name: "Tarcísio", position: "ATA", rating: 54 },
-    { name: "Denílson", position: "ATA", rating: 63 },
-    { name: "Pedro Igor", position: "ATA", rating: 59 },
-    { name: "Elimar", position: "ATA", rating: 61 },
-    { name: "Jonata", position: "ATA", rating: 62 },
-    { name: "Luan Silva", position: "ATA", rating: 54 },
-    { name: "Everton Kanela", position: "ATA", rating: 60 },
-    { name: "Vitinho", position: "ATA", rating: 56 },
-    { name: "Brandon Mondaca", position: "ATA", rating: 55 }
+    { name: "Romário Baldé", position: "CA", rating: 53 },
+    { name: "Leilson", position: "CA", rating: 57 },
+    { name: "Rodrigo Alves", position: "CA", rating: 62 },
+    { name: "Tarcísio", position: "CA", rating: 54 },
+    { name: "Denílson", position: "CA", rating: 63 },
+    { name: "Pedro Igor", position: "CA", rating: 59 },
+    { name: "Elimar", position: "CA", rating: 61 },
+    { name: "Jonata", position: "CA", rating: 62 },
+    { name: "Luan Silva", position: "CA", rating: 54 },
+    { name: "Everton Kanela", position: "CA", rating: 60 },
+    { name: "Vitinho", position: "CA", rating: 56 },
+    { name: "Brandon Mondaca", position: "CA", rating: 55 }
   ],
   ituano: [
     { name: "Saulo", position: "GOL", rating: 56 },
@@ -1231,15 +1238,15 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Lucas Stefanello", position: "MEI", rating: 56 },
     { name: "Victor Silva", position: "MEI", rating: 60 },
     { name: "Felipe Muranga", position: "MEI", rating: 63 },
-    { name: "Neto Berola", position: "ATA", rating: 60 },
-    { name: "Bruno Alves", position: "ATA", rating: 62 },
-    { name: "Osman", position: "ATA", rating: 53 },
-    { name: "Marlinho", position: "ATA", rating: 55 },
-    { name: "Alason Carioca", position: "ATA", rating: 60 },
-    { name: "Bruno Mezenga", position: "ATA", rating: 63 },
-    { name: "Léo Passos", position: "ATA", rating: 63 },
-    { name: "Gabriel Razera", position: "ATA", rating: 53 },
-    { name: "Bruno Teruel", position: "ATA", rating: 63 }
+    { name: "Neto Berola", position: "CA", rating: 60 },
+    { name: "Bruno Alves", position: "CA", rating: 62 },
+    { name: "Osman", position: "CA", rating: 53 },
+    { name: "Marlinho", position: "CA", rating: 55 },
+    { name: "Alason Carioca", position: "CA", rating: 60 },
+    { name: "Bruno Mezenga", position: "CA", rating: 63 },
+    { name: "Léo Passos", position: "CA", rating: 63 },
+    { name: "Gabriel Razera", position: "CA", rating: 53 },
+    { name: "Bruno Teruel", position: "CA", rating: 63 }
   ],
   juventude: [
     { name: "Jandrei", position: "GOL", rating: 73, age: 33 },
@@ -1252,12 +1259,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Luis Mandaca", position: "MEI", rating: 69, age: 24 },
     { name: "Raí", position: "MEI", rating: 67, age: 24 },
     { name: "Pablo", position: "MEI", rating: 66, age: 26 },
-    { name: "Alan Kardec", position: "ATA", rating: 74, age: 37 },
-    { name: "Safira", position: "ATA", rating: 73, age: 31 },
-    { name: "Allanzinho", position: "ATA", rating: 66, age: 26 },
-    { name: "Marcos Paulo", position: "ATA", rating: 65, age: 25 },
-    { name: "Fábio Lima", position: "ATA", rating: 65, age: 29 },
-    { name: "Manuel Castro", position: "ATA", rating: 64, age: 30 },
+    { name: "Alan Kardec", position: "CA", rating: 74, age: 37 },
+    { name: "Safira", position: "CA", rating: 73, age: 31 },
+    { name: "Allanzinho", position: "CA", rating: 66, age: 26 },
+    { name: "Marcos Paulo", position: "CA", rating: 65, age: 25 },
+    { name: "Fábio Lima", position: "CA", rating: 65, age: 29 },
+    { name: "Manuel Castro", position: "CA", rating: 64, age: 30 },
     { name: "Reserva LD 1", position: "LD", rating: 70, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 66, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 65, age: 24 },
@@ -1282,12 +1289,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Chumbinho", position: "MEI", rating: 69, age: 22 },
     { name: "André Luiz", position: "MEI", rating: 65, age: 30 },
     { name: "João Vitor", position: "MEI", rating: 65, age: 22 },
-    { name: "Athyrson", position: "ATA", rating: 74, age: 22 },
-    { name: "Bruno Santos", position: "ATA", rating: 69, age: 29 },
-    { name: "Gilberto", position: "ATA", rating: 68, age: 37 },
-    { name: "Iago Teles Da Silva", position: "ATA", rating: 68, age: 26 },
-    { name: "Caio Rafael", position: "ATA", rating: 67, age: 22 },
-    { name: "Vitinho Mota", position: "ATA", rating: 67, age: 22 },
+    { name: "Athyrson", position: "CA", rating: 74, age: 22 },
+    { name: "Bruno Santos", position: "CA", rating: 69, age: 29 },
+    { name: "Gilberto", position: "CA", rating: 68, age: 37 },
+    { name: "Iago Teles Da Silva", position: "CA", rating: 68, age: 26 },
+    { name: "Caio Rafael", position: "CA", rating: 67, age: 22 },
+    { name: "Vitinho Mota", position: "CA", rating: 67, age: 22 },
     { name: "Reserva LD 1", position: "LD", rating: 68, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 66, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 68, age: 24 },
@@ -1326,18 +1333,18 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Vagalume", position: "MEI", rating: 55 },
     { name: "Luis Gustavo", position: "MEI", rating: 53 },
     { name: "Jorge Rocha", position: "MEI", rating: 60 },
-    { name: "Pimentinha", position: "ATA", rating: 58 },
-    { name: "Nadson", position: "ATA", rating: 56 },
-    { name: "Will", position: "ATA", rating: 54 },
-    { name: "Tagarela", position: "ATA", rating: 57 },
-    { name: "Kessinho", position: "ATA", rating: 61 },
-    { name: "Felipe Sales", position: "ATA", rating: 53 },
-    { name: "Ronald Makalysten", position: "ATA", rating: 58 },
-    { name: "Patrick Carvalho", position: "ATA", rating: 58 },
-    { name: "Felipe Cruz", position: "ATA", rating: 54 },
-    { name: "Erverson", position: "ATA", rating: 56 },
-    { name: "Rafael Teixeira", position: "ATA", rating: 62 },
-    { name: "Joelson", position: "ATA", rating: 53 }
+    { name: "Pimentinha", position: "CA", rating: 58 },
+    { name: "Nadson", position: "CA", rating: 56 },
+    { name: "Will", position: "CA", rating: 54 },
+    { name: "Tagarela", position: "CA", rating: 57 },
+    { name: "Kessinho", position: "CA", rating: 61 },
+    { name: "Felipe Sales", position: "CA", rating: 53 },
+    { name: "Ronald Makalysten", position: "CA", rating: 58 },
+    { name: "Patrick Carvalho", position: "CA", rating: 58 },
+    { name: "Felipe Cruz", position: "CA", rating: 54 },
+    { name: "Erverson", position: "CA", rating: 56 },
+    { name: "Rafael Teixeira", position: "CA", rating: 62 },
+    { name: "Joelson", position: "CA", rating: 53 }
   ],
   maringa: [
     { name: "Tony Batista", position: "GOL", rating: 56 },
@@ -1363,45 +1370,43 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Danielzinho", position: "MEI", rating: 63 },
     { name: "Bruno Cheron", position: "MEI", rating: 57 },
     { name: "Iago Santana", position: "MEI", rating: 60 },
-    { name: "Guilherme Pira", position: "ATA", rating: 62 },
-    { name: "Ronald Camarão", position: "ATA", rating: 54 },
-    { name: "Edison Negueba", position: "ATA", rating: 62 },
-    { name: "Rafinha", position: "ATA", rating: 54 },
-    { name: "Pedrinho", position: "ATA", rating: 55 },
-    { name: "Yugo Masukake", position: "ATA", rating: 55 },
-    { name: "Giovane Gomez", position: "ATA", rating: 62 },
-    { name: "Caíque Calito", position: "ATA", rating: 58 },
-    { name: "Raí", position: "ATA", rating: 61 },
-    { name: "Rian Patric", position: "ATA", rating: 61 },
-    { name: "José Pedro", position: "ATA", rating: 55 }
+    { name: "Guilherme Pira", position: "CA", rating: 62 },
+    { name: "Ronald Camarão", position: "CA", rating: 54 },
+    { name: "Edison Negueba", position: "CA", rating: 62 },
+    { name: "Rafinha", position: "CA", rating: 54 },
+    { name: "Pedrinho", position: "CA", rating: 55 },
+    { name: "Yugo Masukake", position: "CA", rating: 55 },
+    { name: "Giovane Gomez", position: "CA", rating: 62 },
+    { name: "Caíque Calito", position: "CA", rating: 58 },
+    { name: "Raí", position: "CA", rating: 61 },
+    { name: "Rian Patric", position: "CA", rating: 61 },
+    { name: "José Pedro", position: "CA", rating: 55 }
   ],
   mirassol: [
     { name: "Alex Muralha", position: "GOL", rating: 82, age: 36 },
     { name: "Walter", position: "GOL", rating: 81, age: 38 },
+    { name: "Thomazella", position: "GOL", rating: 78, age: 35 },
     { name: "João Victor Carroll", position: "ZAG", rating: 81, age: 28 },
     { name: "Rodrigues", position: "ZAG", rating: 80, age: 28 },
-    { name: "Victor Luis", position: "ZAG", rating: 79, age: 33 },
     { name: "Willian Machado", position: "ZAG", rating: 79, age: 29 },
+    { name: "Lucas Oliveira", position: "ZAG", rating: 77, age: 27 },
+    { name: "Igor Formiga", position: "LD", rating: 78, age: 28 },
+    { name: "Victor Luis", position: "LE", rating: 79, age: 33 },
+    { name: "Reinaldo", position: "LE", rating: 78, age: 36 },
+    { name: "Neto Moura", position: "VOL", rating: 79, age: 29 },
+    { name: "Denilson", position: "VOL", rating: 78, age: 25 },
+    { name: "Yuri Lara", position: "VOL", rating: 76, age: 27 },
     { name: "Chico", position: "MEI", rating: 82, age: 35 },
-    { name: "Shaylon", position: "MEI", rating: 81, age: 29 },
     { name: "Carlos Eduardo", position: "MEI", rating: 80, age: 36 },
     { name: "José Aldo", position: "MEI", rating: 80, age: 27 },
-    { name: "Neto Moura", position: "MEI", rating: 79, age: 29 },
-    { name: "Gabriel", position: "MEI", rating: 78, age: 32 },
-    { name: "Carlos Eduardo", position: "ATA", rating: 83, age: 29 },
-    { name: "Alesson", position: "ATA", rating: 82, age: 27 },
-    { name: "Everton", position: "ATA", rating: 81, age: 29 },
-    { name: "Edson Carioca", position: "ATA", rating: 80, age: 29 },
-    { name: "André Luis", position: "ATA", rating: 80, age: 32 },
-    { name: "Antonio Galeano", position: "ATA", rating: 80, age: 26 },
-    { name: "Reserva LD 1", position: "LD", rating: 79, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 78, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 78, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 78, age: 25 },
-    { name: "Thomazella", position: "GOL", rating: 78, age: 35 },
-    { name: "Reinaldo", position: "ZAG", rating: 78, age: 36 },
-    { name: "Denilson", position: "MEI", rating: 78, age: 25 },
-    { name: "Negueba", position: "ATA", rating: 77, age: 26 }
+    { name: "Shaylon", position: "PON", rating: 81, age: 29 },
+    { name: "Alesson", position: "PON", rating: 82, age: 27 },
+    { name: "Everton", position: "PON", rating: 81, age: 29 },
+    { name: "Edson Carioca", position: "PON", rating: 80, age: 29 },
+    { name: "Negueba", position: "PON", rating: 77, age: 26 },
+    { name: "Carlos Eduardo", position: "CA", rating: 83, age: 29 },
+    { name: "André Luis", position: "CA", rating: 80, age: 32 },
+    { name: "Antonio Galeano", position: "CA", rating: 80, age: 26 }
   ],
   nautico: [
     { name: "Muriel", position: "GOL", rating: 71, age: 39 },
@@ -1416,12 +1421,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Juninho", position: "MEI", rating: 71, age: 30 },
     { name: "Ramon", position: "MEI", rating: 71, age: 29 },
     { name: "Wenderson", position: "MEI", rating: 69, age: 28 },
-    { name: "Victor Andrade", position: "ATA", rating: 74, age: 30 },
-    { name: "Paulo Sérgio", position: "ATA", rating: 71, age: 37 },
-    { name: "Vinícius", position: "ATA", rating: 68, age: 32 },
-    { name: "Maranhão", position: "ATA", rating: 67, age: 22 },
-    { name: "Todinho", position: "ATA", rating: 66, age: 32 },
-    { name: "Derek", position: "ATA", rating: 64, age: 28 },
+    { name: "Victor Andrade", position: "CA", rating: 74, age: 30 },
+    { name: "Paulo Sérgio", position: "CA", rating: 71, age: 37 },
+    { name: "Vinícius", position: "CA", rating: 68, age: 32 },
+    { name: "Maranhão", position: "CA", rating: 67, age: 22 },
+    { name: "Todinho", position: "CA", rating: 66, age: 32 },
+    { name: "Derek", position: "CA", rating: 64, age: 28 },
     { name: "Reserva LD 1", position: "LD", rating: 67, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 66, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 67, age: 24 },
@@ -1444,12 +1449,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Francisco Reidiney Duarte Gomes", position: "MEI", rating: 68, age: 26 },
     { name: "Luis", position: "MEI", rating: 67, age: 29 },
     { name: "Matheus Bianqui", position: "MEI", rating: 67, age: 28 },
-    { name: "Tavinho", position: "ATA", rating: 73, age: 22 },
-    { name: "Nicolas Careca", position: "ATA", rating: 72, age: 29 },
-    { name: "Robson", position: "ATA", rating: 70, age: 35 },
-    { name: "Diego Mathias", position: "ATA", rating: 67, age: 27 },
-    { name: "Carlão", position: "ATA", rating: 66, age: 34 },
-    { name: "Hélio", position: "ATA", rating: 66, age: 26 },
+    { name: "Tavinho", position: "CA", rating: 73, age: 22 },
+    { name: "Nicolas Careca", position: "CA", rating: 72, age: 29 },
+    { name: "Robson", position: "CA", rating: 70, age: 35 },
+    { name: "Diego Mathias", position: "CA", rating: 67, age: 27 },
+    { name: "Carlão", position: "CA", rating: 66, age: 34 },
+    { name: "Hélio", position: "CA", rating: 66, age: 26 },
     { name: "Reserva LD 1", position: "LD", rating: 64, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 67, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 68, age: 24 },
@@ -1483,41 +1488,40 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Neto Paraíba", position: "MEI", rating: 65 },
     { name: "Gabriel Boschilia", position: "MEI", rating: 70 },
     { name: "Vinícius Diniz", position: "MEI", rating: 68 },
-    { name: "Maxwell", position: "ATA", rating: 68 },
-    { name: "Berto", position: "ATA", rating: 65 },
-    { name: "Felipe Augusto", position: "ATA", rating: 65 },
-    { name: "Vinicius Mingotti", position: "ATA", rating: 68 },
-    { name: "Pablo", position: "ATA", rating: 66 },
-    { name: "Caio Dantas", position: "ATA", rating: 66 },
-    { name: "Aylon", position: "ATA", rating: 65 }
+    { name: "Maxwell", position: "CA", rating: 68 },
+    { name: "Berto", position: "CA", rating: 65 },
+    { name: "Felipe Augusto", position: "CA", rating: 65 },
+    { name: "Vinicius Mingotti", position: "CA", rating: 68 },
+    { name: "Pablo", position: "CA", rating: 66 },
+    { name: "Caio Dantas", position: "CA", rating: 66 },
+    { name: "Aylon", position: "CA", rating: 65 }
   ],
   palmeiras: [
-    { name: "Carlos Miguel", position: "GOL", rating: 83, age: 27 },
-    { name: "Marcelo Lomba", position: "GOL", rating: 79, age: 39 },
-    { name: "Joaquín Piquerez", position: "ZAG", rating: 82, age: 27 },
+    { name: "Carlos Miguel", position: "GOL", rating: 83, age: 31 },
+    { name: "Marcelo Lomba", position: "GOL", rating: 79, age: 40 },
+    { name: "Kaique", position: "GOL", rating: 74, age: 23 },
     { name: "Gustavo Gómez", position: "ZAG", rating: 81, age: 33 },
-    { name: "Jefté", position: "ZAG", rating: 81, age: 22 },
-    { name: "Agustín Giay", position: "ZAG", rating: 78, age: 22 },
-    { name: "Felipe Anderson", position: "MEI", rating: 80, age: 33 },
-    { name: "Maurício", position: "MEI", rating: 80, age: 25 },
-    { name: "Emiliano Martínez", position: "MEI", rating: 79, age: 26 },
-    { name: "Marlon Freitas", position: "MEI", rating: 79, age: 31 },
-    { name: "Lucas Evangelista", position: "MEI", rating: 77, age: 31 },
-    { name: "Jhon Arias", position: "MEI", rating: 76, age: 28 },
-    { name: "Paulinho", position: "ATA", rating: 83, age: 26 },
-    { name: "Allan Andrade", position: "ATA", rating: 80, age: 22 },
-    { name: "Ramón Sosa", position: "ATA", rating: 75, age: 26 },
-    { name: "José Manuel López", position: "ATA", rating: 75, age: 25 },
-    { name: "Reserva LD 1", position: "LD", rating: 76, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 76, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 74, age: 25 },
-    { name: "Reserva ATA 1", position: "ATA", rating: 76, age: 24 },
-    { name: "Reserva ATA 2", position: "ATA", rating: 77, age: 25 },
-    { name: "Bruno Fuchs", position: "ZAG", rating: 77, age: 27 },
     { name: "Murilo", position: "ZAG", rating: 75, age: 29 },
+    { name: "Bruno Fuchs", position: "ZAG", rating: 77, age: 28 },
+    { name: "Agustín Giay", position: "LD", rating: 78, age: 23 },
+    { name: "Joaquín Piquerez", position: "LE", rating: 82, age: 30 },
+    { name: "Jefté", position: "LE", rating: 81, age: 22 },
+    { name: "Marlon Freitas", position: "VOL", rating: 79, age: 30 },
+    { name: "Maurício", position: "VOL", rating: 80, age: 26 },
+    { name: "Aníbal Moreno", position: "VOL", rating: 78, age: 27 },
+    { name: "Felipe Anderson", position: "MEI", rating: 80, age: 33 },
+    { name: "Raphael Veiga", position: "MEI", rating: 82, age: 31 },
+    { name: "Emiliano Martínez", position: "MEI", rating: 79, age: 27 },
+    { name: "Lucas Evangelista", position: "MEI", rating: 77, age: 31 },
     { name: "Andreas Pereira", position: "MEI", rating: 75, age: 30 },
-    { name: "Kaique", position: "GOL", rating: 74, age: 23 }
+    { name: "Allan Andrade", position: "PON", rating: 80, age: 22 },
+    { name: "Ramón Sosa", position: "PON", rating: 75, age: 27 },
+    { name: "Facundo Torres", position: "PON", rating: 79, age: 26 },
+    { name: "Bruno Rodrigues", position: "PON", rating: 76, age: 30 },
+    { name: "Thalys", position: "PON", rating: 75, age: 23 },
+    { name: "Paulinho", position: "CA", rating: 83, age: 26 },
+    { name: "José Manuel López", position: "CA", rating: 75, age: 25 },
+    { name: "Vitor Roque", position: "CA", rating: 85, age: 22 }
   ],
   paysandu: [
     { name: "Jean Drosny", position: "GOL", rating: 63 },
@@ -1552,15 +1556,15 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Pablo", position: "MEI", rating: 55 },
     { name: "Marcinho", position: "MEI", rating: 62 },
     { name: "Lucas Cardoso", position: "MEI", rating: 58 },
-    { name: "Kauã Hinkel", position: "ATA", rating: 62 },
-    { name: "Kleiton Pego", position: "ATA", rating: 58 },
-    { name: "Thayllon", position: "ATA", rating: 60 },
-    { name: "Peu", position: "ATA", rating: 56 },
-    { name: "Thalyson", position: "ATA", rating: 62 },
-    { name: "Klayvert", position: "ATA", rating: 54 },
-    { name: "Ítalo Carvalho", position: "ATA", rating: 58 },
-    { name: "Juninho", position: "ATA", rating: 60 },
-    { name: "Angelo", position: "ATA", rating: 56 }
+    { name: "Kauã Hinkel", position: "CA", rating: 62 },
+    { name: "Kleiton Pego", position: "CA", rating: 58 },
+    { name: "Thayllon", position: "CA", rating: 60 },
+    { name: "Peu", position: "CA", rating: 56 },
+    { name: "Thalyson", position: "CA", rating: 62 },
+    { name: "Klayvert", position: "CA", rating: 54 },
+    { name: "Ítalo Carvalho", position: "CA", rating: 58 },
+    { name: "Juninho", position: "CA", rating: 60 },
+    { name: "Angelo", position: "CA", rating: 56 }
   ],
   ponte_preta: [
     { name: "Diogo Silva", position: "GOL", rating: 69, age: 40 },
@@ -1575,22 +1579,46 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Diogo Ribeiro", position: "MEI", rating: 71, age: 24 },
     { name: "Tarik", position: "MEI", rating: 70, age: 33 },
     { name: "André", position: "MEI", rating: 69, age: 26 },
-    { name: "Luis Phelipe", position: "ATA", rating: 73, age: 25 },
-    { name: "Rodriguinho", position: "ATA", rating: 73, age: 25 },
-    { name: "Brandão", position: "ATA", rating: 73, age: 22 },
-    { name: "Diego Tavares", position: "ATA", rating: 72, age: 35 },
-    { name: "David Conceição", position: "ATA", rating: 72, age: 26 },
-    { name: "Vítor Ribeiro", position: "ATA", rating: 70, age: 27 },
+    { name: "Luis Phelipe", position: "CA", rating: 73, age: 25 },
+    { name: "Rodriguinho", position: "CA", rating: 73, age: 25 },
+    { name: "Brandão", position: "CA", rating: 73, age: 22 },
+    { name: "Diego Tavares", position: "CA", rating: 72, age: 35 },
+    { name: "David Conceição", position: "CA", rating: 72, age: 26 },
+    { name: "Vítor Ribeiro", position: "CA", rating: 70, age: 27 },
     { name: "Reserva LD 1", position: "LD", rating: 64, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 70, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 65, age: 24 },
     { name: "Reserva LE 2", position: "LE", rating: 67, age: 25 },
     { name: "Gabriel", position: "ZAG", rating: 69, age: 22 },
-    { name: "Daniel Goncalves Batista", position: "ATA", rating: 68, age: 26 },
+    { name: "Daniel Goncalves Batista", position: "CA", rating: 68, age: 26 },
     { name: "Kevyson", position: "ZAG", rating: 67, age: 22 },
     { name: "Rodrigo Souza", position: "MEI", rating: 67, age: 38 }
   ],
   remo: [
+    { name: "Marcelo Rangel", position: "GOL", rating: 80, age: 38 },
+    { name: "Ygor Vinhas", position: "GOL", rating: 76, age: 25 },
+    { name: "Ivan", position: "GOL", rating: 75, age: 28 },
+    { name: "Léo Andrade", position: "ZAG", rating: 78, age: 30 },
+    { name: "Matheus Felipe", position: "ZAG", rating: 77, age: 29 },
+    { name: "Marllon", position: "ZAG", rating: 79, age: 30 },
+    { name: "Thalisson", position: "ZAG", rating: 76, age: 28 },
+    { name: "Tchamba", position: "ZAG", rating: 76, age: 28 },
+    { name: "João Lucas", position: "LD", rating: 79, age: 27 },
+    { name: "Marcelinho", position: "LD", rating: 75, age: 29 },
+    { name: "Mayk", position: "LE", rating: 78, age: 34 },
+    { name: "Braian Cufré", position: "LE", rating: 79, age: 33 },
+    { name: "Patrick de Paula", position: "VOL", rating: 81, age: 26 },
+    { name: "Leonel Picco", position: "VOL", rating: 82, age: 28 },
+    { name: "Zé Welison", position: "VOL", rating: 77, age: 34 },
+    { name: "Jaderson", position: "VOL", rating: 75, age: 30 },
+    { name: "Vitor Bueno", position: "MEI", rating: 79, age: 30 },
+    { name: "David Braga", position: "MEI", rating: 75, age: 26 },
+    { name: "Yago Pikachu", position: "PON", rating: 80, age: 33 },
+    { name: "Alef Manga", position: "PON", rating: 81, age: 27 },
+    { name: "Jajá", position: "PON", rating: 78, age: 29 },
+    { name: "Carlinhos", position: "CA", rating: 80, age: 28 },
+    { name: "Rafael Monti", position: "CA", rating: 76, age: 28 },
+    { name: "Taliari", position: "CA", rating: 75, age: 29 }
   ],
   santa_cruz: [
     { name: "Felipe Alves", position: "GOL", rating: 57 },
@@ -1626,47 +1654,47 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Patrick Allan", position: "MEI", rating: 62 },
     { name: "Willian Júnior", position: "MEI", rating: 61 },
     { name: "Nilton", position: "MEI", rating: 57 },
-    { name: "Renato", position: "ATA", rating: 55 },
-    { name: "Everaldo", position: "ATA", rating: 59 },
-    { name: "Matheus Régis", position: "ATA", rating: 55 },
-    { name: "Vini Hora", position: "ATA", rating: 61 },
-    { name: "Robinho", position: "ATA", rating: 62 },
-    { name: "Ronald", position: "ATA", rating: 60 },
-    { name: "Vitinho", position: "ATA", rating: 53 },
-    { name: "Ariel Nahuelpán", position: "ATA", rating: 54 },
-    { name: "Eron", position: "ATA", rating: 61 },
-    { name: "Tiago Marques", position: "ATA", rating: 54 },
-    { name: "Quirino", position: "ATA", rating: 59 },
-    { name: "Marquinhos", position: "ATA", rating: 57 },
-    { name: "Ryan", position: "ATA", rating: 57 }
+    { name: "Renato", position: "CA", rating: 55 },
+    { name: "Everaldo", position: "CA", rating: 59 },
+    { name: "Matheus Régis", position: "CA", rating: 55 },
+    { name: "Vini Hora", position: "CA", rating: 61 },
+    { name: "Robinho", position: "CA", rating: 62 },
+    { name: "Ronald", position: "CA", rating: 60 },
+    { name: "Vitinho", position: "CA", rating: 53 },
+    { name: "Ariel Nahuelpán", position: "CA", rating: 54 },
+    { name: "Eron", position: "CA", rating: 61 },
+    { name: "Tiago Marques", position: "CA", rating: 54 },
+    { name: "Quirino", position: "CA", rating: 59 },
+    { name: "Marquinhos", position: "CA", rating: 57 },
+    { name: "Ryan", position: "CA", rating: 57 }
   ],
   santos: [
     { name: "Gabriel Brazão", position: "GOL", rating: 81, age: 25 },
     { name: "Diogenes", position: "GOL", rating: 81, age: 25 },
-    { name: "Zé Ivaldo", position: "ZAG", rating: 83, age: 29 },
-    { name: "Igor", position: "ZAG", rating: 80, age: 29 },
-    { name: "Luan Peres", position: "ZAG", rating: 79, age: 32 },
-    { name: "Adonis Frias", position: "ZAG", rating: 77, age: 28 },
-    { name: "Miguel Terceros", position: "MEI", rating: 83, age: 22 },
-    { name: "João Schmidt", position: "MEI", rating: 81, age: 33 },
-    { name: "Gabriel Menino", position: "MEI", rating: 81, age: 25 },
-    { name: "Christian Oliva", position: "MEI", rating: 80, age: 30 },
-    { name: "Willian Arão", position: "MEI", rating: 79, age: 34 },
-    { name: "Zé Rafael", position: "MEI", rating: 79, age: 33 },
-    { name: "Benjamín Rollheiser", position: "ATA", rating: 83, age: 26 },
-    { name: "Neymar", position: "ATA", rating: 82, age: 34 },
-    { name: "Moisés", position: "ATA", rating: 82, age: 29 },
-    { name: "Gabriel Barbosa", position: "ATA", rating: 81, age: 29 },
-    { name: "Lautaro Díaz", position: "ATA", rating: 80, age: 28 },
-    { name: "Gustavo Caballero", position: "ATA", rating: 78, age: 24 },
-    { name: "Reserva LD 1", position: "LD", rating: 76, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 77, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 77, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 77, age: 25 },
-    { name: "Álvaro Barreal", position: "MEI", rating: 79, age: 25 },
     { name: "João Paulo", position: "GOL", rating: 78, age: 31 },
-    { name: "Rony", position: "ATA", rating: 78, age: 31 },
-    { name: "Thaciano", position: "MEI", rating: 77, age: 31 }
+    { name: "Zé Ivaldo", position: "ZAG", rating: 83, age: 29 },
+    { name: "Adonis Frias", position: "ZAG", rating: 77, age: 28 },
+    { name: "Alexis Duarte", position: "ZAG", rating: 78, age: 25 },
+    { name: "Igor Vinícius", position: "LD", rating: 80, age: 29 },
+    { name: "Mayke", position: "LD", rating: 79, age: 33 },
+    { name: "Luan Peres", position: "LE", rating: 79, age: 32 },
+    { name: "Nathan", position: "LE", rating: 75, age: 24 },
+    { name: "Gonzalo Escobar", position: "LE", rating: 76, age: 28 },
+    { name: "João Schmidt", position: "VOL", rating: 81, age: 33 },
+    { name: "Christian Oliva", position: "VOL", rating: 80, age: 30 },
+    { name: "Willian Arão", position: "VOL", rating: 79, age: 34 },
+    { name: "Zé Rafael", position: "VOL", rating: 79, age: 33 },
+    { name: "Tomás Rincón", position: "VOL", rating: 79, age: 38 },
+    { name: "Gabriel Menino", position: "MEI", rating: 81, age: 25 },
+    { name: "Thaciano", position: "MEI", rating: 77, age: 31 },
+    { name: "Álvaro Barreal", position: "MEI", rating: 79, age: 25 },
+    { name: "Benjamín Rollheiser", position: "PON", rating: 83, age: 26 },
+    { name: "Moisés", position: "PON", rating: 82, age: 29 },
+    { name: "Rony", position: "PON", rating: 78, age: 31 },
+    { name: "Gustavo Caballero", position: "PON", rating: 78, age: 24 },
+    { name: "Neymar", position: "MEI", rating: 82, age: 34 },
+    { name: "Gabriel Barbosa", position: "CA", rating: 81, age: 29 },
+    { name: "Lautaro Díaz", position: "CA", rating: 80, age: 28 }
   ],
   sao_bernardo: [
     { name: "Matheus Nogueira", position: "GOL", rating: 70, age: 28 },
@@ -1681,12 +1709,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Lucas Fernandes", position: "MEI", rating: 68, age: 28 },
     { name: "Eduardo", position: "MEI", rating: 68, age: 26 },
     { name: "Hyoran", position: "MEI", rating: 64, age: 33 },
-    { name: "Neto Costa", position: "ATA", rating: 72, age: 29 },
-    { name: "Echaporã", position: "ATA", rating: 70, age: 26 },
-    { name: "Pedrinho", position: "ATA", rating: 68, age: 26 },
-    { name: "Pedro Vitor", position: "ATA", rating: 67, age: 28 },
-    { name: "Lucas Rian Santos Oliveira", position: "ATA", rating: 67, age: 26 },
-    { name: "Daniel Amorim", position: "ATA", rating: 66, age: 36 },
+    { name: "Neto Costa", position: "CA", rating: 72, age: 29 },
+    { name: "Echaporã", position: "CA", rating: 70, age: 26 },
+    { name: "Pedrinho", position: "CA", rating: 68, age: 26 },
+    { name: "Pedro Vitor", position: "CA", rating: 67, age: 28 },
+    { name: "Lucas Rian Santos Oliveira", position: "CA", rating: 67, age: 26 },
+    { name: "Daniel Amorim", position: "CA", rating: 66, age: 36 },
     { name: "Reserva LD 1", position: "LD", rating: 69, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 67, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 70, age: 24 },
@@ -1697,32 +1725,29 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Alex Alves", position: "GOL", rating: 68, age: 39 }
   ],
   sao_paulo: [
+    { name: "Rafael", position: "GOL", rating: 79, age: 36 },
     { name: "Young", position: "GOL", rating: 83, age: 24 },
-    { name: "Rafael", position: "GOL", rating: 79, age: 37 },
+    { name: "Carlos Coronel", position: "GOL", rating: 78, age: 30 },
     { name: "João Moreira", position: "ZAG", rating: 83, age: 22 },
-    { name: "Hugo", position: "ZAG", rating: 83, age: 22 },
-    { name: "Rafael Tolói", position: "ZAG", rating: 82, age: 35 },
+    { name: "Hugo", position: "ZAG", rating: 83, age: 23 },
+    { name: "Rafael Tolói", position: "ZAG", rating: 82, age: 36 },
     { name: "Sabino", position: "ZAG", rating: 81, age: 29 },
+    { name: "Alan Franco", position: "ZAG", rating: 78, age: 30 },
+    { name: "Igor Vinícius", position: "LD", rating: 80, age: 31 },
+    { name: "Enzo Díaz", position: "LE", rating: 77, age: 28 },
+    { name: "Wendell", position: "LE", rating: 78, age: 32 },
+    { name: "Pablo Maia", position: "VOL", rating: 81, age: 24 },
+    { name: "Marcos Antônio", position: "VOL", rating: 79, age: 26 },
+    { name: "Danielzinho", position: "VOL", rating: 79, age: 32 },
     { name: "Cauly", position: "MEI", rating: 83, age: 30 },
-    { name: "Felipe Negrucci", position: "MEI", rating: 83, age: 22 },
     { name: "Damián Bobadilla", position: "MEI", rating: 82, age: 25 },
-    { name: "Pablo Maia", position: "MEI", rating: 81, age: 24 },
-    { name: "Danielzinho", position: "MEI", rating: 79, age: 31 },
-    { name: "Marcos Antonio", position: "MEI", rating: 79, age: 26 },
-    { name: "Jonathan Calleri", position: "ATA", rating: 82, age: 32 },
-    { name: "Gonzalo Tapia", position: "ATA", rating: 77, age: 24 },
-    { name: "Lucas Moura", position: "ATA", rating: 77, age: 33 },
-    { name: "Luciano", position: "ATA", rating: 77, age: 33 },
-    { name: "Artur", position: "ATA", rating: 76, age: 28 },
-    { name: "André Silva", position: "ATA", rating: 75, age: 29 },
-    { name: "Reserva LD 1", position: "LD", rating: 74, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 78, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 78, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 78, age: 25 },
-    { name: "Carlos Coronel", position: "GOL", rating: 78, age: 29 },
-    { name: "Robert Arboleda", position: "ZAG", rating: 78, age: 34 },
-    { name: "Alan Franco", position: "ZAG", rating: 78, age: 29 },
-    { name: "Enzo Díaz", position: "ZAG", rating: 77, age: 30 }
+    { name: "Felipe Negrucci", position: "MEI", rating: 83, age: 23 },
+    { name: "Lucas Moura", position: "PON", rating: 77, age: 33 },
+    { name: "Luciano", position: "PON", rating: 77, age: 33 },
+    { name: "Artur", position: "PON", rating: 76, age: 29 },
+    { name: "Jonathan Calleri", position: "CA", rating: 82, age: 33 },
+    { name: "Gonzalo Tapia", position: "CA", rating: 78, age: 27 },
+    { name: "André Silva", position: "CA", rating: 77, age: 31 }
   ],
   sport: [
     { name: "Thiago Couto", position: "GOL", rating: 73, age: 27 },
@@ -1737,12 +1762,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Fábio Matheus", position: "MEI", rating: 70, age: 23 },
     { name: "José Gabriel", position: "MEI", rating: 68, age: 27 },
     { name: "Clayson", position: "MEI", rating: 66, age: 31 },
-    { name: "Zé Roberto", position: "ATA", rating: 74, age: 32 },
-    { name: "Chrystian", position: "ATA", rating: 72, age: 25 },
-    { name: "Pedro Perotti", position: "ATA", rating: 69, age: 28 },
-    { name: "Iury", position: "ATA", rating: 67, age: 30 },
-    { name: "Marlon", position: "ATA", rating: 67, age: 28 },
-    { name: "Gustavo Maia", position: "ATA", rating: 67, age: 25 },
+    { name: "Zé Roberto", position: "CA", rating: 74, age: 32 },
+    { name: "Chrystian", position: "CA", rating: 72, age: 25 },
+    { name: "Pedro Perotti", position: "CA", rating: 69, age: 28 },
+    { name: "Iury", position: "CA", rating: 67, age: 30 },
+    { name: "Marlon", position: "CA", rating: 67, age: 28 },
+    { name: "Gustavo Maia", position: "CA", rating: 67, age: 25 },
     { name: "Reserva LD 1", position: "LD", rating: 69, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 69, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 68, age: 24 },
@@ -1758,27 +1783,24 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Robert", position: "ZAG", rating: 83, age: 22 },
     { name: "Lucas Freitas", position: "ZAG", rating: 82, age: 25 },
     { name: "Alan Saldivia", position: "ZAG", rating: 82, age: 24 },
-    { name: "Carlos Cuesta", position: "ZAG", rating: 80, age: 27 },
-    { name: "Jair", position: "MEI", rating: 83, age: 31 },
-    { name: "Nuno Moreira", position: "MEI", rating: 83, age: 27 },
-    { name: "Cauan Barros", position: "MEI", rating: 83, age: 22 },
-    { name: "Tchê Tchê", position: "MEI", rating: 79, age: 33 },
-    { name: "Thiago Mendes", position: "MEI", rating: 79, age: 34 },
-    { name: "Hugo Moura", position: "MEI", rating: 78, age: 28 },
-    { name: "Brenner", position: "ATA", rating: 83, age: 26 },
-    { name: "Adson", position: "ATA", rating: 83, age: 25 },
-    { name: "Andrés Gómez", position: "ATA", rating: 82, age: 23 },
-    { name: "Loide", position: "ATA", rating: 81, age: 26 },
-    { name: "Marino Hinestroza", position: "ATA", rating: 81, age: 24 },
-    { name: "David", position: "ATA", rating: 79, age: 30 },
-    { name: "Reserva LD 1", position: "LD", rating: 79, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 76, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 81, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 76, age: 25 },
+    { name: "Carlos Cuesta", position: "ZAG", rating: 80, age: 28 },
     { name: "Riquelme", position: "ZAG", rating: 80, age: 23 },
-    { name: "Paulo Henrique", position: "ZAG", rating: 78, age: 29 },
-    { name: "Claudio Spinelli", position: "ATA", rating: 78, age: 29 },
-    { name: "Johan Rojas", position: "ATA", rating: 77, age: 23 }
+    { name: "Paulo Henrique", position: "LD", rating: 78, age: 29 },
+    { name: "Cuiabano", position: "LE", rating: 79, age: 26 },
+    { name: "Jair", position: "VOL", rating: 83, age: 31 },
+    { name: "Tchê Tchê", position: "VOL", rating: 79, age: 33 },
+    { name: "Thiago Mendes", position: "VOL", rating: 79, age: 30 },
+    { name: "Hugo Moura", position: "VOL", rating: 78, age: 28 },
+    { name: "Cauan Barros", position: "MEI", rating: 83, age: 22 },
+    { name: "Nuno Moreira", position: "MEI", rating: 83, age: 27 },
+    { name: "Adson", position: "PON", rating: 83, age: 25 },
+    { name: "Andrés Gómez", position: "PON", rating: 82, age: 23 },
+    { name: "Marino Hinestroza", position: "PON", rating: 81, age: 24 },
+    { name: "Johan Rojas", position: "PON", rating: 77, age: 23 },
+    { name: "Brenner", position: "CA", rating: 83, age: 26 },
+    { name: "Loide", position: "CA", rating: 81, age: 26 },
+    { name: "David", position: "CA", rating: 79, age: 30 },
+    { name: "Claudio Spinelli", position: "CA", rating: 78, age: 29 }
   ],
   vila_nova: [
     { name: "Dalberson", position: "GOL", rating: 68, age: 29 },
@@ -1793,12 +1815,12 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Marquinhos Gabriel", position: "MEI", rating: 69, age: 35 },
     { name: "Enzo", position: "MEI", rating: 69, age: 23 },
     { name: "Dudu", position: "MEI", rating: 67, age: 24 },
-    { name: "Rafael Silva", position: "ATA", rating: 72, age: 34 },
-    { name: "Emerson Lima", position: "ATA", rating: 71, age: 25 },
-    { name: "Ryan Lima", position: "ATA", rating: 71, age: 25 },
-    { name: "André Luis", position: "ATA", rating: 68, age: 29 },
-    { name: "Dellatorre", position: "ATA", rating: 67, age: 34 },
-    { name: "Janderson", position: "ATA", rating: 64, age: 27 },
+    { name: "Rafael Silva", position: "CA", rating: 72, age: 34 },
+    { name: "Emerson Lima", position: "CA", rating: 71, age: 25 },
+    { name: "Ryan Lima", position: "CA", rating: 71, age: 25 },
+    { name: "André Luis", position: "CA", rating: 68, age: 29 },
+    { name: "Dellatorre", position: "CA", rating: 67, age: 34 },
+    { name: "Janderson", position: "CA", rating: 64, age: 27 },
     { name: "Reserva LD 1", position: "LD", rating: 64, age: 24 },
     { name: "Reserva LD 2", position: "LD", rating: 70, age: 25 },
     { name: "Reserva LE 1", position: "LE", rating: 67, age: 24 },
@@ -1811,30 +1833,31 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
   vitoria: [
     { name: "Lucas Arcanjo", position: "GOL", rating: 81, age: 27 },
     { name: "Gabriel", position: "GOL", rating: 79, age: 33 },
+    { name: "Fintelman", position: "GOL", rating: 79, age: 24 },
+    { name: "Yuri Sena", position: "GOL", rating: 78, age: 25 },
     { name: "Edu", position: "ZAG", rating: 83, age: 26 },
     { name: "Fabiano", position: "ZAG", rating: 83, age: 26 },
     { name: "Nathan", position: "ZAG", rating: 83, age: 23 },
     { name: "Neris", position: "ZAG", rating: 82, age: 34 },
-    { name: "Zé Vitor", position: "MEI", rating: 83, age: 26 },
-    { name: "Caique", position: "MEI", rating: 81, age: 30 },
-    { name: "Dudu", position: "MEI", rating: 81, age: 27 },
-    { name: "Matheus", position: "MEI", rating: 80, age: 28 },
-    { name: "Emmanuel Martínez", position: "MEI", rating: 79, age: 32 },
-    { name: "Gabriel Baralhas", position: "MEI", rating: 77, age: 27 },
-    { name: "Fabrício Santos", position: "ATA", rating: 83, age: 25 },
-    { name: "Aitor Cantalapiedra", position: "ATA", rating: 81, age: 30 },
-    { name: "Lucas", position: "ATA", rating: 81, age: 26 },
-    { name: "Renzo López", position: "ATA", rating: 79, age: 32 },
-    { name: "Osvaldo", position: "ATA", rating: 76, age: 39 },
-    { name: "Marinho", position: "ATA", rating: 75, age: 36 },
-    { name: "Reserva LD 1", position: "LD", rating: 78, age: 24 },
-    { name: "Reserva LD 2", position: "LD", rating: 76, age: 25 },
-    { name: "Reserva LE 1", position: "LE", rating: 76, age: 24 },
-    { name: "Reserva LE 2", position: "LE", rating: 80, age: 25 },
     { name: "Riccieli", position: "ZAG", rating: 81, age: 27 },
-    { name: "Fintelman", position: "GOL", rating: 79, age: 24 },
-    { name: "Ramon", position: "ZAG", rating: 79, age: 25 },
-    { name: "Yuri Sena", position: "GOL", rating: 78, age: 25 }
+    { name: "Luan Cândido", position: "ZAG", rating: 79, age: 26 },
+    { name: "Mateus Silva", position: "LD", rating: 77, age: 27 },
+    { name: "Cacá", position: "LD", rating: 76, age: 29 },
+    { name: "Nathan Mendes", position: "LE", rating: 75, age: 23 },
+    { name: "Brítez", position: "LE", rating: 79, age: 29 },
+    { name: "Caique", position: "VOL", rating: 81, age: 30 },
+    { name: "Walace", position: "VOL", rating: 82, age: 30 },
+    { name: "Emmanuel Martínez", position: "VOL", rating: 79, age: 32 },
+    { name: "Gabriel Baralhas", position: "VOL", rating: 77, age: 27 },
+    { name: "Zé Vitor", position: "MEI", rating: 83, age: 26 },
+    { name: "Dudu", position: "MEI", rating: 81, age: 27 },
+    { name: "Fabrício Santos", position: "PON", rating: 83, age: 25 },
+    { name: "Lucas", position: "PON", rating: 81, age: 26 },
+    { name: "Marinho", position: "PON", rating: 75, age: 36 },
+    { name: "Aitor Cantalapiedra", position: "CA", rating: 81, age: 30 },
+    { name: "Renzo López", position: "CA", rating: 79, age: 32 },
+    { name: "Osvaldo", position: "CA", rating: 76, age: 39 },
+    { name: "Diego Tarzia", position: "CA", rating: 78, age: 28 }
   ],
   volta_redonda: [
     { name: "Deivity", position: "GOL", rating: 57 },
@@ -1870,18 +1893,18 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "PK", position: "MEI", rating: 58 },
     { name: "Matheus Moresche", position: "MEI", rating: 59 },
     { name: "Luciano Naninho", position: "MEI", rating: 63 },
-    { name: "Ygor Catatau", position: "ATA", rating: 53 },
-    { name: "Marquinhos", position: "ATA", rating: 57 },
-    { name: "MV", position: "ATA", rating: 61 },
-    { name: "Andrey Dias", position: "ATA", rating: 56 },
-    { name: "Kauã Souza", position: "ATA", rating: 54 },
-    { name: "Zuniga", position: "ATA", rating: 63 },
-    { name: "Romarinho", position: "ATA", rating: 56 },
-    { name: "Fellipinho", position: "ATA", rating: 61 },
-    { name: "Wendel", position: "ATA", rating: 56 },
-    { name: "Oswaldo Blanco", position: "ATA", rating: 59 },
-    { name: "Rafael Furtado", position: "ATA", rating: 61 },
-    { name: "Brayan", position: "ATA", rating: 57 }
+    { name: "Ygor Catatau", position: "CA", rating: 53 },
+    { name: "Marquinhos", position: "CA", rating: 57 },
+    { name: "MV", position: "CA", rating: 61 },
+    { name: "Andrey Dias", position: "CA", rating: 56 },
+    { name: "Kauã Souza", position: "CA", rating: 54 },
+    { name: "Zuniga", position: "CA", rating: 63 },
+    { name: "Romarinho", position: "CA", rating: 56 },
+    { name: "Fellipinho", position: "CA", rating: 61 },
+    { name: "Wendel", position: "CA", rating: 56 },
+    { name: "Oswaldo Blanco", position: "CA", rating: 59 },
+    { name: "Rafael Furtado", position: "CA", rating: 61 },
+    { name: "Brayan", position: "CA", rating: 57 }
   ],
   ypiranga_rs: [
     { name: "Zé Carlos", position: "GOL", rating: 54 },
@@ -1909,16 +1932,16 @@ export const STAR_PLAYERS: Record<string, { name: string; position: 'GK' | 'DF' 
     { name: "Estêvão", position: "MEI", rating: 56 },
     { name: "João Branco", position: "MEI", rating: 59 },
     { name: "Dudu", position: "MEI", rating: 53 },
-    { name: "Henrique", position: "ATA", rating: 56 },
-    { name: "Marcelinho", position: "ATA", rating: 58 },
-    { name: "Felipe Ferreira", position: "ATA", rating: 54 },
-    { name: "Vini Charopem", position: "ATA", rating: 60 },
-    { name: "Bryam", position: "ATA", rating: 56 },
-    { name: "Pedro Lucas", position: "ATA", rating: 56 },
-    { name: "Alex Gonçalves", position: "ATA", rating: 60 },
-    { name: "Renan Gorne", position: "ATA", rating: 61 },
-    { name: "Gustavo Simões", position: "ATA", rating: 60 },
-    { name: "Lucas Fogaça", position: "ATA", rating: 59 }
+    { name: "Henrique", position: "CA", rating: 56 },
+    { name: "Marcelinho", position: "CA", rating: 58 },
+    { name: "Felipe Ferreira", position: "CA", rating: 54 },
+    { name: "Vini Charopem", position: "CA", rating: 60 },
+    { name: "Bryam", position: "CA", rating: 56 },
+    { name: "Pedro Lucas", position: "CA", rating: 56 },
+    { name: "Alex Gonçalves", position: "CA", rating: 60 },
+    { name: "Renan Gorne", position: "CA", rating: 61 },
+    { name: "Gustavo Simões", position: "CA", rating: 60 },
+    { name: "Lucas Fogaça", position: "CA", rating: 59 }
   ]
 };
 
@@ -1951,12 +1974,12 @@ export const CLUB_DEFINITIONS: ClubDefinition[] = [
     { name: "Ricardo Silva", position: "ZAG", rating: 73 },
     { name: "Juninho", position: "MEI", rating: 75 },
     { name: "Alê", position: "MEI", rating: 73 },
-    { name: "Brenner", position: "ATA", rating: 74 }
+    { name: "Brenner", position: "CA", rating: 74 }
   ] },
   { id: 'athletic_mg', name: 'Athletic Club', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Arena Unimed', reputation: 65, stars: [
     { name: "Danilo Cardoso", position: "ZAG", rating: 66 },
     { name: "Wallisson", position: "MEI", rating: 68 },
-    { name: "Welinton Torrão", position: "ATA", rating: 67 },
+    { name: "Welinton Torrão", position: "CA", rating: 67 },
     { name: "Victor Souza", position: "GOL", rating: 66 },
     { name: "Yuri", position: "LE", rating: 65 }
   ] },
@@ -1964,127 +1987,127 @@ export const CLUB_DEFINITIONS: ClubDefinition[] = [
     { name: "Ronaldo", position: "GOL", rating: 73 },
     { name: "Alix Vinícius", position: "ZAG", rating: 74 },
     { name: "Shaylon", position: "MEI", rating: 75 },
-    { name: "Luiz Fernando", position: "ATA", rating: 75 },
-    { name: "Derek", position: "ATA", rating: 72 }
+    { name: "Luiz Fernando", position: "CA", rating: 75 },
+    { name: "Derek", position: "CA", rating: 72 }
   ] },
   { id: 'avai', name: 'Avai', division: 'B', primaryColor: '#1976D2', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 17800, stadiumName: 'Ressacada', reputation: 70, stars: [
     { name: "César Augusto", position: "GOL", rating: 70 },
     { name: "Tiago Pagnussat", position: "ZAG", rating: 70 },
     { name: "Giovanni", position: "MEI", rating: 72 },
-    { name: "Maurício Garcez", position: "ATA", rating: 71 },
-    { name: "Hygor", position: "ATA", rating: 70 }
+    { name: "Maurício Garcez", position: "CA", rating: 71 },
+    { name: "Hygor", position: "CA", rating: 70 }
   ] },
   { id: 'botafogo_sp', name: 'Botafogo-SP', division: 'B', primaryColor: '#C2185B', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 28000, stadiumName: 'Santa Cruz', reputation: 66, stars: [
     { name: "Matheus Costa", position: "ZAG", rating: 67 },
     { name: "Gustavo Bochecha", position: "MEI", rating: 68 },
-    { name: "Alex Sandro", position: "ATA", rating: 67 },
+    { name: "Alex Sandro", position: "CA", rating: 67 },
     { name: "Michael", position: "GOL", rating: 66 },
-    { name: "Douglas Baggio", position: "ATA", rating: 68 }
+    { name: "Douglas Baggio", position: "CA", rating: 68 }
   ] },
   { id: 'ceara', name: 'Ceara', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 63000, stadiumName: 'Castelao', reputation: 76, stars: [
     { name: "Richard", position: "GOL", rating: 74 },
     { name: "Luiz Otávio", position: "ZAG", rating: 73 },
     { name: "Lucas Mugni", position: "MEI", rating: 74 },
     { name: "Matheus Bahia", position: "ZAG", rating: 72 },
-    { name: "Aylon", position: "ATA", rating: 74 }
+    { name: "Aylon", position: "CA", rating: 74 }
   ] },
   { id: 'crb', name: 'CRB', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Rei Pele', reputation: 67, stars: [
     { name: "Matheus Albino", position: "GOL", rating: 71 },
     { name: "Fábio Alemão", position: "ZAG", rating: 70 },
     { name: "Gegê", position: "MEI", rating: 72 },
-    { name: "Anselmo Ramon", position: "ATA", rating: 73 },
-    { name: "Léo Pereira", position: "ATA", rating: 70 }
+    { name: "Anselmo Ramon", position: "CA", rating: 73 },
+    { name: "Léo Pereira", position: "CA", rating: 70 }
   ] },
   { id: 'criciuma', name: 'Criciuma', division: 'B', primaryColor: '#FBC02D', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 19000, stadiumName: 'Heriberto Hulse', reputation: 72, stars: [
     { name: "Marcelo Hermes", position: "LE", rating: 73 },
     { name: "Fellipe Mateus", position: "MEI", rating: 73 },
     { name: "Newton", position: "MEI", rating: 74 },
-    { name: "Arthur Caíke", position: "ATA", rating: 74 },
+    { name: "Arthur Caíke", position: "CA", rating: 74 },
     { name: "Gustavo", position: "GOL", rating: 72 }
   ] },
   { id: 'cuiaba', name: 'Cuiaba', division: 'B', primaryColor: '#388E3C', secondaryColor: '#FBC02D', textColor: '#FFFFFF', stadiumCapacity: 41000, stadiumName: 'Arena Pantanal', reputation: 74, stars: [
     { name: "Walter", position: "GOL", rating: 74 },
     { name: "Alan Empereur", position: "ZAG", rating: 74 },
     { name: "Lucas Fernandes", position: "MEI", rating: 73 },
-    { name: "Isidro Pitta", position: "ATA", rating: 75 },
-    { name: "Clayson", position: "ATA", rating: 74 }
+    { name: "Isidro Pitta", position: "CA", rating: 75 },
+    { name: "Clayson", position: "CA", rating: 74 }
   ] },
   { id: 'fortaleza', name: 'Fortaleza', division: 'B', primaryColor: '#1976D2', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 63000, stadiumName: 'Castelao', reputation: 81, stars: [
     { name: "João Ricardo", position: "GOL", rating: 76 },
     { name: "Tinga", position: "ZAG", rating: 75 },
     { name: "Lucas Sasha", position: "MEI", rating: 74 },
     { name: "Yago Pikachu", position: "MEI", rating: 76 },
-    { name: "Lucero", position: "ATA", rating: 76 }
+    { name: "Lucero", position: "CA", rating: 76 }
   ] },
   { id: 'goias', name: 'Goias', division: 'B', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 14000, stadiumName: 'Serrinha', reputation: 74, stars: [
     { name: "Tadeu", position: "GOL", rating: 76 },
     { name: "Sander", position: "ZAG", rating: 72 },
     { name: "Marcão", position: "MEI", rating: 73 },
-    { name: "Thiago Galhardo", position: "ATA", rating: 75 },
-    { name: "Welliton", position: "ATA", rating: 71 }
+    { name: "Thiago Galhardo", position: "CA", rating: 75 },
+    { name: "Welliton", position: "CA", rating: 71 }
   ] },
   { id: 'juventude', name: 'Juventude', division: 'B', primaryColor: '#2E7D32', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19000, stadiumName: 'Alfredo Jaconi', reputation: 72, stars: [
     { name: "Gabriel", position: "GOL", rating: 73 },
     { name: "Danilo Boza", position: "ZAG", rating: 72 },
     { name: "Jean Carlos", position: "MEI", rating: 74 },
-    { name: "Gilberto", position: "ATA", rating: 73 },
-    { name: "Marcelinho", position: "ATA", rating: 70 }
+    { name: "Gilberto", position: "CA", rating: 73 },
+    { name: "Marcelinho", position: "CA", rating: 70 }
   ] },
   { id: 'londrina', name: 'Londrina', division: 'B', primaryColor: '#03A9F4', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 30000, stadiumName: 'Estadio do Cafe', reputation: 66, stars: [
     { name: "Arthur", position: "GOL", rating: 67 },
     { name: "João Maistro", position: "ZAG", rating: 66 },
     { name: "Rafael Longuine", position: "MEI", rating: 68 },
-    { name: "Iago Teles", position: "ATA", rating: 67 },
-    { name: "Daniel Amorim", position: "ATA", rating: 68 }
+    { name: "Iago Teles", position: "CA", rating: 67 },
+    { name: "Daniel Amorim", position: "CA", rating: 68 }
   ] },
   { id: 'nautico', name: 'Nautico', division: 'B', primaryColor: '#D32F2F', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Aflitos', reputation: 69, stars: [
     { name: "Vagner", position: "GOL", rating: 68 },
     { name: "Diego Matos", position: "ZAG", rating: 67 },
     { name: "Marco Antônio", position: "MEI", rating: 68 },
-    { name: "Paulo Sérgio", position: "ATA", rating: 70 },
-    { name: "Gustavo Maia", position: "ATA", rating: 68 }
+    { name: "Paulo Sérgio", position: "CA", rating: 70 },
+    { name: "Gustavo Maia", position: "CA", rating: 68 }
   ] },
   { id: 'novorizontino', name: 'Novorizontino', division: 'B', primaryColor: '#FFD54F', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 16000, stadiumName: 'Jorjao', reputation: 70, stars: [
     { name: "Jordi", position: "GOL", rating: 71 },
     { name: "César Martins", position: "ZAG", rating: 70 },
     { name: "Marlon", position: "MEI", rating: 70 },
-    { name: "Neto Pessoa", position: "ATA", rating: 71 },
-    { name: "Rodolfo", position: "ATA", rating: 69 }
+    { name: "Neto Pessoa", position: "CA", rating: 71 },
+    { name: "Rodolfo", position: "CA", rating: 69 }
   ] },
   { id: 'operario_pr', name: 'Operario-PR', division: 'B', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Germano Kruger', reputation: 65, stars: [
     { name: "Rafael Santos", position: "GOL", rating: 68 },
     { name: "Willian Machado", position: "ZAG", rating: 67 },
     { name: "Jacy", position: "MEI", rating: 67 },
-    { name: "Felipe Augusto", position: "ATA", rating: 68 },
-    { name: "Ronaldo", position: "ATA", rating: 67 }
+    { name: "Felipe Augusto", position: "CA", rating: 68 },
+    { name: "Ronaldo", position: "CA", rating: 67 }
   ] },
   { id: 'ponte_preta', name: 'Ponte Preta', division: 'B', primaryColor: '#FFFFFF', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 17000, stadiumName: 'Majestoso', reputation: 69, stars: [
     { name: "Pedro Rocha", position: "GOL", rating: 68 },
     { name: "Mateus Silva", position: "LD", rating: 67 },
     { name: "Elvis", position: "MEI", rating: 70 },
-    { name: "Jeh", position: "ATA", rating: 71 },
+    { name: "Jeh", position: "CA", rating: 71 },
     { name: "Dodô", position: "MEI", rating: 68 }
   ] },
   { id: 'sao_bernardo', name: 'Sao Bernardo', division: 'B', primaryColor: '#FFC107', secondaryColor: '#1B5E20', textColor: '#000000', stadiumCapacity: 12000, stadiumName: 'Primeiro de Maio', reputation: 64, stars: [
     { name: "Alex Alves", position: "GOL", rating: 66 },
     { name: "Lucas Lima", position: "ZAG", rating: 65 },
     { name: "Rodrigo Souza", position: "MEI", rating: 67 },
-    { name: "Silvinho", position: "ATA", rating: 67 },
-    { name: "Kayke", position: "ATA", rating: 66 }
+    { name: "Silvinho", position: "CA", rating: 67 },
+    { name: "Kayke", position: "CA", rating: 66 }
   ] },
   { id: 'sport', name: 'Sport Recife', division: 'B', primaryColor: '#C62828', secondaryColor: '#E65100', textColor: '#FFFFFF', stadiumCapacity: 32000, stadiumName: 'Ilha do Retiro', reputation: 76, stars: [
     { name: "Caíque França", position: "GOL", rating: 74 },
     { name: "Rafael Thyere", position: "ZAG", rating: 73 },
     { name: "Fabricio Domínguez", position: "MEI", rating: 75 },
     { name: "Alan Ruiz", position: "MEI", rating: 74 },
-    { name: "Gustavo Coutinho", position: "ATA", rating: 74 }
+    { name: "Gustavo Coutinho", position: "CA", rating: 74 }
   ] },
   { id: 'vila_nova', name: 'Vila Nova', division: 'B', primaryColor: '#C62828', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 11000, stadiumName: 'OBA', reputation: 68, stars: [
     { name: "Dênis Júnior", position: "GOL", rating: 70 },
     { name: "Jemmes", position: "ZAG", rating: 68 },
     { name: "Ralf", position: "MEI", rating: 69 },
-    { name: "Alesson", position: "ATA", rating: 71 },
-    { name: "Henrique Almeida", position: "ATA", rating: 69 }
+    { name: "Alesson", position: "CA", rating: 71 },
+    { name: "Henrique Almeida", position: "CA", rating: 69 }
   ] },
 
   // --- SERIE C ---
@@ -2092,180 +2115,179 @@ export const CLUB_DEFINITIONS: ClubDefinition[] = [
     { name: "Marcão", position: "GOL", rating: 65 },
     { name: "Miranda", position: "LE", rating: 64 },
     { name: "Diego Torres", position: "MEI", rating: 66 },
-    { name: "Sassá", position: "ATA", rating: 65 },
-    { name: "William Barbio", position: "ATA", rating: 63 }
+    { name: "Sassá", position: "CA", rating: 65 },
+    { name: "William Barbio", position: "CA", rating: 63 }
   ] },
   { id: 'anapolis', name: 'Anapolis', division: 'C', primaryColor: '#1976D2', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 10000, stadiumName: 'Jonas Duarte', reputation: 50, stars: [
     { name: "Wellerson", position: "GOL", rating: 54 },
     { name: "Luizão", position: "ZAG", rating: 55 },
     { name: "Paulinho", position: "MEI", rating: 56 },
-    { name: "Gonzalo", position: "ATA", rating: 57 },
-    { name: "Cardoso", position: "ATA", rating: 55 }
+    { name: "Gonzalo", position: "CA", rating: 57 },
+    { name: "Cardoso", position: "CA", rating: 55 }
   ] },
   { id: 'barra_sc', name: 'Barra-SC', division: 'C', primaryColor: '#0288D1', secondaryColor: '#FBC02D', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Arena Barra', reputation: 48, stars: [
     { name: "Ewerton", position: "GOL", rating: 52 },
     { name: "Wesley Matos", position: "LD", rating: 53 },
     { name: "Natan", position: "MEI", rating: 53 },
-    { name: "Adilson", position: "ATA", rating: 54 },
-    { name: "Alex Henrique", position: "ATA", rating: 52 }
+    { name: "Adilson", position: "CA", rating: 54 },
+    { name: "Alex Henrique", position: "CA", rating: 52 }
   ] },
   { id: 'botafogo_pb', name: 'Botafogo-PB', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 25000, stadiumName: 'Almeidao', reputation: 55, stars: [
     { name: "Wallace", position: "GOL", rating: 60 },
     { name: "Douglas", position: "ZAG", rating: 59 },
     { name: "Thallyson", position: "MEI", rating: 60 },
-    { name: "Pipico", position: "ATA", rating: 61 },
-    { name: "Jô", position: "ATA", rating: 60 }
+    { name: "Pipico", position: "CA", rating: 61 },
+    { name: "Jô", position: "CA", rating: 60 }
   ] },
   { id: 'brusque', name: 'Brusque', division: 'C', primaryColor: '#FBC02D', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Augusto Bauer', reputation: 58, stars: [
     { name: "Matheus Nogueira", position: "GOL", rating: 62 },
     { name: "Wallace", position: "ZAG", rating: 60 },
     { name: "Rodolfo Potiguar", position: "MEI", rating: 60 },
-    { name: "Guilherme Queiróz", position: "ATA", rating: 61 },
-    { name: "Paulinho Moccelin", position: "ATA", rating: 62 }
+    { name: "Guilherme Queiróz", position: "CA", rating: 61 },
+    { name: "Paulinho Moccelin", position: "CA", rating: 62 }
   ] },
   { id: 'caxias', name: 'Caxias', division: 'C', primaryColor: '#880E4F', secondaryColor: '#0D47A1', textColor: '#FFFFFF', stadiumCapacity: 22000, stadiumName: 'Centenario', reputation: 56, stars: [
     { name: "Thiago Coelho", position: "GOL", rating: 60 },
     { name: "Dirceu", position: "ZAG", rating: 59 },
     { name: "Elyeser", position: "MEI", rating: 58 },
     { name: "Tomas Bastos", position: "MEI", rating: 60 },
-    { name: "Álvaro", position: "ATA", rating: 59 }
+    { name: "Álvaro", position: "CA", rating: 59 }
   ] },
   { id: 'confianca', name: 'Confianca', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 15000, stadiumName: 'Batistao', reputation: 54, stars: [
     { name: "Jeferson Souza", position: "GOL", rating: 58 },
     { name: "Raphael Rodrigues", position: "ZAG", rating: 57 },
     { name: "Fábio", position: "MEI", rating: 58 },
-    { name: "Willians Santana", position: "ATA", rating: 59 },
-    { name: "Ricardo Bueno", position: "ATA", rating: 60 }
+    { name: "Willians Santana", position: "CA", rating: 59 },
+    { name: "Ricardo Bueno", position: "CA", rating: 60 }
   ] },
   { id: 'ferroviaria', name: 'Ferroviaria', division: 'C', primaryColor: '#4A148C', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 20000, stadiumName: 'Fonte Luminosa', reputation: 59, stars: [
     { name: "Saulo", position: "GOL", rating: 62 },
     { name: "Ronaldo Alves", position: "ZAG", rating: 61 },
     { name: "Ricardinho", position: "MEI", rating: 61 },
-    { name: "Carlão", position: "ATA", rating: 62 },
-    { name: "Vitor Barreto", position: "ATA", rating: 60 }
+    { name: "Carlão", position: "CA", rating: 62 },
+    { name: "Vitor Barreto", position: "CA", rating: 60 }
   ] },
   { id: 'figueirense', name: 'Figueirense', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 19800, stadiumName: 'Orlando Scarpelli', reputation: 62, stars: [
     { name: "Thiago Gonçalves", position: "GOL", rating: 64 },
     { name: "Genilson", position: "ZAG", rating: 62 },
     { name: "Gledson", position: "MEI", rating: 63 },
     { name: "Camilo", position: "MEI", rating: 65 },
-    { name: "Bruno Michel", position: "ATA", rating: 63 }
+    { name: "Bruno Michel", position: "CA", rating: 63 }
   ] },
   { id: 'floresta', name: 'Floresta', division: 'C', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 5000, stadiumName: 'Presidente Vargas', reputation: 46, stars: [
     { name: "Luiz Daniel", position: "GOL", rating: 54 },
     { name: "Igor Campos", position: "ZAG", rating: 51 },
     { name: "Wagninho", position: "MEI", rating: 52 },
-    { name: "Buba", position: "ATA", rating: 53 },
-    { name: "Lohan", position: "ATA", rating: 54 }
+    { name: "Buba", position: "CA", rating: 53 },
+    { name: "Lohan", position: "CA", rating: 54 }
   ] },
   { id: 'guarani', name: 'Guarani', division: 'C', primaryColor: '#1B5E20', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 29000, stadiumName: 'Brinco de Ouro', reputation: 64, stars: [
     { name: "Douglas Borges", position: "GOL", rating: 66 },
     { name: "Léo Santos", position: "ZAG", rating: 65 },
     { name: "Matheus Bueno", position: "MEI", rating: 66 },
     { name: "Chay", position: "MEI", rating: 65 },
-    { name: "Luccas Paraizo", position: "ATA", rating: 66 }
+    { name: "Luccas Paraizo", position: "CA", rating: 66 }
   ] },
   { id: 'inter_limeira', name: 'Inter de Limeira', division: 'C', primaryColor: '#111111', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 13000, stadiumName: 'Limeirao', reputation: 52, stars: [
     { name: "André Luiz", position: "GOL", rating: 56 },
     { name: "Diego Jussani", position: "ZAG", rating: 58 },
     { name: "Lucas Buchecha", position: "MEI", rating: 57 },
-    { name: "Juninho", position: "ATA", rating: 58 },
-    { name: "Rafael Silva", position: "ATA", rating: 57 }
+    { name: "Juninho", position: "CA", rating: 58 },
+    { name: "Rafael Silva", position: "CA", rating: 57 }
   ] },
   { id: 'itabaiana', name: 'Itabaiana', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 6000, stadiumName: 'Mendonçao', reputation: 48, stars: [
     { name: "Jefferson", position: "GOL", rating: 52 },
     { name: "Gustavo Schutz", position: "ZAG", rating: 53 },
     { name: "Gabriel Henrique", position: "MEI", rating: 53 },
-    { name: "Tiago Souza", position: "ATA", rating: 54 },
-    { name: "Cleiton", position: "ATA", rating: 52 }
+    { name: "Tiago Souza", position: "CA", rating: 54 },
+    { name: "Cleiton", position: "CA", rating: 52 }
   ] },
   { id: 'ituano', name: 'Ituano', division: 'C', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 18000, stadiumName: 'Novelli Junior', reputation: 60, stars: [
     { name: "Jefferson Paulino", position: "GOL", rating: 64 },
     { name: "Claudinho", position: "ZAG", rating: 61 },
     { name: "José Aldo", position: "MEI", rating: 63 },
     { name: "Yann Rolim", position: "MEI", rating: 62 },
-    { name: "Salatiel", position: "ATA", rating: 62 }
+    { name: "Salatiel", position: "CA", rating: 62 }
   ] },
   { id: 'maranhao', name: 'Maranhao', division: 'C', primaryColor: '#0D47A1', secondaryColor: '#D32F2F', textColor: '#FFFFFF', stadiumCapacity: 40000, stadiumName: 'Castelao-MA', reputation: 49, stars: [
     { name: "Moisés", position: "GOL", rating: 53 },
     { name: "Leone", position: "ZAG", rating: 54 },
     { name: "Vander", position: "MEI", rating: 54 },
-    { name: "Ronald", position: "ATA", rating: 55 },
-    { name: "Clessione", position: "ATA", rating: 53 }
+    { name: "Ronald", position: "CA", rating: 55 },
+    { name: "Clessione", position: "CA", rating: 53 }
   ] },
   { id: 'maringa', name: 'Maringa', division: 'C', primaryColor: '#111111', secondaryColor: '#00E676', textColor: '#FFFFFF', stadiumCapacity: 16000, stadiumName: 'Willie Davids', reputation: 57, stars: [
     { name: "Dheimison", position: "GOL", rating: 62 },
     { name: "Ronald", position: "ZAG", rating: 61 },
     { name: "Rodrigo", position: "MEI", rating: 61 },
     { name: "Iago Santana", position: "MEI", rating: 60 },
-    { name: "Tito", position: "ATA", rating: 60 }
+    { name: "Tito", position: "CA", rating: 60 }
   ] },
   { id: 'paysandu', name: 'Paysandu', division: 'C', primaryColor: '#03A9F4', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 16000, stadiumName: 'Curuzu', reputation: 65, stars: [
     { name: "Matheus Nogueira", position: "GOL", rating: 66 },
     { name: "Lucas Maia", position: "ZAG", rating: 66 },
     { name: "Val Soares", position: "MEI", rating: 65 },
     { name: "Robinho", position: "MEI", rating: 66 },
-    { name: "Nicolas", position: "ATA", rating: 66 }
+    { name: "Nicolas", position: "CA", rating: 66 }
   ] },
   { id: 'santa_cruz', name: 'Santa Cruz', division: 'C', primaryColor: '#C62828', secondaryColor: '#111111', textColor: '#FFFFFF', stadiumCapacity: 60000, stadiumName: 'Arruda', reputation: 66, stars: [
     { name: "William Assmann", position: "GOL", rating: 64 },
     { name: "Gilvan", position: "ZAG", rating: 65 },
     { name: "Matheus Melo", position: "MEI", rating: 65 },
-    { name: "Thiago Henrique", position: "ATA", rating: 66 },
-    { name: "Pedro Bortoluzo", position: "ATA", rating: 64 }
+    { name: "Thiago Henrique", position: "CA", rating: 66 },
+    { name: "Pedro Bortoluzo", position: "CA", rating: 64 }
   ] },
   { id: 'volta_redonda', name: 'Volta Redonda', division: 'C', primaryColor: '#FFC107', secondaryColor: '#111111', textColor: '#000000', stadiumCapacity: 20000, stadiumName: 'Raulino de Oliveira', reputation: 58, stars: [
     { name: "Jean Drosny", position: "GOL", rating: 62 },
     { name: "Sanchez", position: "ZAG", rating: 61 },
     { name: "Bruno Barra", position: "MEI", rating: 61 },
     { name: "Robinho", position: "MEI", rating: 62 },
-    { name: "MV", position: "ATA", rating: 63 }
+    { name: "MV", position: "CA", rating: 63 }
   ] },
   { id: 'ypiranga_rs', name: 'Ypiranga-RS', division: 'C', primaryColor: '#FFEB3B', secondaryColor: '#1B5E20', textColor: '#000000', stadiumCapacity: 8000, stadiumName: 'Colosso da Lagoa', reputation: 55, stars: [
     { name: "Alexander", position: "GOL", rating: 60 },
     { name: "Heitor", position: "LD", rating: 59 },
     { name: "Anderson Uchôa", position: "MEI", rating: 60 },
     { name: "Alisson Farias", position: "MEI", rating: 61 },
-    { name: "Zé Vitor", position: "ATA", rating: 60 }
+    { name: "Zé Vitor", position: "CA", rating: 60 }
   ] }
 ];
 
 const randomRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-const calculatePlayerValueAndSalary = (rating: number, age: number, position: string) => {
+const calculatePlayerValueAndSalary = (rating: number, age: number, position: PlayerPosition) => {
   const ageFactor = age < 24 ? 1.3 : age > 30 ? 0.7 : 1.0;
-  const positionFactor = position === 'FW' ? 1.2 : position === 'GK' ? 0.9 : 1.0;
+  const group = getPositionGroup(position);
+  const positionFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
   const ratingBase = Math.pow(rating - 30, 2.5) * 800;
   const value = Math.max(10000, Math.round(ratingBase * ageFactor * positionFactor));
   const salary = Math.round(value * 0.005);
   return { value, salary };
 };
 
-export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: { name: string; position: 'GK' | 'DF' | 'MF' | 'FW' | 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'; rating: number; age?: number }[] = []): Player[] => {
+const MIN_PLAYER_AGE = 22;
+const MAX_PLAYER_AGE = 34;
+
+export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: { name: string; position: PlayerPosition; rating: number; age?: number }[] = []): Player[] => {
   const squad: Player[] = [];
   let idCounter = 1;
 
-  let minRating = division === 'A' ? 75 : division === 'B' ? 65 : 53;
-  let maxRating = division === 'A' ? 83 : division === 'B' ? 74 : 64;
+  const minRating = division === 'A' ? 75 : division === 'B' ? 65 : 53;
+  const maxRating = division === 'A' ? 83 : division === 'B' ? 74 : 64;
 
-  const usedPositions: Record<'GK' | 'DF' | 'MF' | 'FW', number> = { GK: 0, DF: 0, MF: 0, FW: 0 };
-  
+  const usedPositions: Record<PlayerPosition, number> = { GOL: 0, ZAG: 0, LD: 0, LE: 0, VOL: 0, MEI: 0, PON: 0, CA: 0 };
+
   stars.forEach(star => {
-    const age = star.age !== undefined ? star.age : randomRange(19, 34);
-    
-    // Map custom subposition to base positions for calculations
-    let basePos: 'GK' | 'DF' | 'MF' | 'FW' = 'MF';
-    if (star.position === 'GK' || star.position === 'GOL') basePos = 'GK';
-    else if (star.position === 'DF' || star.position === 'ZAG' || star.position === 'LE' || star.position === 'LD') basePos = 'DF';
-    else if (star.position === 'MF' || star.position === 'MEI') basePos = 'MF';
-    else if (star.position === 'FW' || star.position === 'ATA') basePos = 'FW';
+    // Never field anyone under 22 - skip; the position-quota fill below covers the slot
+    if (star.age !== undefined && star.age < MIN_PLAYER_AGE) return;
+    const age = star.age !== undefined ? star.age : randomRange(MIN_PLAYER_AGE, MAX_PLAYER_AGE);
 
-    const { value, salary } = calculatePlayerValueAndSalary(star.rating, age, basePos);
+    const { value, salary } = calculatePlayerValueAndSalary(star.rating, age, star.position);
     squad.push({
       id: `${clubId}_p_${idCounter++}`,
       name: star.name,
       age,
-      position: basePos,
+      position: star.position,
       rating: star.rating,
       energy: 100,
       value,
@@ -2275,16 +2297,14 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
       redCards: 0,
       isInjured: false,
       isStar: star.rating >= 80,
-      contractLocked: star.rating >= 83,
-      // Temporarily write the custom subposition so post-processing doesn't override it
-      subPosition: (['GOL', 'ZAG', 'LE', 'LD', 'MEI', 'ATA'].includes(star.position) ? star.position : undefined) as any
+      contractLocked: star.rating >= 83
     });
-    usedPositions[basePos]++;
+    usedPositions[star.position]++;
   });
 
-  const positionTargets = { GK: 2, DF: 6, MF: 6, FW: 6 };
+  const positionTargets: Record<PlayerPosition, number> = { GOL: 3, ZAG: 5, LD: 2, LE: 2, VOL: 3, MEI: 4, PON: 3, CA: 3 };
 
-  (Object.keys(positionTargets) as ('GK' | 'DF' | 'MF' | 'FW')[]).forEach(pos => {
+  (Object.keys(positionTargets) as PlayerPosition[]).forEach(pos => {
     const current = usedPositions[pos];
     const targetMin = positionTargets[pos];
     if (current < targetMin) {
@@ -2292,14 +2312,14 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
         let firstName = FIRST_NAMES[randomRange(0, FIRST_NAMES.length - 1)];
         let lastName = LAST_NAMES[randomRange(0, LAST_NAMES.length - 1)];
         let name = `${firstName} ${lastName}`;
-        
+
         while (squad.some(p => p.name === name)) {
           firstName = FIRST_NAMES[randomRange(0, FIRST_NAMES.length - 1)];
           lastName = LAST_NAMES[randomRange(0, LAST_NAMES.length - 1)];
           name = `${firstName} ${lastName}`;
         }
 
-        const age = randomRange(18, 35);
+        const age = randomRange(MIN_PLAYER_AGE, MAX_PLAYER_AGE);
         const rating = randomRange(minRating, maxRating);
         const { value, salary } = calculatePlayerValueAndSalary(rating, age, pos);
 
@@ -2323,138 +2343,7 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
     }
   });
 
-  // Post-process to assign subPositions (LE, LD, ZAG for DF; GK, MF, FW for others)
-  // Mapping lists based on real Serie A, B, and C player names and positions from Transfermarkt
-  const REAL_LE_NAMES = [
-    // Serie A
-    'Ayrton Lucas', 'Alex Sandro', 'Joaquín Piquerez', 'Jefté', 'Arthur Gabriel', 'Enzo Díaz', 'Wendell', 
-    'Matheus Bidu', 'Hugo', 'Fabrizio Angileri', 'Alex Telles', 'Fernando Marçal', 'Jhoan Hernández', 'Caio Roque', 'Paulinho',
-    'Reinaldo', 'Renan Lodi', 'Marlon', 'Guilherme Arana', 'Rubens', 'Wellington', 'Cuiabano', 'Marçal',
-    'Renê', 'Bernabei', 'Samuel Xavier', 'Marcelo', 'Diogo Barbosa', 'Piton', 'Lucas Piton', 'Victor Luis',
-    'Dalbert', 'Tobias Ostchega', 'Carlinhos', 'Kaiki', 'Egídio', 'Felipe Jonatan', 'Cortez', 'Miranda', 'Romário',
-    // Serie B & C
-    'Emerson Barbosa', 'Renan Castro', 'Kevyson', 'Danilo Barcelos', 'Diego Porfírio', 'Felipinho', 'Davi Gabriel', 
-    'Rafinha', 'Edson Lucas', 'João Almeida', 'Bruno Melo', 'Luiz Paulo', 'Igor Fernandes', 'Djalma Silva',
-    'Léo Jance', 'Sánchez', 'Fernando', 'Yuri', 'Ramon', 'Jeferson', 'Marlon', 'Guilherme', 'Kadu', 'Patryck'
-  ];
-
-  const REAL_LD_NAMES = [
-    // Serie A
-    'Varela', 'Guillermo Varela', 'Emerson Royal', 'Agustín Giay', 'Khellven', 'João Moreira', 'Lucas Ramon', 
-    'Maik', 'Igor Felisberto', 'Aurélio Buta', 'Matheuzinho', 'Pedro Milans', 'Vitinho', 'Mateo Ponte', 'Igor Vinícius',
-    'William', 'Fagner', 'Marcos Rocha', 'Mayke', 'Guga', 'Samuel Xavier', 'Wesley', 'Calegari', 'Bustos', 
-    'Fabricio Bustos', 'Puma Rodríguez', 'Nathan', 'Léo Mana', 'João Pedro', 'Wellington', 'Gabriel', 'Bainano',
-    // Serie B & C
-    'Rai', 'Zeca', 'Diogo Batista', 'Douglas Pelé', 'Alex Silva', 'Heitor', 'Léo Alaba', 'Ewerthon', 'Arnaldo',
-    'Reginaldo', 'Mateus', 'Lucas Abbade', 'Aderlan', 'Hayner', 'Dudu', 'Daniel Guedes', 'Poli', 'Chiquinho'
-  ];
-
-  const REAL_MEI_NAMES = [
-    // Defensive/Central/Offensive Midfielders (Volantes, Meias Central e Ofensivos)
-    'Marlon Freitas', 'Emiliano Martínez', 'Luis Pacheco', 'Andreas Pereira', 'Lucas Evangelista', 'Larson',
-    'Alan Patrick', 'Arrascaeta', 'De la Cruz', 'Pulgar', 'Gerson', 'Allan', 'Igor Gomes', 'Rodrigo Nestor',
-    'Alisson', 'Luiz Gustavo', 'Bobadilla', 'Galoppo', 'Michel Araujo', 'Zaracho', 'Battaglia', 'Otávio',
-    'Gustavo Scarpa', 'Igor Gomes', 'Edenilson', 'Maurício', 'Rios', 'Richard Ríos', 'Zé Rafael', 'Aníbal Moreno',
-    'Caio Alexandre', 'Jean Lucas', 'Everton Ribeiro', 'Yago Felipe', 'Cauly', 'Thaciano', 'Lucho Rodríguez',
-    'Lucas Silva', 'Matheus Pereira', 'Ramiro', 'Japa', 'Walace', 'Matheus Henrique', 'Barreal', 'Villasanti',
-    'Carballo', 'Pepê', 'Cristaldo', 'Du Queiroz', 'Dodi', 'Hernani', 'Garro', 'Rodrigo Garro', 'Raniele',
-    'Breno Bidon', 'Coronado', 'Igor Coronado', 'Ryan', 'Alex Santana', 'Charles', 'Martinez', 'Sforza',
-    'Hugo Moura', 'Payet', 'Dimitri Payet', 'Galdames', 'Praxedes', 'Mateus Carvalho', 'Adson', 'JP', 'Lucas Eduardo',
-    'Lucas Lima', 'Nenê', 'Jean Lucas', 'Nonato', 'Hércules', 'Pochettino', 'Calebe', 'Kervin Andrade', 'Lucas Sasha',
-    'Zanocelo', 'Matheus Rossetto', 'Alan Ruiz', 'Fellipe Mateus', 'Barreto', 'Ronald', 'Newton', 'Matheusinho',
-    'Alan', 'Diego', 'Fabio', 'Mauri', 'Maurício', 'Alan', 'Marlon', 'Fabrício Isidoro', 'Ian Luccas', 'Jota',
-    'Kauan Rodrigues', 'Yago Santos', 'Gian Cabezas', 'Gustavinho', 'Kauan Lindes', 'Pedro Oliveira', 'Alexandre Pena'
-  ];
-
-  const REAL_ATA_NAMES = [
-    // Wingers and Strikers (Ponta Esquerda/Direita e Centroavante)
-    'Sassá', 'Wellington', 'Victor', 'Dudu', 'Luis Fabiano', 'Lucas', 'Osvaldo', 'Jadson', 'Maicon', 'Denilson',
-    'Pedro', 'Gabigol', 'Gabriel Barbosa', 'Carlinhos', 'Bruno Henrique', 'Luiz Araújo', 'Cebolinha', 'Everton',
-    'Calleri', 'Jonathan Calleri', 'Luciano', 'Ferreira', 'André Silva', 'Erick', 'Wellington Rato', 'Paulino',
-    'Hulk', 'Kardec', 'Deyverson', 'Alisson', 'Vargas', 'Cadu', 'Flaco López', 'Rony', 'Estêvão', 'Lázaro',
-    'Luighi', 'Thalys', 'Everaldo', 'Biel', 'Ademir', 'Rafael Ratão', 'Luciano Rodríguez', 'Ytalo', 'Dinamite',
-    'Enner Valencia', 'Borré', 'Alario', 'Lucca', 'Wanderson', 'Wesley', 'Gustavo Nunes', 'Diego Costa',
-    'Pavón', 'Soteldo', 'Nathan Fernandes', 'Júnior Santos', 'Tiquinho', 'Tiquinho Soares', 'Júnior Santos',
-    'Luiz Henrique', 'Matheus Martins', 'Savaninho', 'Yuri Alberto', 'Romero', 'Ángel Romero', 'Pedro Raul',
-    'Giovane', 'Wesley', 'Garro', 'Pedro Henrique', 'Vegetti', 'Pablo Vegetti', 'David', 'Rayan', 'Emerson Rodríguez',
-    'GB', 'Rossi', 'Lucero', 'Moisés', 'Kervin', 'Breno Lopes', 'Machuca', 'Renato Kayzer', 'Bolassie', 'Yannick Bolasye',
-    'Eder', 'Felipe Vizeu', 'Arthur Caíke', 'Allano', 'Léo Chú', 'Dixon Vera', 'Otávio Freitas', 'Ruan Assis',
-    'João Adriano', 'Max', 'Leandro Alves', 'Bruninho', 'Ronaldo Tavares', 'Wilinton Aponzá', 'Gustavão'
-  ];
-
-  const dfs = squad.filter(p => p.position === 'DF');
-  dfs.forEach((p, idx) => {
-    if (p.subPosition) return; // Preserve manual definitions
-
-    // 1. Check if name matches known LE list
-    const hasLEMatch = REAL_LE_NAMES.some(leName => p.name.toLowerCase().includes(leName.toLowerCase()));
-    // 2. Check if name matches known LD list
-    const hasLDMatch = REAL_LD_NAMES.some(ldName => p.name.toLowerCase().includes(ldName.toLowerCase()));
-
-    if (hasLEMatch) {
-      p.subPosition = 'LE';
-    } else if (hasLDMatch) {
-      p.subPosition = 'LD';
-    } else {
-      // Default: Fallback evenly to ensure every team has at least one of each
-      if (idx % 3 === 0) p.subPosition = 'LE';
-      else if (idx % 3 === 1) p.subPosition = 'LD';
-      else p.subPosition = 'ZAG';
-    }
-  });
-
-  squad.forEach(p => {
-    // If subPosition was already set manually in the stars configuration (e.g. parsed from transfermarkt), preserve it!
-    if (p.subPosition) {
-      // Synchronize base position to match custom subPosition
-      if (p.subPosition === 'GOL') p.position = 'GK';
-      else if (['ZAG', 'LE', 'LD'].includes(p.subPosition)) p.position = 'DF';
-      else if (p.subPosition === 'MEI') p.position = 'MF';
-      else if (p.subPosition === 'ATA') p.position = 'FW';
-      return; 
-    }
-
-    if (p.position === 'GK') {
-      p.subPosition = 'GOL';
-    } else if (p.position === 'MF') {
-      p.subPosition = 'MEI';
-    } else if (p.position === 'FW') {
-      p.subPosition = 'ATA';
-    } else if (p.position === 'DF' && !p.subPosition) {
-      p.subPosition = 'ZAG';
-    }
-
-    // Double check specific name-based corrections for all positions
-    const nameLower = p.name.toLowerCase();
-    
-    // 1. Goleiros
-    if (nameLower.includes('goleiro') || nameLower.includes('gato') || nameLower.includes('bento') || nameLower.includes('everson') || nameLower.includes('carlos miguel') || nameLower.includes('lomba') || nameLower.includes('drosny')) {
-      p.position = 'GK';
-      p.subPosition = 'GOL';
-    }
-    // 2. Laterais Esquerdos
-    else if (REAL_LE_NAMES.some(le => nameLower.includes(le.toLowerCase()))) {
-      p.position = 'DF';
-      p.subPosition = 'LE';
-    }
-    // 3. Laterais Direitos
-    else if (REAL_LD_NAMES.some(ld => nameLower.includes(ld.toLowerCase()))) {
-      p.position = 'DF';
-      p.subPosition = 'LD';
-    }
-    // 4. Meio-campistas
-    else if (REAL_MEI_NAMES.some(m => nameLower.includes(m.toLowerCase()))) {
-      p.position = 'MF';
-      p.subPosition = 'MEI';
-    }
-    // 5. Atacantes
-    else if (REAL_ATA_NAMES.some(a => nameLower.includes(a.toLowerCase()))) {
-      p.position = 'FW';
-      p.subPosition = 'ATA';
-    }
-  });
-
-  const posOrder = { GK: 0, DF: 1, MF: 2, FW: 3 };
+  const posOrder: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
   return squad.sort((a, b) => {
     if (posOrder[a.position] !== posOrder[b.position]) {
       return posOrder[a.position] - posOrder[b.position];

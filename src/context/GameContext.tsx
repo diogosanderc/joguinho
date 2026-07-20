@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initializeClubs, formatCurrency } from '../data/database';
-import type { Player, Club } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup } from '../data/database';
+import type { Player, Club, PlayerPosition } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters } from '../utils/matchEngine';
 import type { MatchResult } from '../utils/matchEngine';
 
@@ -239,8 +239,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const generateMarketPlayers = (div: 'A' | 'B' | 'C'): Player[] => {
     // Generate 10-15 random free agents or transfer listed players
     const list: Player[] = [];
-    const positions: ('GK' | 'DF' | 'MF' | 'FW')[] = ['GK', 'DF', 'MF', 'FW'];
-    
+    const positions: PlayerPosition[] = ['GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'];
+
     let baseMin = 50, baseMax = 62;
     if (div === 'C') { baseMin = 50; baseMax = 62; }
     if (div === 'B') { baseMin = 62; baseMax = 72; }
@@ -251,27 +251,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     for (let i = 0; i < 15; i++) {
       const pos = positions[Math.floor(Math.random() * positions.length)];
-      const age = Math.floor(Math.random() * 15) + 18; // 18-32
+      const age = Math.floor(Math.random() * 13) + 22; // 22-34, never field anyone under 22
       const rating = Math.floor(Math.random() * (baseMax - baseMin + 1)) + baseMin;
-      
+
       const valBase = Math.pow(rating - 30, 2.5) * 800;
       const ageFactor = age < 24 ? 1.3 : age > 30 ? 0.7 : 1.0;
       const value = Math.max(10000, Math.round(valBase * ageFactor));
       const salary = Math.round(value * 0.005);
 
       const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-
-      // Map subPosition details correctly
-      let subPosition: 'GOL' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA' = 'ZAG';
-      if (pos === 'GK') subPosition = 'GOL';
-      else if (pos === 'MF') subPosition = 'MEI';
-      else if (pos === 'FW') subPosition = 'ATA';
-      else {
-        const randSide = Math.random();
-        if (randSide < 0.33) subPosition = 'LE';
-        else if (randSide < 0.66) subPosition = 'LD';
-        else subPosition = 'ZAG';
-      }
 
       list.push({
         id: `market_${Date.now()}_${i}`,
@@ -287,8 +275,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redCards: 0,
         isInjured: false,
         isStar: false,
-        contractLocked: false,
-        subPosition
+        contractLocked: false
       });
     }
     return list;
@@ -496,7 +483,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let salary = player.salary;
         if (rating !== player.rating) {
           const ageFactor = player.age < 24 ? 1.3 : player.age > 30 ? 0.7 : 1.0;
-          const posFactor = player.position === 'FW' ? 1.2 : player.position === 'GK' ? 0.9 : 1.0;
+          const group = getPositionGroup(player.position);
+          const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
           const valBase = Math.pow(rating - 30, 2.5) * 800;
           value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
           salary = Math.round(value * 0.005);
@@ -787,7 +775,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                           (club.division === 'B' && relegations.B.includes(club.id));
       
       const squad = club.squad.map(p => {
-        const isMF_FW = p.position === 'MF' || p.position === 'FW';
+        const posGroup = getPositionGroup(p.position);
+        const isMF_FW = posGroup === 'MF' || posGroup === 'FW';
         let isStar = p.isStar;
 
         // Check if player was a top scorer in their division this season
@@ -1011,7 +1000,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Helper to sort squad by position GK, DF, MF, FW
     const sortSquad = (squad: Player[]) => {
-      const order = { GK: 1, DF: 2, MF: 3, FW: 4 };
+      const order: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
       return [...squad].sort((a, b) => order[a.position] - order[b.position]);
     };
 
@@ -1052,7 +1041,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    if (player.position === 'GK' && userClub.squad.filter(p => p.position === 'GK').length <= 1) {
+    if (player.position === 'GOL' && userClub.squad.filter(p => p.position === 'GOL').length <= 1) {
       alert('Impossível vender! Você precisa manter pelo menos 1 goleiro no elenco.');
       return;
     }
@@ -1122,7 +1111,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const sortSquad = (squad: Player[]) => {
-      const order = { GK: 1, DF: 2, MF: 3, FW: 4 };
+      const order: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
       return [...squad].sort((a, b) => order[a.position] - order[b.position]);
     };
 
@@ -1414,7 +1403,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    if (player.position === 'GK' && userClub.squad.filter(p => p.position === 'GK').length <= 1) {
+    if (player.position === 'GOL' && userClub.squad.filter(p => p.position === 'GOL').length <= 1) {
       alert('Impossível vender! Você precisa manter pelo menos 1 goleiro no elenco.');
       return;
     }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency } from './data/database';
-import type { Player, Club } from './data/database';
+import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
 import { 
   Home, Users, TrendingUp, DollarSign, Trophy, 
@@ -36,7 +36,7 @@ const AppContent: React.FC = () => {
   const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'HISTORY'>('TABLE');
 
   // Market filter states
-  const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | 'GK' | 'ZAG' | 'LE' | 'LD' | 'MEI' | 'ATA'>('ALL');
+  const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | PlayerPosition>('ALL');
 
   // Match Simulation variables
   const [simMinute, setSimMinute] = useState(0);
@@ -115,37 +115,30 @@ const AppContent: React.FC = () => {
 
   // Helper to determine positional requirements for each tactic
   const getTacticNeeds = (tactic: string) => {
-    let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
     if (tactic === '4-3-3') {
-      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
+      return { targetZAG: 2, targetLD: 1, targetLE: 1, targetVOL: 1, targetMEI: 2, targetPON: 2, targetCA: 1 };
     } else if (tactic === '3-5-2') {
-      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
-    } else {
-      // Default 4-4-2
-      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 4; targetATA = 2;
+      return { targetZAG: 3, targetLD: 1, targetLE: 1, targetVOL: 1, targetMEI: 2, targetPON: 0, targetCA: 2 };
     }
-    return { targetZAG, targetLE, targetLD, targetMEI, targetATA };
+    // Default 4-4-2
+    return { targetZAG: 2, targetLD: 1, targetLE: 1, targetVOL: 2, targetMEI: 2, targetPON: 0, targetCA: 2 };
   };
 
   // Helper function to check if the club has enough healthy players for a tactic
   const isTacticAvailable = (tactic: string, squadList: Player[]) => {
-    const { targetZAG, targetLE, targetLD, targetMEI, targetATA } = getTacticNeeds(tactic);
+    const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(tactic);
     const healthy = squadList.filter(p => !p.isInjured);
-    
-    const healthyGOL = healthy.filter(p => p.position === 'GK' || p.subPosition === 'GOL').length;
-    const healthyZAG = healthy.filter(p => p.subPosition === 'ZAG').length;
-    const healthyLE = healthy.filter(p => p.subPosition === 'LE').length;
-    const healthyLD = healthy.filter(p => p.subPosition === 'LD').length;
-    const healthyMEI = healthy.filter(p => p.subPosition === 'MEI').length;
-    const healthyATA = healthy.filter(p => p.subPosition === 'ATA').length;
+    const count = (pos: PlayerPosition) => healthy.filter(p => p.position === pos).length;
 
     return (
-      healthyGOL >= 1 &&
-      healthyZAG >= targetZAG &&
-      healthyLE >= targetLE &&
-      healthyLD >= targetLD &&
-      healthyMEI >= targetMEI &&
-      healthyATA >= targetATA
+      count('GOL') >= 1 &&
+      count('ZAG') >= targetZAG &&
+      count('LD') >= targetLD &&
+      count('LE') >= targetLE &&
+      count('VOL') >= targetVOL &&
+      count('MEI') >= targetMEI &&
+      count('PON') >= targetPON &&
+      count('CA') >= targetCA
     );
   };
 
@@ -173,7 +166,7 @@ const AppContent: React.FC = () => {
         const validated = saved.map(p => {
           const found = userClub.squad.find(s => s.id === p.id);
           if (!found || found.isInjured) {
-            const replacement = userClub.squad.find(s => s.subPosition === p.subPosition && !s.isInjured && !saved.some(x => x.id === s.id));
+            const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !saved.some(x => x.id === s.id));
             return replacement || userClub.squad.find(s => !s.isInjured && !saved.some(x => x.id === s.id)) || p;
           }
           return found;
@@ -182,23 +175,27 @@ const AppContent: React.FC = () => {
         setMidMatchStarters(validated);
       } else {
         // Auto-pick best 11 matching the new scheme criteria
-        const { targetZAG, targetLE, targetLD, targetMEI, targetATA } = getTacticNeeds(selectedTactic);
+        const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(selectedTactic);
         const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
         const selected: Player[] = [];
-        const gks = pool.filter(p => p.subPosition === 'GOL');
+        const gks = pool.filter(p => p.position === 'GOL');
         if (gks[0]) selected.push(gks[0]);
 
-        const zags = pool.filter(p => p.subPosition === 'ZAG');
-        const les = pool.filter(p => p.subPosition === 'LE');
-        const lds = pool.filter(p => p.subPosition === 'LD');
-        const meis = pool.filter(p => p.subPosition === 'MEI');
-        const atas = pool.filter(p => p.subPosition === 'ATA');
+        const zags = pool.filter(p => p.position === 'ZAG');
+        const lds = pool.filter(p => p.position === 'LD');
+        const les = pool.filter(p => p.position === 'LE');
+        const vols = pool.filter(p => p.position === 'VOL');
+        const meis = pool.filter(p => p.position === 'MEI');
+        const pons = pool.filter(p => p.position === 'PON');
+        const cas = pool.filter(p => p.position === 'CA');
 
         for (let i = 0; i < Math.min(targetZAG, zags.length); i++) selected.push(zags[i]);
-        for (let i = 0; i < Math.min(targetLE, les.length); i++) selected.push(les[i]);
         for (let i = 0; i < Math.min(targetLD, lds.length); i++) selected.push(lds[i]);
+        for (let i = 0; i < Math.min(targetLE, les.length); i++) selected.push(les[i]);
+        for (let i = 0; i < Math.min(targetVOL, vols.length); i++) selected.push(vols[i]);
         for (let i = 0; i < Math.min(targetMEI, meis.length); i++) selected.push(meis[i]);
-        for (let i = 0; i < Math.min(targetATA, atas.length); i++) selected.push(atas[i]);
+        for (let i = 0; i < Math.min(targetPON, pons.length); i++) selected.push(pons[i]);
+        for (let i = 0; i < Math.min(targetCA, cas.length); i++) selected.push(cas[i]);
 
         if (selected.length < 11) {
           const ids = new Set(selected.map(p => p.id));
@@ -220,7 +217,7 @@ const AppContent: React.FC = () => {
         const found = userClub.squad.find(s => s.id === p.id);
         if (!found || found.isInjured) {
           changed = true;
-          const replacement = userClub.squad.find(s => s.subPosition === p.subPosition && !s.isInjured && !starters.some(x => x.id === s.id));
+          const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !starters.some(x => x.id === s.id));
           return replacement || userClub.squad.find(s => !s.isInjured && !starters.some(x => x.id === s.id)) || p;
         }
         if (found.rating !== p.rating || found.energy !== p.energy) {
@@ -1220,29 +1217,28 @@ const AppContent: React.FC = () => {
                   onClick={() => {
                     if (!userClub) return;
                     // Helper logic to grab target tactic sizes
-                    let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
-                    if (selectedTactic === '4-3-3') {
-                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
-                    } else if (selectedTactic === '3-5-2') {
-                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
-                    }
+                    const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(selectedTactic);
 
                     const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
                     const bestSelected: Player[] = [];
-                    const gks = pool.filter(p => p.subPosition === 'GOL');
+                    const gks = pool.filter(p => p.position === 'GOL');
                     if (gks[0]) bestSelected.push(gks[0]);
 
-                    const zags = pool.filter(p => p.subPosition === 'ZAG');
-                    const les = pool.filter(p => p.subPosition === 'LE');
-                    const lds = pool.filter(p => p.subPosition === 'LD');
-                    const meis = pool.filter(p => p.subPosition === 'MEI');
-                    const atas = pool.filter(p => p.subPosition === 'ATA');
+                    const zags = pool.filter(p => p.position === 'ZAG');
+                    const lds = pool.filter(p => p.position === 'LD');
+                    const les = pool.filter(p => p.position === 'LE');
+                    const vols = pool.filter(p => p.position === 'VOL');
+                    const meis = pool.filter(p => p.position === 'MEI');
+                    const pons = pool.filter(p => p.position === 'PON');
+                    const cas = pool.filter(p => p.position === 'CA');
 
                     for (let i = 0; i < Math.min(targetZAG, zags.length); i++) bestSelected.push(zags[i]);
-                    for (let i = 0; i < Math.min(targetLE, les.length); i++) bestSelected.push(les[i]);
                     for (let i = 0; i < Math.min(targetLD, lds.length); i++) bestSelected.push(lds[i]);
+                    for (let i = 0; i < Math.min(targetLE, les.length); i++) bestSelected.push(les[i]);
+                    for (let i = 0; i < Math.min(targetVOL, vols.length); i++) bestSelected.push(vols[i]);
                     for (let i = 0; i < Math.min(targetMEI, meis.length); i++) bestSelected.push(meis[i]);
-                    for (let i = 0; i < Math.min(targetATA, atas.length); i++) bestSelected.push(atas[i]);
+                    for (let i = 0; i < Math.min(targetPON, pons.length); i++) bestSelected.push(pons[i]);
+                    for (let i = 0; i < Math.min(targetCA, cas.length); i++) bestSelected.push(cas[i]);
 
                     // Fill to 11 if needed
                     if (bestSelected.length < 11) {
@@ -1264,32 +1260,31 @@ const AppContent: React.FC = () => {
                   onClick={() => {
                     if (!userClub) return;
                     // Rotate fatigued players: replace players with energy < 75 with best rested bench players
-                    let targetZAG = 2, targetLE = 1, targetLD = 1, targetMEI = 4, targetATA = 2;
-                    if (selectedTactic === '4-3-3') {
-                      targetZAG = 2; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 3;
-                    } else if (selectedTactic === '3-5-2') {
-                      targetZAG = 3; targetLE = 1; targetLD = 1; targetMEI = 3; targetATA = 2;
-                    }
+                    const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(selectedTactic);
 
                     // Sort all non-injured squad by energy level (higher energy first), then by rating
                     const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.energy - a.energy || b.rating - a.rating);
-                    
+
                     const selected: Player[] = [];
                     // Force pick the gk with best energy
-                    const gks = pool.filter(p => p.subPosition === 'GOL');
+                    const gks = pool.filter(p => p.position === 'GOL');
                     if (gks[0]) selected.push(gks[0]);
 
-                    const zags = pool.filter(p => p.subPosition === 'ZAG');
-                    const les = pool.filter(p => p.subPosition === 'LE');
-                    const lds = pool.filter(p => p.subPosition === 'LD');
-                    const meis = pool.filter(p => p.subPosition === 'MEI');
-                    const atas = pool.filter(p => p.subPosition === 'ATA');
+                    const zags = pool.filter(p => p.position === 'ZAG');
+                    const lds = pool.filter(p => p.position === 'LD');
+                    const les = pool.filter(p => p.position === 'LE');
+                    const vols = pool.filter(p => p.position === 'VOL');
+                    const meis = pool.filter(p => p.position === 'MEI');
+                    const pons = pool.filter(p => p.position === 'PON');
+                    const cas = pool.filter(p => p.position === 'CA');
 
                     for (let i = 0; i < Math.min(targetZAG, zags.length); i++) selected.push(zags[i]);
-                    for (let i = 0; i < Math.min(targetLE, les.length); i++) selected.push(les[i]);
                     for (let i = 0; i < Math.min(targetLD, lds.length); i++) selected.push(lds[i]);
+                    for (let i = 0; i < Math.min(targetLE, les.length); i++) selected.push(les[i]);
+                    for (let i = 0; i < Math.min(targetVOL, vols.length); i++) selected.push(vols[i]);
                     for (let i = 0; i < Math.min(targetMEI, meis.length); i++) selected.push(meis[i]);
-                    for (let i = 0; i < Math.min(targetATA, atas.length); i++) selected.push(atas[i]);
+                    for (let i = 0; i < Math.min(targetPON, pons.length); i++) selected.push(pons[i]);
+                    for (let i = 0; i < Math.min(targetCA, cas.length); i++) selected.push(cas[i]);
 
                     // Fill to 11
                     if (selected.length < 11) {
@@ -1328,66 +1323,58 @@ const AppContent: React.FC = () => {
                   // regardless of the order they appear inside the starters state array!
                   
                   // Setup coordinate mapping slots for each role
-                  const roleCoords: Record<string, { role: 'GOL' | 'LE' | 'LD' | 'ZAG' | 'MEI' | 'ATA'; x: number; y: number }[]> = {
+                  const roleCoords: Record<string, { role: PlayerPosition; x: number; y: number }[]> = {
                     '4-4-2': [
                       { role: 'GOL', x: 50, y: 88 },
                       { role: 'LE', x: 12, y: 72 },
                       { role: 'ZAG', x: 37, y: 74 },
                       { role: 'ZAG', x: 63, y: 74 },
                       { role: 'LD', x: 88, y: 72 },
-                      { role: 'MEI', x: 15, y: 46 }, // Jadson position
-                      { role: 'MEI', x: 38, y: 52 }, // Denilson
-                      { role: 'MEI', x: 62, y: 52 }, // Paulo Assunção
-                      { role: 'MEI', x: 85, y: 46 }, // Maicon
-                      { role: 'ATA', x: 35, y: 20 }, // Luis Fabiano
-                      { role: 'ATA', x: 65, y: 20 }  // Lucas
+                      { role: 'VOL', x: 35, y: 58 },
+                      { role: 'VOL', x: 65, y: 58 },
+                      { role: 'MEI', x: 25, y: 38 },
+                      { role: 'MEI', x: 75, y: 38 },
+                      { role: 'CA', x: 35, y: 18 },
+                      { role: 'CA', x: 65, y: 18 }
                     ],
                     '3-5-2': [
                       { role: 'GOL', x: 50, y: 88 },
-                      { role: 'ZAG', x: 25, y: 74 }, // Rhodolfo
-                      { role: 'ZAG', x: 50, y: 76 }, // Toloi
-                      { role: 'ZAG', x: 75, y: 74 }, // João Filipe
-                      { role: 'LE', x: 10, y: 48 },  // Cortez (Left wing)
-                      { role: 'LD', x: 90, y: 48 },  // Douglas (Right wing)
-                      { role: 'MEI', x: 30, y: 44 },  // Jadson
-                      { role: 'MEI', x: 50, y: 56 },  // Denilson
-                      { role: 'MEI', x: 70, y: 44 },  // Maicon
-                      { role: 'ATA', x: 35, y: 20 },  // Luis Fabiano
-                      { role: 'ATA', x: 65, y: 20 }   // Lucas
+                      { role: 'ZAG', x: 30, y: 76 },
+                      { role: 'ZAG', x: 50, y: 78 },
+                      { role: 'ZAG', x: 70, y: 76 },
+                      { role: 'LE', x: 10, y: 58 },
+                      { role: 'LD', x: 90, y: 58 },
+                      { role: 'VOL', x: 50, y: 50 },
+                      { role: 'MEI', x: 32, y: 36 },
+                      { role: 'MEI', x: 68, y: 36 },
+                      { role: 'CA', x: 35, y: 18 },
+                      { role: 'CA', x: 65, y: 18 }
                     ],
                     '4-3-3': [
                       { role: 'GOL', x: 50, y: 88 },
-                      { role: 'LE', x: 12, y: 72 },  // Cortez
-                      { role: 'ZAG', x: 37, y: 74 }, // Rhodolfo
-                      { role: 'ZAG', x: 63, y: 74 }, // Toloi
-                      { role: 'LD', x: 88, y: 72 },  // Wellington
-                      { role: 'MEI', x: 25, y: 48 },  // Jadson
-                      { role: 'MEI', x: 50, y: 56 },  // Denilson
-                      { role: 'MEI', x: 75, y: 48 },  // Maicon
-                      { role: 'ATA', x: 18, y: 24 },  // Osvaldo
-                      { role: 'ATA', x: 50, y: 16 },  // Luis Fabiano
-                      { role: 'ATA', x: 82, y: 24 }   // Lucas
+                      { role: 'LE', x: 12, y: 72 },
+                      { role: 'ZAG', x: 37, y: 74 },
+                      { role: 'ZAG', x: 63, y: 74 },
+                      { role: 'LD', x: 88, y: 72 },
+                      { role: 'VOL', x: 50, y: 56 },
+                      { role: 'MEI', x: 30, y: 42 },
+                      { role: 'MEI', x: 70, y: 42 },
+                      { role: 'PON', x: 18, y: 22 },
+                      { role: 'PON', x: 82, y: 22 },
+                      { role: 'CA', x: 50, y: 14 }
                     ]
                   };
 
                   const currentSlots = roleCoords[selectedTactic] || roleCoords['4-4-2'];
-                  
+
                   // Keep track of which starters have already been placed in a slot
                   const placedIds = new Set<string>();
 
-                  // Match each slot coordinate with a starter player matching that subPosition (or position)
+                  // Match each slot coordinate with a starter player matching that exact position
                   return currentSlots.map((slot, index) => {
-                    // Try to find a starter that fits this slot's subPosition role
-                    let matchingPlayer = starters.find(p => {
-                      if (placedIds.has(p.id)) return false;
-                      // GOL matches position === 'GK' or subPosition === 'GOL'
-                      if (slot.role === 'GOL') return p.position === 'GK' || p.subPosition === 'GOL';
-                      // ATA matches subPosition === 'ATA' or position === 'FW'
-                      if (slot.role === 'ATA') return p.subPosition === 'ATA' || p.position === 'FW';
-                      return p.subPosition === slot.role;
-                    });
+                    let matchingPlayer = starters.find(p => !placedIds.has(p.id) && p.position === slot.role);
 
-                    // Fallback to any unplaced player if none matching the exact subPosition (safeguard)
+                    // Fallback to any unplaced player if none matching the exact position (safeguard)
                     if (!matchingPlayer) {
                       matchingPlayer = starters.find(p => !placedIds.has(p.id));
                     }
@@ -1404,18 +1391,19 @@ const AppContent: React.FC = () => {
                     placedIds.add(matchingPlayer.id);
 
                     const p = matchingPlayer;
-                    let sideLabel: string = p.subPosition || 'ZAG';
-                    if (p.position === 'GK') sideLabel = 'GOL';
-                    else if (p.subPosition === 'ATA') sideLabel = 'AT';
+                    const sideLabel: string = p.position;
 
-                    // Highlight LE/LD color as green (MEI) only in 3-5-2 scheme to indicate they play as wings/midfielders
-                    let labelColor = 'var(--accent-blue)';
-                    if (sideLabel === 'GOL') labelColor = '#ffa726';
-                    else if (sideLabel === 'MEI') labelColor = 'var(--accent-green)';
-                    else if (sideLabel === 'LE' || sideLabel === 'LD') {
-                      labelColor = selectedTactic === '3-5-2' ? 'var(--accent-green)' : '#29b6f6';
-                    }
-                    else if (sideLabel === 'AT') labelColor = 'var(--accent-red)';
+                    const positionColors: Record<PlayerPosition, string> = {
+                      GOL: '#ffa726',
+                      ZAG: '#29b6f6',
+                      LD: '#29b6f6',
+                      LE: '#29b6f6',
+                      VOL: 'var(--accent-green)',
+                      MEI: 'var(--accent-green)',
+                      PON: 'var(--accent-red)',
+                      CA: 'var(--accent-red)'
+                    };
+                    const labelColor = positionColors[p.position];
 
                     return (
                       <div 
@@ -1464,7 +1452,7 @@ const AppContent: React.FC = () => {
                         cursor: 'pointer'
                       }}
                     >
-                      <span className={`pos-badge ${player.position}`}>{player.subPosition || player.position}</span>
+                      <span className={`pos-badge ${player.position}`}>{player.position}</span>
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
@@ -1627,11 +1615,11 @@ const AppContent: React.FC = () => {
 
             {/* General Position filter buttons (used by both Free Agents and Club Squad view) */}
             <div className="sub-tabs" style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-              {(['ALL', 'GOL', 'ZAG', 'LE', 'LD', 'MEI', 'ATA'] as const).map(pos => (
+              {(['ALL', 'GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'] as const).map(pos => (
                 <button
                   key={pos}
-                  onClick={() => setMarketPosFilter(pos === 'GOL' ? 'GK' as any : pos)}
-                  className={`sub-tab-btn ${((marketPosFilter === 'GK' && pos === 'GOL') || (marketPosFilter === pos)) ? 'active' : ''}`}
+                  onClick={() => setMarketPosFilter(pos)}
+                  className={`sub-tab-btn ${marketPosFilter === pos ? 'active' : ''}`}
                   style={{ flex: '1 1 auto', padding: '6px 10px', fontSize: '0.72rem', minWidth: '42px', textAlign: 'center' }}
                 >
                   {pos === 'ALL' ? 'Todos' : pos}
@@ -1646,12 +1634,11 @@ const AppContent: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                   {marketPlayers
                     .filter(p => {
-                      const filterPos = marketPosFilter === 'GK' ? 'GOL' : marketPosFilter;
-                      return marketPosFilter === 'ALL' || p.subPosition === filterPos;
+                      return marketPosFilter === 'ALL' || p.position === marketPosFilter;
                     })
                     .map(player => (
                       <div key={player.id} className="player-row">
-                        <span className={`pos-badge ${player.position}`}>{player.subPosition || player.position}</span>
+                        <span className={`pos-badge ${player.position}`}>{player.position}</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Salário: {formatCurrency(player.salary)}/sem</span>
@@ -1721,8 +1708,7 @@ const AppContent: React.FC = () => {
                   if (!searchedClub) return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Selecione um clube para visualizar o elenco.</p>;
                   
                   const filteredSquad = searchedClub.squad.filter(p => {
-                    const filterPos = marketPosFilter === 'GK' ? 'GOL' : marketPosFilter;
-                    return marketPosFilter === 'ALL' || p.subPosition === filterPos;
+                    return marketPosFilter === 'ALL' || p.position === marketPosFilter;
                   });
 
                   return (
@@ -1730,7 +1716,7 @@ const AppContent: React.FC = () => {
                       <div className="card-title">Elenco do {searchedClub.name}</div>
                       {filteredSquad.map(player => (
                         <div key={player.id} className="player-row">
-                          <span className={`pos-badge ${player.position}`}>{player.subPosition || player.position}</span>
+                          <span className={`pos-badge ${player.position}`}>{player.position}</span>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                             <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Valor: {formatCurrency(player.value)}</span>

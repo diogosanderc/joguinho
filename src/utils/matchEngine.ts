@@ -1,4 +1,8 @@
-import type { Player, Club } from '../data/database';
+import type { Player, Club, PlayerPosition } from '../data/database';
+
+const DEFENSE_POSITIONS: PlayerPosition[] = ['ZAG', 'LD', 'LE'];
+const MIDFIELD_POSITIONS: PlayerPosition[] = ['VOL', 'MEI'];
+const ATTACK_POSITIONS: PlayerPosition[] = ['PON', 'CA'];
 
 export interface MatchEvent {
   minute: number;
@@ -24,18 +28,16 @@ export interface MatchResult {
   attendance?: number;
 }
 
-// Auto-selects 11 starters for non-player clubs (default 4-4-2)
+// Auto-selects 11 starters for non-player clubs (default 4-4-2: 2 ZAG, 1 LD, 1 LE, 2 VOL, 2 MEI, 2 CA)
 export const getAutoStarters = (club: Club): Player[] => {
-  const gks = club.squad.filter(p => p.position === 'GK' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-  const dfs = club.squad.filter(p => p.position === 'DF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-  const mfs = club.squad.filter(p => p.position === 'MF' && !p.isInjured).sort((a, b) => b.rating - a.rating);
-  const fws = club.squad.filter(p => p.position === 'FW' && !p.isInjured).sort((a, b) => b.rating - a.rating);
+  const fit = (pos: PlayerPosition) => club.squad.filter(p => p.position === pos && !p.isInjured).sort((a, b) => b.rating - a.rating);
 
   const starters: Player[] = [];
-  if (gks[0]) starters.push(gks[0]);
-  for (let i = 0; i < Math.min(4, dfs.length); i++) starters.push(dfs[i]);
-  for (let i = 0; i < Math.min(4, mfs.length); i++) starters.push(mfs[i]);
-  for (let i = 0; i < Math.min(2, fws.length); i++) starters.push(fws[i]);
+  const targets: [PlayerPosition, number][] = [['GOL', 1], ['ZAG', 2], ['LD', 1], ['LE', 1], ['VOL', 2], ['MEI', 2], ['CA', 2]];
+  targets.forEach(([pos, count]) => {
+    const pool = fit(pos);
+    for (let i = 0; i < Math.min(count, pool.length); i++) starters.push(pool[i]);
+  });
 
   // If we don't have enough players (unlikely), fill with anyone who is fit
   if (starters.length < 11) {
@@ -51,10 +53,10 @@ export const getAutoStarters = (club: Club): Player[] => {
 
 // Calculate defensive, midfield, and attacking forces of a team
 export const calculateTeamForces = (starters: Player[]) => {
-  const gk = starters.find(p => p.position === 'GK') || starters[0];
-  const dfs = starters.filter(p => p.position === 'DF');
-  const mfs = starters.filter(p => p.position === 'MF');
-  const fws = starters.filter(p => p.position === 'FW');
+  const gk = starters.find(p => p.position === 'GOL') || starters[0];
+  const dfs = starters.filter(p => DEFENSE_POSITIONS.includes(p.position));
+  const mfs = starters.filter(p => MIDFIELD_POSITIONS.includes(p.position));
+  const fws = starters.filter(p => ATTACK_POSITIONS.includes(p.position));
 
   const gkRating = gk ? gk.rating : 40;
   
@@ -124,8 +126,8 @@ export const simulateMatch = (
   }
 
   // Star players boost: count star attackers/midfielders to boost attack forces
-  const homeStarBoost = homeStarters.filter(p => p.isStar && (p.position === 'FW' || p.position === 'MF')).length;
-  const awayStarBoost = awayStarters.filter(p => p.isStar && (p.position === 'FW' || p.position === 'MF')).length;
+  const homeStarBoost = homeStarters.filter(p => p.isStar && [...ATTACK_POSITIONS, ...MIDFIELD_POSITIONS].includes(p.position)).length;
+  const awayStarBoost = awayStarters.filter(p => p.isStar && [...ATTACK_POSITIONS, ...MIDFIELD_POSITIONS].includes(p.position)).length;
   homeAtt *= (1.0 + homeStarBoost * 0.06);
   awayAtt *= (1.0 + awayStarBoost * 0.06);
 
@@ -227,7 +229,7 @@ export const simulateMatch = (
         // Let's decide if it's a Goal, Saved, or Miss
         const attackRoll = Math.random();
         if (attackRoll < attackChance * homeConversionRate) { // Elastic conversion applied\n          homeScore++;
-          const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
+          const scorer = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI']);
           events.push({
             minute: min,
             type: 'GOAL',
@@ -236,7 +238,7 @@ export const simulateMatch = (
             description: `Gol do ${homeClub.name}! ${scorer.name} chuta forte de dentro da área sem chances para o goleiro!`
           });
         } else if (attackRoll < attackChance * 0.55) { // Saved
-          const shooter = choosePlayer(homeStarters, ['FW', 'MF', 'DF']);
+          const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
           events.push({
             minute: min,
             type: 'SHOT_SAVED',
@@ -246,7 +248,7 @@ export const simulateMatch = (
           });
           homeStats.corners++;
         } else { // Miss
-          const shooter = choosePlayer(homeStarters, ['FW', 'MF', 'DF']);
+          const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
           events.push({
             minute: min,
             type: 'MISS',
@@ -263,7 +265,7 @@ export const simulateMatch = (
         
         const attackRoll = Math.random();
         if (attackRoll < attackChance * awayConversionRate) { // Goal!\n          awayScore++;
-          const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
+          const scorer = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI']);
           events.push({
             minute: min,
             type: 'GOAL',
@@ -272,7 +274,7 @@ export const simulateMatch = (
             description: `Gol do ${awayClub.name}! ${scorer.name} aproveita o rebote da zaga e empurra para a rede!`
           });
         } else if (attackRoll < attackChance * 0.5) { // Saved
-          const shooter = choosePlayer(awayStarters, ['FW', 'MF', 'DF']);
+          const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
           events.push({
             minute: min,
             type: 'SHOT_SAVED',
@@ -282,7 +284,7 @@ export const simulateMatch = (
           });
           awayStats.corners++;
         } else { // Miss
-          const shooter = choosePlayer(awayStarters, ['FW', 'MF', 'DF']);
+          const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
           events.push({
             minute: min,
             type: 'MISS',
@@ -306,7 +308,7 @@ export const simulateMatch = (
       const cardRoll = Math.random();
       
       if (cardRoll < 0.25) { // Yellow Card
-        const player = choosePlayer(offendingStarters, ['DF', 'MF']);
+        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI']);
         const cards = (yellowCards[player.id] || 0) + 1;
         yellowCards[player.id] = cards;
 
@@ -330,7 +332,7 @@ export const simulateMatch = (
           });
         }
       } else if (cardRoll < 0.28) { // Direct Red Card (very rare)
-        const player = choosePlayer(offendingStarters, ['DF', 'MF']);
+        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI']);
         redCarded.add(player.id);
         events.push({
           minute: min,
@@ -370,7 +372,7 @@ export const simulateMatch = (
     const randomSecondHalfMin = Math.floor(Math.random() * 40) + 46;
     if (Math.random() < homeWinChance) {
       homeScore++;
-      const scorer = choosePlayer(homeStarters, ['FW', 'MF']);
+      const scorer = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI']);
       events.push({
         minute: randomSecondHalfMin,
         type: 'GOAL',
@@ -380,7 +382,7 @@ export const simulateMatch = (
       });
     } else {
       awayScore++;
-      const scorer = choosePlayer(awayStarters, ['FW', 'MF']);
+      const scorer = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI']);
       events.push({
         minute: randomSecondHalfMin,
         type: 'GOAL',
