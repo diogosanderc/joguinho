@@ -1530,7 +1530,8 @@ export const STAR_PLAYERS: Record<string, { name: string; position: PlayerPositi
     { name: "José Manuel López", position: "CA", rating: 84, age: 25 },
     { name: "Ramón Sosa", position: "CA", rating: 80, age: 26 },
     { name: "Paulinho", position: "CA", rating: 79, age: 26 },
-    { name: "Allan", position: "CA", rating: 80, age: 22 }
+    { name: "Allan", position: "CA", rating: 80, age: 22 },
+    { name: "Vitor Roque", position: "CA", rating: 85, age: 22 }
   ],
   paysandu: [
     { name: "Jean Drosny", position: "GOL", rating: 63 },
