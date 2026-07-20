@@ -55,6 +55,23 @@ const AppContent: React.FC = () => {
   const [loanTermIdx, setLoanTermIdx] = useState(2); // default 36 rounds
   const [loanPurposeIdx, setLoanPurposeIdx] = useState(0);
 
+  // Snap the selected loan amount down whenever it stops fitting the club's credit limit
+  // (score dropped, a loan was taken, etc.) -- otherwise the form keeps a now-unaffordable
+  // amount selected, and it's not obvious from the button alone that it's disabled.
+  useEffect(() => {
+    if (!userClub) return;
+    const score = userClub.financialScore ?? 70;
+    const multiplier = getCreditMultiplier(score);
+    const creditLimit = (userClub.lastSeasonRevenue ?? 1000000) * multiplier;
+    const outstandingDebt = (userClub.loans ?? []).reduce((sum, l) => sum + l.balance, 0);
+    const availableCredit = Math.max(0, creditLimit - outstandingDebt);
+    if (LOAN_AMOUNTS[loanAmountIdx] > availableCredit) {
+      const affordableIdx = LOAN_AMOUNTS.reduce((best, amt, idx) => (amt <= availableCredit ? idx : best), -1);
+      setLoanAmountIdx(affordableIdx >= 0 ? affordableIdx : 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userClub?.financialScore, userClub?.lastSeasonRevenue, userClub?.loans]);
+
   // Match Simulation variables
   const [simMinute, setSimMinute] = useState(0);
   const [simScoreHome, setSimScoreHome] = useState(0);
@@ -2779,17 +2796,26 @@ const AppContent: React.FC = () => {
                         <div style={{ marginBottom: '10px' }}>
                           <span className="stat-label">Valor Solicitado</span>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                            {LOAN_AMOUNTS.map((amt, idx) => (
-                              <button
-                                key={amt}
-                                onClick={() => setLoanAmountIdx(idx)}
-                                disabled={amt > availableCredit}
-                                className={`sub-tab-btn ${loanAmountIdx === idx ? 'active' : ''}`}
-                                style={{ opacity: amt > availableCredit ? 0.35 : 1, fontSize: '0.7rem', padding: '6px 8px' }}
-                              >
-                                {formatCurrency(amt)}
-                              </button>
-                            ))}
+                            {LOAN_AMOUNTS.map((amt, idx) => {
+                              const overLimit = amt > availableCredit;
+                              return (
+                                <button
+                                  key={amt}
+                                  onClick={() => setLoanAmountIdx(idx)}
+                                  disabled={overLimit}
+                                  className={`sub-tab-btn ${loanAmountIdx === idx && !overLimit ? 'active' : ''}`}
+                                  style={{
+                                    opacity: overLimit ? 0.35 : 1,
+                                    fontSize: '0.7rem',
+                                    padding: '6px 8px',
+                                    textDecoration: overLimit ? 'line-through' : 'none'
+                                  }}
+                                  title={overLimit ? 'Acima do limite disponível' : undefined}
+                                >
+                                  {formatCurrency(amt)}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
