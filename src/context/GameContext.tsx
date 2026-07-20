@@ -3,7 +3,7 @@ import { initializeClubs, formatCurrency, getPositionGroup } from '../data/datab
 import type { Player, Club, PlayerPosition } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters } from '../utils/matchEngine';
 import type { MatchResult } from '../utils/matchEngine';
-import { getBaseInterestRate, getCreditMultiplier, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
+import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
 import type { Loan } from '../utils/loanEngine';
 
 export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
@@ -496,30 +496,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // "IA também usa empréstimos, e pode quebrar" rule honest if that ever changes).
       if (club.id !== userClubId && finances < 0) {
         const aiRate = getBaseInterestRate(financialScore);
-        const aiBlocked = lateStrikes >= 3 && financialScore < 70;
-        if (aiRate !== null && !aiBlocked) {
-          const aiMultiplier = getCreditMultiplier(financialScore);
-          const aiLimit = (club.lastSeasonRevenue ?? 1000000) * aiMultiplier;
-          const aiOutstanding = loans.reduce((sum, l) => sum + l.balance, 0);
-          const aiAvailable = Math.max(0, aiLimit - aiOutstanding);
-          const needed = Math.min(aiAvailable, Math.round(Math.abs(finances) * 1.5));
-          if (needed > 100000) {
-            const aiTerm = 36;
-            const aiInstallment = calculateInstallment(needed, aiRate, aiTerm);
-            loans.push({
-              id: `loan_ai_${club.id}_${Date.now()}`,
-              principal: needed,
-              balance: needed,
-              ratePerRound: aiRate,
-              installment: aiInstallment,
-              totalRounds: aiTerm,
-              roundsPaid: 0,
-              lateStreak: 0,
-              purpose: 'Equilíbrio de caixa',
-              startedYear: currentYear
-            });
-            finances += needed;
-          }
+        const aiMultiplier = getCreditMultiplier(financialScore);
+        const aiLimit = (club.lastSeasonRevenue ?? 1000000) * aiMultiplier;
+        const aiOutstanding = loans.reduce((sum, l) => sum + l.balance, 0);
+        const aiAvailable = Math.max(0, aiLimit - aiOutstanding);
+        const needed = Math.min(aiAvailable, Math.round(Math.abs(finances) * 1.5));
+        if (needed > 100000) {
+          const aiTerm = 36;
+          const aiInstallment = calculateInstallment(needed, aiRate, aiTerm);
+          loans.push({
+            id: `loan_ai_${club.id}_${Date.now()}`,
+            principal: needed,
+            balance: needed,
+            ratePerRound: aiRate,
+            installment: aiInstallment,
+            totalRounds: aiTerm,
+            roundsPaid: 0,
+            lateStreak: 0,
+            purpose: 'Equilíbrio de caixa',
+            startedYear: currentYear
+          });
+          finances += needed;
         }
       }
 
@@ -1612,25 +1609,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!userClub || !userClubId) return;
 
     const score = userClub.financialScore ?? 70;
-    const lateStrikes = userClub.lateStrikes ?? 0;
-    if (lateStrikes >= 3 && score < 70) {
-      alert('O banco bloqueou novos empréstimos após parcelas atrasadas recorrentes. Melhore seu Score Financeiro para recuperar o crédito.');
-      return;
-    }
 
     const bankEvent = getBankEventForYear(currentYear);
     const baseRate = getBaseInterestRate(score);
-    if (baseRate === null) {
-      alert('Empréstimo recusado! Seu Score Financeiro está baixo demais para o banco aprovar crédito.');
-      return;
-    }
     const specialDiscount = bankEvent.specialLine && score >= 90 ? 0.002 : 0;
     const ratePerRound = Math.max(0.002, baseRate + bankEvent.rateModifier - specialDiscount);
 
-    const multiplier = getCreditMultiplier(score);
-    const creditLimit = (userClub.lastSeasonRevenue ?? 1000000) * multiplier;
     const outstandingDebt = (userClub.loans ?? []).reduce((sum, l) => sum + l.balance, 0);
-    const availableCredit = Math.max(0, creditLimit - outstandingDebt);
+    const availableCredit = getAvailableCredit(score, userClub.lastSeasonRevenue ?? 1000000, outstandingDebt);
     if (amount > availableCredit) {
       alert(`Limite de crédito insuficiente! Disponível: ${formatCurrency(Math.round(availableCredit))}.`);
       return;

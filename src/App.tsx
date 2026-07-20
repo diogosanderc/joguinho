@@ -4,7 +4,7 @@ import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
-import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getCreditMultiplier, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
+import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -61,10 +61,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!userClub) return;
     const score = userClub.financialScore ?? 70;
-    const multiplier = getCreditMultiplier(score);
-    const creditLimit = (userClub.lastSeasonRevenue ?? 1000000) * multiplier;
     const outstandingDebt = (userClub.loans ?? []).reduce((sum, l) => sum + l.balance, 0);
-    const availableCredit = Math.max(0, creditLimit - outstandingDebt);
+    const availableCredit = getAvailableCredit(score, userClub.lastSeasonRevenue ?? 1000000, outstandingDebt);
     if (LOAN_AMOUNTS[loanAmountIdx] > availableCredit) {
       const affordableIdx = LOAN_AMOUNTS.reduce((best, amt, idx) => (amt <= availableCredit ? idx : best), -1);
       setLoanAmountIdx(affordableIdx >= 0 ? affordableIdx : 0);
@@ -2753,18 +2751,15 @@ const AppContent: React.FC = () => {
                 const scoreLabel = getScoreLabel(score);
                 const bankEvent = getBankEventForYear(currentYear);
                 const baseRate = getBaseInterestRate(score);
-                const multiplier = getCreditMultiplier(score);
-                const creditLimit = (userClub.lastSeasonRevenue ?? 1000000) * multiplier;
                 const outstandingDebt = (userClub.loans ?? []).reduce((s, l) => s + l.balance, 0);
-                const availableCredit = Math.max(0, creditLimit - outstandingDebt);
-                const blocked = (userClub.lateStrikes ?? 0) >= 3 && score < 70;
+                const availableCredit = getAvailableCredit(score, userClub.lastSeasonRevenue ?? 1000000, outstandingDebt);
 
                 const amount = LOAN_AMOUNTS[loanAmountIdx];
                 const term = LOAN_TERMS[loanTermIdx];
                 const specialDiscount = bankEvent.specialLine && score >= 90 ? 0.002 : 0;
-                const ratePerRound = baseRate !== null ? Math.max(0.002, baseRate + bankEvent.rateModifier - specialDiscount) : null;
-                const installment = ratePerRound !== null ? calculateInstallment(amount, ratePerRound, term) : null;
-                const totalPaid = installment !== null ? installment * term : null;
+                const ratePerRound = Math.max(0.002, baseRate + bankEvent.rateModifier - specialDiscount);
+                const installment = calculateInstallment(amount, ratePerRound, term);
+                const totalPaid = installment * term;
 
                 const scoreColor = score >= 80 ? 'var(--accent-green)' : score >= 60 ? 'var(--accent-gold)' : 'var(--accent-red)';
 
@@ -2787,12 +2782,15 @@ const AppContent: React.FC = () => {
                       </div>
                     )}
 
-                    {blocked ? (
-                      <div style={{ fontSize: '0.78rem', color: 'var(--accent-red)', padding: '10px', background: 'rgba(255,23,68,0.06)', borderRadius: '8px', border: '1px solid rgba(255,23,68,0.2)' }}>
-                        🚫 O banco bloqueou novos empréstimos por atrasos recorrentes. Melhore seu Score Financeiro pagando as parcelas em dia.
-                      </div>
-                    ) : (
-                      <>
+                    {(() => {
+                      const wasBlockedBefore = (userClub.lateStrikes ?? 0) >= 3;
+                      return wasBlockedBefore ? (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--accent-red)', marginBottom: '10px', padding: '8px 10px', background: 'rgba(255,23,68,0.06)', borderRadius: '8px', border: '1px solid rgba(255,23,68,0.15)' }}>
+                          ⚠️ Histórico de atrasos recorrentes -- o banco ainda empresta, mas a taxas bem mais altas.
+                        </div>
+                      ) : null;
+                    })()}
+                    <>
                         <div style={{ marginBottom: '10px' }}>
                           <span className="stat-label">Valor Solicitado</span>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
@@ -2846,29 +2844,22 @@ const AppContent: React.FC = () => {
                           </select>
                         </div>
 
-                        {ratePerRound === null ? (
-                          <div style={{ fontSize: '0.78rem', color: 'var(--accent-red)', marginBottom: '10px' }}>
-                            Empréstimo recusado: Score Financeiro baixo demais para o banco aprovar crédito.
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', marginBottom: '12px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Taxa:</span><span>{(ratePerRound * 100).toFixed(2)}% por rodada</span></div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Parcela:</span><span>{formatCurrency(Math.round(installment!))}</span></div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Total pago:</span><span>{formatCurrency(Math.round(totalPaid!))}</span></div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Juros totais:</span><span>{formatCurrency(Math.round(totalPaid! - amount))}</span></div>
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', marginBottom: '12px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Taxa:</span><span>{(ratePerRound * 100).toFixed(2)}% por rodada</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Parcela:</span><span>{formatCurrency(Math.round(installment))}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Total pago:</span><span>{formatCurrency(Math.round(totalPaid))}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Juros totais:</span><span>{formatCurrency(Math.round(totalPaid - amount))}</span></div>
+                        </div>
 
                         <button
                           onClick={() => requestLoan(amount, term, LOAN_PURPOSES[loanPurposeIdx])}
-                          disabled={ratePerRound === null || amount > availableCredit}
+                          disabled={amount > availableCredit}
                           className="btn btn-secondary"
-                          style={{ width: '100%', fontSize: '0.8rem', padding: '10px', opacity: (ratePerRound === null || amount > availableCredit) ? 0.4 : 1 }}
+                          style={{ width: '100%', fontSize: '0.8rem', padding: '10px', opacity: amount > availableCredit ? 0.4 : 1 }}
                         >
                           💰 Solicitar Empréstimo
                         </button>
                       </>
-                    )}
 
                     {(userClub.loans ?? []).length > 0 && (
                       <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

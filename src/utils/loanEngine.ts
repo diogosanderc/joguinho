@@ -37,16 +37,18 @@ export const getScoreLabel = (score: number): string => {
   return 'Quase Falindo';
 };
 
-// Base monthly/round rate by score tier, before any random bank-event modifier.
-// Below 35 the bank simply refuses (null).
-export const getBaseInterestRate = (score: number): number | null => {
+// Base monthly/round rate by score tier, before any random bank-event modifier. The bank
+// never fully closes the door on a loan -- a club in real trouble needs a way to dig itself
+// out, so even a terrible score just means a brutal rate instead of an outright refusal.
+export const getBaseInterestRate = (score: number): number => {
   if (score >= 90) return 0.0065;
   if (score >= 80) return 0.0085;
   if (score >= 70) return 0.0105;
   if (score >= 60) return 0.0140;
   if (score >= 50) return 0.0180;
   if (score >= 35) return 0.0230;
-  return null;
+  if (score >= 20) return 0.0300;
+  return 0.0380;
 };
 
 export const getCreditMultiplier = (score: number): number => {
@@ -56,6 +58,14 @@ export const getCreditMultiplier = (score: number): number => {
   if (score >= 60) return 0.75;
   if (score >= 50) return 0.5;
   return 0.3;
+};
+
+// Credit actually available to borrow right now. Guarantees at least the smallest loan
+// denomination is always within reach, no matter how small the revenue or how bad the score --
+// a club in real trouble needs a way to try to dig itself out, not a door slammed shut.
+export const getAvailableCredit = (financialScore: number, lastSeasonRevenue: number, outstandingDebt: number): number => {
+  const creditLimit = lastSeasonRevenue * getCreditMultiplier(financialScore);
+  return Math.max(LOAN_AMOUNTS[0], creditLimit - outstandingDebt);
 };
 
 // Fixed installment for a Price-system loan.
