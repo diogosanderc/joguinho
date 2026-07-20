@@ -200,17 +200,35 @@ export const simulateMatch = (
     return { scorer: choosePlayer(starters, ['CA', 'PON', 'VOL', 'MEI']), isHeader: false };
   };
 
+  // VAR check for open-play goals: 5% get reviewed for offside, of which 3-in-5 (3% overall)
+  // are confirmed offside and disallowed, and 2-in-5 (2% overall) are confirmed as valid goals.
+  const checkGoalWithVar = (): { reviewed: boolean; disallowed: boolean } => {
+    const reviewed = Math.random() < 0.05;
+    const disallowed = reviewed && Math.random() < 0.6;
+    return { reviewed, disallowed };
+  };
+
   // Resolves a penalty kick: the designated taker (if set and available) takes it,
   // otherwise the best available outfield shooter steps up.
-  const takePenalty = (club: Club, starters: Player[]): { taker: Player; scored: boolean; saved: boolean } => {
+  // Baseline (out of every 5 penalties): ~1 saved by the keeper, ~1 off target, ~3 scored.
+  // Rating nudges the odds a bit either way, and taking it at home makes scoring a bit more likely.
+  const takePenalty = (club: Club, starters: Player[], isHome: boolean): { taker: Player; scored: boolean; saved: boolean } => {
     const eligible = starters.filter(p => p.position !== 'GOL' && !redCarded.has(p.id));
     const pool = eligible.length > 0 ? eligible : starters.filter(p => !redCarded.has(p.id));
     const designated = club.penaltyTakerId ? pool.find(p => p.id === club.penaltyTakerId) : undefined;
     const taker = designated || choosePlayer(pool.length > 0 ? pool : starters, ['CA', 'PON', 'MEI', 'VOL']);
 
-    const successChance = Math.min(0.92, Math.max(0.55, 0.75 + (taker.rating - 75) * 0.004));
-    const scored = Math.random() < successChance;
-    const saved = !scored && Math.random() < 0.6; // otherwise it goes wide/over
+    const ratingAdj = (taker.rating - 75) * 0.002;
+    const homeBonus = isHome ? 0.05 : 0;
+
+    let missChance = 0.20 - ratingAdj * 0.5 - homeBonus * 0.3; // ~1 in 5, off target
+    let savedChance = 0.20 + Math.random() * 0.20 - ratingAdj - homeBonus * 0.5; // 1-2 in 5, keeper saves
+    missChance = Math.max(0.08, missChance);
+    savedChance = Math.max(0.10, savedChance);
+
+    const roll = Math.random();
+    const scored = roll >= missChance + savedChance;
+    const saved = !scored && roll < savedChance;
 
     return { taker, scored, saved };
   };
@@ -278,7 +296,7 @@ export const simulateMatch = (
 
         // A fraction of attacking sequences end in a penalty instead of a normal shot
         if (Math.random() < 0.06) {
-          const { taker, scored, saved } = takePenalty(homeClub, homeStarters);
+          const { taker, scored, saved } = takePenalty(homeClub, homeStarters, true);
           if (scored) {
             homeScore++;
             events.push({ minute: min, type: 'GOAL', player: taker.name, clubId: homeClub.id, isPenalty: true,
@@ -298,19 +316,32 @@ export const simulateMatch = (
           // Let's decide if it's a Goal, Saved, or Miss
           const attackRoll = Math.random();
           if (attackRoll < attackChance * homeConversionRate) { // Elastic conversion applied
-            homeScore++;
             const { scorer, isHeader } = chooseGoalScorer(homeStarters);
-            events.push({
-              minute: min,
-              type: 'GOAL',
-              player: scorer.name,
-              clubId: homeClub.id,
-              isHeader,
-              description: isHeader
-                ? `Golaço de cabeça! Após cobrança de escanteio, ${scorer.name} sobe mais que a marcação e testa para o gol do ${homeClub.name}!`
-                : `Gol do ${homeClub.name}! ${scorer.name} chuta forte de dentro da área sem chances para o goleiro!`
-            });
-            if (isHeader) homeStats.corners++;
+            const { reviewed, disallowed } = checkGoalWithVar();
+            if (disallowed) {
+              events.push({
+                minute: min,
+                type: 'MISS',
+                player: scorer.name,
+                clubId: homeClub.id,
+                description: `Gol anulado! O VAR foi acionado e confirmou impedimento na jogada de ${scorer.name}.`
+              });
+            } else {
+              homeScore++;
+              events.push({
+                minute: min,
+                type: 'GOAL',
+                player: scorer.name,
+                clubId: homeClub.id,
+                isHeader,
+                description: reviewed
+                  ? `Gol! Após revisão do VAR, a arbitragem confirma o lance: ${scorer.name} balança as redes para o ${homeClub.name}!`
+                  : isHeader
+                    ? `Golaço de cabeça! Após cobrança de escanteio, ${scorer.name} sobe mais que a marcação e testa para o gol do ${homeClub.name}!`
+                    : `Gol do ${homeClub.name}! ${scorer.name} chuta forte de dentro da área sem chances para o goleiro!`
+              });
+              if (isHeader) homeStats.corners++;
+            }
           } else if (attackRoll < attackChance * 0.55) { // Saved
             const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
             events.push({
@@ -337,7 +368,7 @@ export const simulateMatch = (
         awayStats.shots++;
 
         if (Math.random() < 0.06) {
-          const { taker, scored, saved } = takePenalty(awayClub, awayStarters);
+          const { taker, scored, saved } = takePenalty(awayClub, awayStarters, false);
           if (scored) {
             awayScore++;
             events.push({ minute: min, type: 'GOAL', player: taker.name, clubId: awayClub.id, isPenalty: true,
@@ -355,19 +386,32 @@ export const simulateMatch = (
 
           const attackRoll = Math.random();
           if (attackRoll < attackChance * awayConversionRate) { // Goal!
-            awayScore++;
             const { scorer, isHeader } = chooseGoalScorer(awayStarters);
-            events.push({
-              minute: min,
-              type: 'GOAL',
-              player: scorer.name,
-              clubId: awayClub.id,
-              isHeader,
-              description: isHeader
-                ? `Golaço de cabeça! Após cobrança de escanteio, ${scorer.name} sobe mais que a marcação e testa para o gol do ${awayClub.name}!`
-                : `Gol do ${awayClub.name}! ${scorer.name} aproveita o rebote da zaga e empurra para a rede!`
-            });
-            if (isHeader) awayStats.corners++;
+            const { reviewed, disallowed } = checkGoalWithVar();
+            if (disallowed) {
+              events.push({
+                minute: min,
+                type: 'MISS',
+                player: scorer.name,
+                clubId: awayClub.id,
+                description: `Gol anulado! O VAR foi acionado e confirmou impedimento na jogada de ${scorer.name}.`
+              });
+            } else {
+              awayScore++;
+              events.push({
+                minute: min,
+                type: 'GOAL',
+                player: scorer.name,
+                clubId: awayClub.id,
+                isHeader,
+                description: reviewed
+                  ? `Gol! Após revisão do VAR, a arbitragem confirma o lance: ${scorer.name} balança as redes para o ${awayClub.name}!`
+                  : isHeader
+                    ? `Golaço de cabeça! Após cobrança de escanteio, ${scorer.name} sobe mais que a marcação e testa para o gol do ${awayClub.name}!`
+                    : `Gol do ${awayClub.name}! ${scorer.name} aproveita o rebote da zaga e empurra para a rede!`
+              });
+              if (isHeader) awayStats.corners++;
+            }
           } else if (attackRoll < attackChance * 0.5) { // Saved
             const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
             events.push({
