@@ -874,9 +874,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           else if (!isMF_FW && p.rating >= 78 && !isRelegated) isStar = true;
         }
 
+        // Any player who scored 10+ goals this season earns a star and a 10% rating
+        // bump for next year, on top of whatever the checks above already decided.
+        let rating = p.rating;
+        if (p.goals >= 10) {
+          isStar = true;
+          rating = Math.min(99, Math.round(p.rating * 1.10));
+        }
+
+        let value = p.value;
+        let salary = p.salary;
+        if (rating !== p.rating) {
+          const ageFactor = p.age < 24 ? 1.3 : p.age > 30 ? 0.7 : 1.0;
+          const posFactor = posGroup === 'FW' ? 1.2 : posGroup === 'GK' ? 0.9 : 1.0;
+          const valBase = Math.pow(rating - 30, 2.5) * 800;
+          value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
+          salary = Math.round(value * 0.005);
+        }
+
         return {
           ...p,
           isStar,
+          rating,
+          value,
+          salary,
           contractLocked: false, // Unlock for next season
           goals: 0,
           yellowCards: 0,

@@ -1036,8 +1036,17 @@ const AppContent: React.FC = () => {
 
         {matchDone && (
           <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', background: '#16181c', flexShrink: 0 }}>
-            <button className="btn btn-primary" onClick={clearCurrentMatch} style={{ height: '44px' }}>
-              Fim de Rodada (Continuar)
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                clearCurrentMatch();
+                setStandingsTab(userClub.division as 'A' | 'B' | 'C');
+                setStatsView('TABLE');
+                setActiveTab(4);
+              }}
+              style={{ height: '44px' }}
+            >
+              Fim de Rodada (Ver Classificação)
             </button>
           </div>
         )}
@@ -2592,14 +2601,15 @@ const AppContent: React.FC = () => {
                     else if (idx >= 16 && standingsTab !== 'C') highlightClass = 'pos-red-highlight'; // Relegation
 
                     return (
-                      <div 
+                      <div
                         key={entry.clubId}
-                        className={`table-row ${isUser ? 'highlighted' : highlightClass}`}
+                        className={`table-row ${highlightClass} ${isUser ? 'user-team-row' : ''}`}
                       >
-                        <span style={{ fontWeight: 800 }}>{idx + 1}</span>
+                        <span style={{ fontWeight: 800 }}>{isUser ? '👉 ' : ''}{idx + 1}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span className="club-badge-mini" style={{ backgroundColor: clubs.find(c=>c.id===entry.clubId)?.primaryColor }} />
                           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.clubName}</span>
+                          {isUser && <span style={{ fontSize: '0.65rem', background: 'var(--accent-gold)', color: 'black', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, flexShrink: 0 }}>VOCÊ</span>}
                         </div>
                         <span>{entry.played}</span>
                         <span>{entry.wins}</span>
