@@ -16,7 +16,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, clearCurrentMatch,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
@@ -627,7 +627,7 @@ const AppContent: React.FC = () => {
             if (userGoals.length === 0) return null;
             return (
               <div style={{ fontSize: '0.68rem', color: '#e8f5e9', textAlign: 'center', fontStyle: 'italic', marginBottom: '4px' }}>
-                ⚽ {userGoals.map(g => `${g.player} ${g.minute}'`).join(', ')}
+                ⚽ {userGoals.map(g => `${g.player} ${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''}`).join(', ')}
               </div>
             );
           })()}
@@ -707,7 +707,7 @@ const AppContent: React.FC = () => {
                     const liveGoals = matchEvents.filter(e => e.type === 'GOAL' && e.minute <= simMinute);
                     const scorersText = liveGoals.map(g => {
                       const tempo = g.minute <= 45 ? '1º' : '2º';
-                      return `${g.player} ${g.minute}' (${tempo})`;
+                      return `${g.player} ${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''} (${tempo})`;
                     }).join(', ');
 
                     const isUserMatch = match.homeId === userClubId || match.awayId === userClubId;
@@ -1469,6 +1469,7 @@ const AppContent: React.FC = () => {
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          {userClub.penaltyTakerId === player.id && <span style={{ fontSize: '0.75rem' }} title="Cobrador de Pênalti">🎯</span>}
                           {player.contractLocked && <span style={{ fontSize: '0.75rem' }} title="Contrato Trancado">🔒</span>}
                           {player.isInjured && <span style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>DM ({player.injuryWeeks}s)</span>}
                           {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
@@ -1499,6 +1500,21 @@ const AppContent: React.FC = () => {
                           <span>Contrato restante: <strong style={{ color: 'white' }}>{remainingWeeks} rodadas {player.contractLockYears ? `(${player.contractLockYears} Anos Trancado)` : ''}</strong></span>
                           <span>Salário: <strong style={{ color: 'white' }}>{formatCurrency(player.salary)}/sem</strong></span>
                         </div>
+                        {player.position !== 'GOL' && (
+                          <button
+                            onClick={() => setPenaltyTaker(player.id)}
+                            className="btn btn-secondary"
+                            style={{
+                              padding: '6px',
+                              fontSize: '0.72rem',
+                              background: userClub.penaltyTakerId === player.id ? 'rgba(255, 193, 7, 0.15)' : 'rgba(255,255,255,0.03)',
+                              border: userClub.penaltyTakerId === player.id ? '1px solid var(--accent-gold)' : '1px solid rgba(255,255,255,0.08)',
+                              color: userClub.penaltyTakerId === player.id ? 'var(--accent-gold)' : '#9ca3af'
+                            }}
+                          >
+                            🎯 {userClub.penaltyTakerId === player.id ? 'Cobrador de Pênalti (atual)' : 'Definir como Cobrador de Pênalti'}
+                          </button>
+                        )}
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => { renewContract(player.id, '6M'); setSelectedManagePlayerId(null); }}

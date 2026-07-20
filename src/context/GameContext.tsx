@@ -86,6 +86,7 @@ interface GameContextType {
   renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y' | 'LOCK_6M' | 'LOCK_1Y') => void;
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
   updateTicketPrice: (delta: number) => void;
+  setPenaltyTaker: (playerId: string) => void;
   loadGame: (saveData: any) => void;
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
   cheatFinances: () => void;
@@ -1458,6 +1459,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  // Toggle the user club's designated penalty taker (click again to unset)
+  const setPenaltyTaker = (playerId: string) => {
+    if (!userClubId) return;
+    setClubs(prev => prev.map(c => {
+      if (c.id !== userClubId) return c;
+      return { ...c, penaltyTakerId: c.penaltyTakerId === playerId ? undefined : playerId };
+    }));
+  };
+
   const loadGame = (data: any) => {
     if (!data) return;
     setGameState(data.gameState);
@@ -1516,6 +1526,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyPlayerFromClub,
       manualSave,
       updateTicketPrice,
+      setPenaltyTaker,
       renewContract,
       acceptIncomingProposal,
       loadGame,

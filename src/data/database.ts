@@ -46,6 +46,7 @@ export interface Club {
   reputation: number; // 1-100
   isPlayerClub: boolean;
   squad: Player[];
+  penaltyTakerId?: string; // Player designated to take penalty kicks
 }
 
 export interface ClubDefinition {

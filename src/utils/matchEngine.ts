@@ -9,6 +9,8 @@ export interface MatchEvent {
   player?: string;
   clubId: string;
   description: string;
+  isPenalty?: boolean;
+  isHeader?: boolean;
 }
 
 export interface MatchStats {
@@ -183,6 +185,36 @@ export const simulateMatch = (
     return list[list.length - 1];
   };
 
+  // Picks who scores an open-play goal. Most goals come from the attacking positions,
+  // but ~15% are headers off a corner/set piece, where defenders (mainly ZAG) shine.
+  const chooseGoalScorer = (starters: Player[]): { scorer: Player; isHeader: boolean } => {
+    const isHeader = Math.random() < 0.15;
+    if (isHeader) {
+      const defenders = starters.filter(p => (p.position === 'ZAG' || p.position === 'LD' || p.position === 'LE') && !redCarded.has(p.id));
+      if (defenders.length > 0) {
+        // Center-backs win the aerial battle far more often than fullbacks
+        const weightedPool = defenders.flatMap(p => Array(p.position === 'ZAG' ? 3 : 1).fill(p));
+        return { scorer: choosePlayer(weightedPool), isHeader: true };
+      }
+    }
+    return { scorer: choosePlayer(starters, ['CA', 'PON', 'VOL', 'MEI']), isHeader: false };
+  };
+
+  // Resolves a penalty kick: the designated taker (if set and available) takes it,
+  // otherwise the best available outfield shooter steps up.
+  const takePenalty = (club: Club, starters: Player[]): { taker: Player; scored: boolean; saved: boolean } => {
+    const eligible = starters.filter(p => p.position !== 'GOL' && !redCarded.has(p.id));
+    const pool = eligible.length > 0 ? eligible : starters.filter(p => !redCarded.has(p.id));
+    const designated = club.penaltyTakerId ? pool.find(p => p.id === club.penaltyTakerId) : undefined;
+    const taker = designated || choosePlayer(pool.length > 0 ? pool : starters, ['CA', 'PON', 'MEI', 'VOL']);
+
+    const successChance = Math.min(0.92, Math.max(0.55, 0.75 + (taker.rating - 75) * 0.004));
+    const scored = Math.random() < successChance;
+    const saved = !scored && Math.random() < 0.6; // otherwise it goes wide/over
+
+    return { taker, scored, saved };
+  };
+
   // Red card penalty handler
   const applyRedCardPenalty = (isHome: boolean) => {
     if (isHome) {
@@ -243,77 +275,119 @@ export const simulateMatch = (
       if (isHomeAttack) {
         // Home attacks! Compare Home Attack vs Away Defense
         homeStats.shots++;
-        
-        // AMPLIFY RATING INFLUENCE: Use a power factor to expand the difference between forces
-        const baseAttackChance = homeAtt / (homeAtt + awayDef);
-        const attackChance = Math.pow(baseAttackChance, 1.6); // Expands the advantage of higher ratings
-        
-        // Let's decide if it's a Goal, Saved, or Miss
-        const attackRoll = Math.random();
-        if (attackRoll < attackChance * homeConversionRate) { // Elastic conversion applied\n          homeScore++;
-          const scorer = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI']);
-          events.push({
-            minute: min,
-            type: 'GOAL',
-            player: scorer.name,
-            clubId: homeClub.id,
-            description: `Gol do ${homeClub.name}! ${scorer.name} chuta forte de dentro da área sem chances para o goleiro!`
-          });
-        } else if (attackRoll < attackChance * 0.55) { // Saved
-          const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
-          events.push({
-            minute: min,
-            type: 'SHOT_SAVED',
-            player: shooter.name,
-            clubId: homeClub.id,
-            description: `Defesaça! ${shooter.name} bate colocado e o goleiro do ${awayClub.name} espalma para escanteio.`
-          });
-          homeStats.corners++;
-        } else { // Miss
-          const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
-          events.push({
-            minute: min,
-            type: 'MISS',
-            player: shooter.name,
-            clubId: homeClub.id,
-            description: `${shooter.name} finaliza para fora após cruzamento na área.`
-          });
+
+        // A fraction of attacking sequences end in a penalty instead of a normal shot
+        if (Math.random() < 0.06) {
+          const { taker, scored, saved } = takePenalty(homeClub, homeStarters);
+          if (scored) {
+            homeScore++;
+            events.push({ minute: min, type: 'GOAL', player: taker.name, clubId: homeClub.id, isPenalty: true,
+              description: `Pênalti para o ${homeClub.name}! ${taker.name} cobra com categoria e converte para o gol!` });
+          } else if (saved) {
+            events.push({ minute: min, type: 'SHOT_SAVED', player: taker.name, clubId: homeClub.id, isPenalty: true,
+              description: `Pênalti perdido! O goleiro do ${awayClub.name} adivinha o canto e defende a cobrança de ${taker.name}!` });
+          } else {
+            events.push({ minute: min, type: 'MISS', player: taker.name, clubId: homeClub.id, isPenalty: true,
+              description: `Pênalti desperdiçado! ${taker.name} chuta para fora e desperdiça a chance!` });
+          }
+        } else {
+          // AMPLIFY RATING INFLUENCE: Use a power factor to expand the difference between forces
+          const baseAttackChance = homeAtt / (homeAtt + awayDef);
+          const attackChance = Math.pow(baseAttackChance, 1.6); // Expands the advantage of higher ratings
+
+          // Let's decide if it's a Goal, Saved, or Miss
+          const attackRoll = Math.random();
+          if (attackRoll < attackChance * homeConversionRate) { // Elastic conversion applied
+            homeScore++;
+            const { scorer, isHeader } = chooseGoalScorer(homeStarters);
+            events.push({
+              minute: min,
+              type: 'GOAL',
+              player: scorer.name,
+              clubId: homeClub.id,
+              isHeader,
+              description: isHeader
+                ? `Golaço de cabeça! Após cobrança de escanteio, ${scorer.name} sobe mais que a marcação e testa para o gol do ${homeClub.name}!`
+                : `Gol do ${homeClub.name}! ${scorer.name} chuta forte de dentro da área sem chances para o goleiro!`
+            });
+            if (isHeader) homeStats.corners++;
+          } else if (attackRoll < attackChance * 0.55) { // Saved
+            const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
+            events.push({
+              minute: min,
+              type: 'SHOT_SAVED',
+              player: shooter.name,
+              clubId: homeClub.id,
+              description: `Defesaça! ${shooter.name} bate colocado e o goleiro do ${awayClub.name} espalma para escanteio.`
+            });
+            homeStats.corners++;
+          } else { // Miss
+            const shooter = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
+            events.push({
+              minute: min,
+              type: 'MISS',
+              player: shooter.name,
+              clubId: homeClub.id,
+              description: `${shooter.name} finaliza para fora após cruzamento na área.`
+            });
+          }
         }
       } else {
         // Away attacks! Compare Away Attack vs Home Defense
         awayStats.shots++;
-        const baseAttackChance = awayAtt / (awayAtt + homeDef);
-        const attackChance = Math.pow(baseAttackChance, 1.6);
-        
-        const attackRoll = Math.random();
-        if (attackRoll < attackChance * awayConversionRate) { // Goal!\n          awayScore++;
-          const scorer = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI']);
-          events.push({
-            minute: min,
-            type: 'GOAL',
-            player: scorer.name,
-            clubId: awayClub.id,
-            description: `Gol do ${awayClub.name}! ${scorer.name} aproveita o rebote da zaga e empurra para a rede!`
-          });
-        } else if (attackRoll < attackChance * 0.5) { // Saved
-          const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
-          events.push({
-            minute: min,
-            type: 'SHOT_SAVED',
-            player: shooter.name,
-            clubId: awayClub.id,
-            description: `Incrível! ${shooter.name} cabeceia à queima-roupa e o goleiro do ${homeClub.name} salva com o pé.`
-          });
-          awayStats.corners++;
-        } else { // Miss
-          const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
-          events.push({
-            minute: min,
-            type: 'MISS',
-            player: shooter.name,
-            clubId: awayClub.id,
-            description: `${shooter.name} domina e chuta de longe, a bola passa raspando a trave.`
-          });
+
+        if (Math.random() < 0.06) {
+          const { taker, scored, saved } = takePenalty(awayClub, awayStarters);
+          if (scored) {
+            awayScore++;
+            events.push({ minute: min, type: 'GOAL', player: taker.name, clubId: awayClub.id, isPenalty: true,
+              description: `Pênalti para o ${awayClub.name}! ${taker.name} cobra com categoria e converte para o gol!` });
+          } else if (saved) {
+            events.push({ minute: min, type: 'SHOT_SAVED', player: taker.name, clubId: awayClub.id, isPenalty: true,
+              description: `Pênalti perdido! O goleiro do ${homeClub.name} adivinha o canto e defende a cobrança de ${taker.name}!` });
+          } else {
+            events.push({ minute: min, type: 'MISS', player: taker.name, clubId: awayClub.id, isPenalty: true,
+              description: `Pênalti desperdiçado! ${taker.name} chuta para fora e desperdiça a chance!` });
+          }
+        } else {
+          const baseAttackChance = awayAtt / (awayAtt + homeDef);
+          const attackChance = Math.pow(baseAttackChance, 1.6);
+
+          const attackRoll = Math.random();
+          if (attackRoll < attackChance * awayConversionRate) { // Goal!
+            awayScore++;
+            const { scorer, isHeader } = chooseGoalScorer(awayStarters);
+            events.push({
+              minute: min,
+              type: 'GOAL',
+              player: scorer.name,
+              clubId: awayClub.id,
+              isHeader,
+              description: isHeader
+                ? `Golaço de cabeça! Após cobrança de escanteio, ${scorer.name} sobe mais que a marcação e testa para o gol do ${awayClub.name}!`
+                : `Gol do ${awayClub.name}! ${scorer.name} aproveita o rebote da zaga e empurra para a rede!`
+            });
+            if (isHeader) awayStats.corners++;
+          } else if (attackRoll < attackChance * 0.5) { // Saved
+            const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
+            events.push({
+              minute: min,
+              type: 'SHOT_SAVED',
+              player: shooter.name,
+              clubId: awayClub.id,
+              description: `Incrível! ${shooter.name} cabeceia à queima-roupa e o goleiro do ${homeClub.name} salva com o pé.`
+            });
+            awayStats.corners++;
+          } else { // Miss
+            const shooter = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI', 'ZAG', 'LD', 'LE']);
+            events.push({
+              minute: min,
+              type: 'MISS',
+              player: shooter.name,
+              clubId: awayClub.id,
+              description: `${shooter.name} domina e chuta de longe, a bola passa raspando a trave.`
+            });
+          }
         }
       }
     }
@@ -394,23 +468,29 @@ export const simulateMatch = (
     const randomSecondHalfMin = Math.floor(Math.random() * 40) + 46;
     if (Math.random() < homeWinChance) {
       homeScore++;
-      const scorer = choosePlayer(homeStarters, ['CA', 'PON', 'VOL', 'MEI']);
+      const { scorer, isHeader } = chooseGoalScorer(homeStarters);
       events.push({
         minute: randomSecondHalfMin,
         type: 'GOAL',
         player: scorer.name,
         clubId: homeClub.id,
-        description: `Gol decisivo do ${homeClub.name}! ${scorer.name} aproveita cruzamento aos ${randomSecondHalfMin} minutos do segundo tempo!`
+        isHeader,
+        description: isHeader
+          ? `Gol decisivo de cabeça! ${scorer.name} sobe mais que todo mundo na área e testa para o gol do ${homeClub.name} aos ${randomSecondHalfMin} minutos do segundo tempo!`
+          : `Gol decisivo do ${homeClub.name}! ${scorer.name} aproveita cruzamento aos ${randomSecondHalfMin} minutos do segundo tempo!`
       });
     } else {
       awayScore++;
-      const scorer = choosePlayer(awayStarters, ['CA', 'PON', 'VOL', 'MEI']);
+      const { scorer, isHeader } = chooseGoalScorer(awayStarters);
       events.push({
         minute: randomSecondHalfMin,
         type: 'GOAL',
         player: scorer.name,
         clubId: awayClub.id,
-        description: `Gol importante do ${awayClub.name}! ${scorer.name} escapa no contra-ataque e define a vitória aos ${randomSecondHalfMin} minutos!`
+        isHeader,
+        description: isHeader
+          ? `Gol decisivo de cabeça! ${scorer.name} sobe mais que todo mundo na área e testa para o gol do ${awayClub.name} aos ${randomSecondHalfMin} minutos do segundo tempo!`
+          : `Gol importante do ${awayClub.name}! ${scorer.name} escapa no contra-ataque e define a vitória aos ${randomSecondHalfMin} minutos!`
       });
     }
   }
