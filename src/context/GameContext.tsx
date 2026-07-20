@@ -395,6 +395,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let yellowCards = player.yellowCards;
         let redCards = player.redCards;
         let goals = player.goals;
+        let justInjured = false;
 
         // If player has cards/goals in the simulated match, update them
         if (clubMatch && clubMatch.result) {
@@ -417,6 +418,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             if (ev.type === 'INJURY') {
               isInjured = true;
+              justInjured = true;
               // 70% chance of a light 1-week injury, otherwise 2-4 weeks
               injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
               energy = 100; // recovers fatigue on injury!
@@ -438,6 +440,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Very low chance per round, increasing with age
           if (Math.random() < ageFactor) {
             isInjured = true;
+            justInjured = true;
             injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
             energy = 100; // recovers fatigue on injury!
             pushNews({
@@ -456,11 +459,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (isInjured) {
           energy = 100; // fully recovered when injured
-          if (injuryWeeks > 1) {
-            injuryWeeks--;
-          } else {
-            isInjured = false;
-            injuryWeeks = 0;
+          // A player hurt THIS round keeps their full recovery time — they've already
+          // missed this match's minutes, the countdown for missing future rounds
+          // starts next round, not now.
+          if (!justInjured) {
+            if (injuryWeeks > 1) {
+              injuryWeeks--;
+            } else {
+              isInjured = false;
+              injuryWeeks = 0;
+            }
           }
         } else {
           if (wasStarter) {

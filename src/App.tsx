@@ -1112,10 +1112,15 @@ const AppContent: React.FC = () => {
                 <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-gold)' }}>Jogador Lesionado!</h3>
                 {injuryPlayer && (
                   <div style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: '8px', padding: '8px', margin: '8px 0', fontSize: '0.8rem' }}>
-                    Jogador: <strong>{injuryPlayer.name}</strong> ({injuryPlayer.position})
+                    Jogador: <strong>❌ {injuryPlayer.name}</strong> ({injuryPlayer.position})
+                    {injuryPlayer.injuryWeeks !== undefined && injuryPlayer.injuryWeeks > 0 && (
+                      <div style={{ marginTop: '4px', color: 'var(--accent-red)', fontWeight: 700 }}>
+                        Fora por {injuryPlayer.injuryWeeks} {injuryPlayer.injuryWeeks === 1 ? 'jogo' : 'jogos'} — não poderá ser escalado até se recuperar.
+                      </div>
+                    )}
                   </div>
                 )}
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Seu jogador sofreu uma lesão e precisa ser substituído imediatamente.</p>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Escolha abaixo quem entra no lugar dele.</p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
                 <button
@@ -1179,12 +1184,23 @@ const AppContent: React.FC = () => {
                   })}
                 </div>
 
-                {subslotIndex !== null && (
+                {subslotIndex !== null && (() => {
+                  const outgoing = midMatchStarters[subslotIndex];
+                  const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && !p.isInjured);
+                  const samePositionBench = healthyBench.filter(p => p.position === outgoing?.position);
+                  const benchPool = samePositionBench.length > 0 ? samePositionBench : healthyBench;
+                  return (
                   <>
-                    <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-green)', fontWeight: 700 }}>Escolha o Substituto do Banco:</h4>
+                    <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-green)', fontWeight: 700 }}>
+                      Escolha o Substituto {outgoing ? `(${outgoing.position})` : 'do Banco'}:
+                    </h4>
+                    {samePositionBench.length === 0 && outgoing && (
+                      <p style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', marginBottom: '6px' }}>
+                        Nenhum jogador de {outgoing.position} disponível no banco — mostrando todo o banco.
+                      </p>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
-                      {userClub.squad
-                        .filter(p => !midMatchStarters.some(s => s.id === p.id) && !p.isInjured)
+                      {benchPool
                         .map(bench => {
                           return (
                             <div
@@ -1213,7 +1229,8 @@ const AppContent: React.FC = () => {
                         })}
                     </div>
                   </>
-                )}
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1814,7 +1831,7 @@ const AppContent: React.FC = () => {
                           <ConditionBadge trend={player.performanceTrend} />
                           {userClub.penaltyTakerId === player.id && <span style={{ fontSize: '0.75rem' }} title="Cobrador de Pênalti">🎯</span>}
                           {player.contractLocked && <span style={{ fontSize: '0.75rem' }} title="Contrato Trancado">🔒</span>}
-                          {player.isInjured && <span style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>DM ({player.injuryWeeks}s)</span>}
+                          {player.isInjured && <span title="Lesionado - indisponível para escalação" style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>❌ Lesionado ({player.injuryWeeks} {player.injuryWeeks === 1 ? 'jogo' : 'jogos'})</span>}
                           {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
                         </div>
                         <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {formatCurrency(player.value)}</span>
