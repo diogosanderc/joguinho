@@ -1080,19 +1080,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Formation position requirements (mirrors App.tsx's getTacticNeeds) used to make sure
   // a squad can always field at least one valid tactical scheme, not a fixed headcount.
-  const FORMATION_NEEDS: Record<PlayerPosition, number>[] = [
-    { GOL: 1, ZAG: 2, LD: 1, LE: 1, VOL: 1, MEI: 2, PON: 2, CA: 1 }, // 4-3-3
-    { GOL: 1, ZAG: 3, LD: 1, LE: 1, VOL: 1, MEI: 2, PON: 0, CA: 2 }, // 3-5-2
-    { GOL: 1, ZAG: 2, LD: 1, LE: 1, VOL: 2, MEI: 2, PON: 0, CA: 2 }, // 4-4-2
-  ];
+  // Minimum number of healthy players the squad must keep per position. CA has no floor
+  // here on purpose -- a Ponta can always play as a makeshift centre-forward, so a club
+  // doesn't need a dedicated CA to remain sellable/fieldable.
+  const MIN_SQUAD_DEPTH: Partial<Record<PlayerPosition, number>> = {
+    GOL: 1, ZAG: 3, LD: 1, LE: 1, VOL: 2, MEI: 4, PON: 3
+  };
   const MIN_SQUAD_SIZE = 16; // 11 titulares + 5 reservas
 
-  const canFieldAnyFormation = (squad: Player[]) => {
-    const healthy = squad.filter(p => !p.isInjured);
-    const count = (pos: PlayerPosition) => healthy.filter(p => p.position === pos).length;
-    return FORMATION_NEEDS.some(needs =>
-      (Object.keys(needs) as PlayerPosition[]).every(pos => count(pos) >= needs[pos])
-    );
+  // Checks only the SOLD player's own position against its floor -- "you can sell as long
+  // as you still have more than the minimum in that position." A different position already
+  // sitting below its own floor (e.g. a thin midfield) is not this sale's problem to block.
+  const findDepthViolation = (squadAfterSale: Player[], soldPosition: PlayerPosition): { pos: PlayerPosition; min: number } | null => {
+    const min = MIN_SQUAD_DEPTH[soldPosition];
+    if (min === undefined) return null;
+    const remaining = squadAfterSale.filter(p => p.position === soldPosition && !p.isInjured).length;
+    return remaining < min ? { pos: soldPosition, min } : null;
   };
 
   // Buy player from transfer market
@@ -1148,8 +1151,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const squadAfterSale = userClub.squad.filter(p => p.id !== player.id);
-    if (!canFieldAnyFormation(squadAfterSale)) {
-      alert('Impossível vender! Isso deixaria o elenco sem jogadores suficientes para montar nenhum esquema tático.');
+    const violation = findDepthViolation(squadAfterSale, player.position);
+    if (violation) {
+      alert(`Impossível vender! O elenco precisa manter pelo menos ${violation.min} jogador(es) de ${violation.pos}.`);
       return;
     }
 
@@ -1509,8 +1513,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const squadAfterSale = userClub.squad.filter(p => p.id !== player.id);
-    if (!canFieldAnyFormation(squadAfterSale)) {
-      alert('Impossível vender! Isso deixaria o elenco sem jogadores suficientes para montar nenhum esquema tático.');
+    const violation = findDepthViolation(squadAfterSale, player.position);
+    if (violation) {
+      alert(`Impossível vender! O elenco precisa manter pelo menos ${violation.min} jogador(es) de ${violation.pos}.`);
       return;
     }
 
