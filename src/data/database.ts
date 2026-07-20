@@ -1,3 +1,5 @@
+import type { Loan } from '../utils/loanEngine';
+
 // GOL Goleiro, ZAG Zagueiro, LD Lateral-Direito, LE Lateral-Esquerdo,
 // VOL Volante, MEI Meia, PON Ponta, CA Centroavante
 export type PlayerPosition = 'GOL' | 'ZAG' | 'LD' | 'LE' | 'VOL' | 'MEI' | 'PON' | 'CA';
@@ -55,6 +57,12 @@ export interface Club {
   penaltyTakerId?: string; // Player designated to take penalty kicks
   hasVipBoxes?: boolean; // Premium seating built -- adds a flat revenue bonus per home match
   vipBoxesWeeksLeft?: number; // Weeks remaining while VIP boxes are under construction
+  financialScore?: number; // 0-100 "Score Financeiro" driving bank loan terms
+  loans?: Loan[]; // Active bank loans
+  lateStrikes?: number; // Cumulative missed installments -- 3+ blocks new loans
+  lastSeasonRevenue?: number; // Basis for the bank credit limit calculation
+  seasonRevenueAccum?: number; // Running total of this season's income, becomes lastSeasonRevenue at season end
+  seasonStartFinances?: number; // Cash snapshot at the start of the season, to detect profit/loss for the Score Financeiro
 }
 
 export interface ClubDefinition {
@@ -1980,6 +1988,15 @@ export const initializeClubs = (): Club[] => {
     const squad = generateSquad(def.id, def.stars);
     const tvMoney = def.division === 'A' ? 8000000 : def.division === 'B' ? 2000000 : 500000;
     const finances = Math.round(def.reputation * def.reputation * 3000) + tvMoney;
+    const ticketPrice = def.division === 'A' ? 50 : def.division === 'B' ? 35 : 25;
+
+    // Rough estimate of a season's revenue (ticket + merch + sponsor-ish + TV money), used as
+    // the bank credit limit basis until real tracked income replaces it after year 1.
+    const ticketRevenueEstimate = Math.round(def.stadiumCapacity * 0.7 * ticketPrice) * 19;
+    const merchRevenueEstimate = Math.round(def.reputation * 60 * 0.9) * 38;
+    const sponsorRevenueEstimate = Math.round(def.reputation * 90) * 38;
+    const lastSeasonRevenue = ticketRevenueEstimate + merchRevenueEstimate + sponsorRevenueEstimate + tvMoney;
+
     return {
       id: def.id,
       name: def.name,
@@ -1989,11 +2006,17 @@ export const initializeClubs = (): Club[] => {
       textColor: def.textColor,
       stadiumCapacity: def.stadiumCapacity,
       stadiumName: def.stadiumName,
-      ticketPrice: def.division === 'A' ? 50 : def.division === 'B' ? 35 : 25,
+      ticketPrice,
       finances,
       confidence: 70,
       reputation: def.reputation,
       isPlayerClub: false,
+      financialScore: 70,
+      loans: [],
+      lateStrikes: 0,
+      lastSeasonRevenue,
+      seasonRevenueAccum: 0,
+      seasonStartFinances: finances,
       squad
     };
   });

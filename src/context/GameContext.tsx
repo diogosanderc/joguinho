@@ -3,6 +3,8 @@ import { initializeClubs, formatCurrency, getPositionGroup } from '../data/datab
 import type { Player, Club, PlayerPosition } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters } from '../utils/matchEngine';
 import type { MatchResult } from '../utils/matchEngine';
+import { getBaseInterestRate, getCreditMultiplier, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
+import type { Loan } from '../utils/loanEngine';
 
 export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
 
@@ -77,6 +79,9 @@ interface GameContextType {
   sellPlayer: (player: Player) => void;
   upgradeStadium: (capacity: number) => void;
   buildVipBoxes: () => void;
+  requestLoan: (amount: number, totalRounds: number, purpose: string) => void;
+  payOffLoanEarly: (loanId: string) => void;
+  renegotiateLoanAction: (loanId: string) => void;
   signSponsor: (sponsor: Sponsor) => void;
   acceptJobOffer: (clubId: string) => void;
   stayAtClub: () => void;
@@ -334,6 +339,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedClubs = clubs.map(club => {
       let finances = club.finances;
       let confidence = club.confidence;
+      let roundRevenue = 0; // accumulates this round's gross income (excludes wages/loans) for the bank's "receita anual" basis
 
       // Handle user's stadium progress
       let hasVipBoxes = club.hasVipBoxes;
@@ -349,6 +355,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (sp) sponsorIncome += sp.weeklyPayment;
         });
         finances += sponsorIncome;
+        roundRevenue += sponsorIncome;
 
         // Merchandising / shirt sales -- scales with the club's fame, how happy the fans
         // are right now, and how many star players are currently on the roster.
@@ -358,6 +365,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const starMultiplier = 1 + Math.min(starCount, 5) * 0.08; // up to +40% with 5+ stars
         const merchIncome = Math.round(merchBase * confidenceFactor * starMultiplier);
         finances += merchIncome;
+        roundRevenue += merchIncome;
 
         // VIP boxes under construction
         if (vipBoxesWeeksLeft && vipBoxesWeeksLeft > 0) {
@@ -385,6 +393,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (sponsorIncome > 0) {
             const victoryBonus = Math.round(sponsorIncome * 0.3);
             finances += victoryBonus;
+            roundRevenue += victoryBonus;
             pushNews({
               id: `spbonus_${Date.now()}`,
               week: currentRound,
@@ -423,12 +432,86 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const fansAttending = Math.min(club.stadiumCapacity, Math.round(club.stadiumCapacity * occupancyRate));
           const ticketIncome = fansAttending * club.ticketPrice;
           finances += ticketIncome;
+          roundRevenue += ticketIncome;
 
           // VIP boxes: flat premium revenue per home match, independent of attendance
           const effectiveHasVip = club.id === userClubId ? hasVipBoxes : club.hasVipBoxes;
           if (effectiveHasVip) {
             const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
-            finances += vipIncomeByDiv[club.division] ?? 20000;
+            const vipIncome = vipIncomeByDiv[club.division] ?? 20000;
+            finances += vipIncome;
+            roundRevenue += vipIncome;
+          }
+        }
+      }
+
+      // --- Bank loans: collect this round's installment on every active loan ---
+      let financialScore = club.financialScore ?? 70;
+      let lateStrikes = club.lateStrikes ?? 0;
+      let seasonRevenueAccum = (club.seasonRevenueAccum ?? 0) + roundRevenue;
+      let loans: Loan[] = [];
+      (club.loans ?? []).forEach(loan => {
+        if (loan.balance <= 0) return;
+        const canPay = finances >= loan.installment;
+        if (canPay) {
+          finances -= loan.installment;
+          const updated = advanceLoan(loan, true);
+          if (updated.balance <= 0) {
+            financialScore = Math.min(100, financialScore + 3);
+            if (club.id === userClubId) {
+              pushNews({
+                id: `loan_paid_${loan.id}`,
+                week: currentRound,
+                text: `Empréstimo quitado! "${loan.purpose}" foi pago integralmente e seu Score Financeiro melhorou.`,
+                type: 'INFO'
+              });
+            }
+          } else {
+            loans.push(updated);
+          }
+        } else {
+          lateStrikes += 1;
+          financialScore = Math.max(0, financialScore - 5);
+          loans.push(advanceLoan(loan, false));
+          if (club.id === userClubId) {
+            pushNews({
+              id: `loan_late_${loan.id}_${currentRound}`,
+              week: currentRound,
+              text: `Parcela do empréstimo "${loan.purpose}" atrasou por falta de caixa! Score Financeiro caiu e juros de mora foram cobrados.`,
+              type: 'INFO'
+            });
+          }
+        }
+      });
+
+      // AI clubs take a defensive loan if they somehow end up in the red (they don't pay
+      // wages in this simulation, so this mostly guards against edge cases, but keeps the
+      // "IA também usa empréstimos, e pode quebrar" rule honest if that ever changes).
+      if (club.id !== userClubId && finances < 0) {
+        const aiRate = getBaseInterestRate(financialScore);
+        const aiBlocked = lateStrikes >= 3 && financialScore < 70;
+        if (aiRate !== null && !aiBlocked) {
+          const aiMultiplier = getCreditMultiplier(financialScore);
+          const aiLimit = (club.lastSeasonRevenue ?? 1000000) * aiMultiplier;
+          const aiOutstanding = loans.reduce((sum, l) => sum + l.balance, 0);
+          const aiAvailable = Math.max(0, aiLimit - aiOutstanding);
+          const needed = Math.min(aiAvailable, Math.round(Math.abs(finances) * 1.5));
+          if (needed > 100000) {
+            const aiTerm = 36;
+            const aiInstallment = calculateInstallment(needed, aiRate, aiTerm);
+            loans.push({
+              id: `loan_ai_${club.id}_${Date.now()}`,
+              principal: needed,
+              balance: needed,
+              ratePerRound: aiRate,
+              installment: aiInstallment,
+              totalRounds: aiTerm,
+              roundsPaid: 0,
+              lateStreak: 0,
+              purpose: 'Equilíbrio de caixa',
+              startedYear: currentYear
+            });
+            finances += needed;
           }
         }
       }
@@ -672,7 +755,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches };
       });
 
-      return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft };
+      return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft, financialScore, lateStrikes, loans, seasonRevenueAccum };
     });
 
     // Handle stadium upgrades for player
@@ -918,6 +1001,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const prizeMoney = getPrizeMoney(club.division as 'A' | 'B' | 'C', rankIndex);
       const finances = club.finances + prizeMoney;
 
+      // --- Bank: close out the season's revenue tally and adjust the Score Financeiro ---
+      const seasonRevenueAccum = (club.seasonRevenueAccum ?? 0) + prizeMoney;
+      const lastSeasonRevenue = seasonRevenueAccum > 0 ? seasonRevenueAccum : (club.lastSeasonRevenue ?? 1000000);
+      const seasonProfit = finances - (club.seasonStartFinances ?? finances);
+      let financialScore = club.financialScore ?? 70;
+      if (seasonProfit > 0) financialScore = Math.min(100, financialScore + 3);
+      else if (seasonProfit < 0) financialScore = Math.max(0, financialScore - 3);
+      if (finances < 0) financialScore = Math.max(0, financialScore - 2);
+      const totalDebt = (club.loans ?? []).reduce((sum, l) => sum + l.balance, 0);
+      const wageBill = club.squad.reduce((sum, p) => sum + p.salary, 0) * 38;
+      if (lastSeasonRevenue > 0 && wageBill / lastSeasonRevenue > 0.9) financialScore = Math.max(0, financialScore - 2);
+      if (lastSeasonRevenue > 0 && totalDebt / lastSeasonRevenue > 0.8) financialScore = Math.max(0, financialScore - 2);
+
       if (div === 'A' && relegations.A.includes(club.id)) div = 'B';
       else if (div === 'B') {
         if (promotions.B.includes(club.id)) div = 'A';
@@ -1003,7 +1099,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
 
-      return { ...club, division: div, confidence: nextConfidence, finances, squad };
+      return {
+        ...club,
+        division: div,
+        confidence: nextConfidence,
+        finances,
+        squad,
+        financialScore,
+        lastSeasonRevenue,
+        seasonRevenueAccum: 0,
+        seasonStartFinances: finances,
+        lateStrikes: financialScore >= 70 ? 0 : (club.lateStrikes ?? 0)
+      };
     });
 
     // Find player performance
@@ -1491,6 +1598,126 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
+  // Request a bank loan for the user's club. Amount and term are validated against the
+  // credit limit (Score Financeiro × last season's revenue) and the bank refuses outright
+  // below a minimum score, or if too many past installments have gone late.
+  const requestLoan = (amount: number, totalRounds: number, purpose: string) => {
+    if (!userClub || !userClubId) return;
+
+    const score = userClub.financialScore ?? 70;
+    const lateStrikes = userClub.lateStrikes ?? 0;
+    if (lateStrikes >= 3 && score < 70) {
+      alert('O banco bloqueou novos empréstimos após parcelas atrasadas recorrentes. Melhore seu Score Financeiro para recuperar o crédito.');
+      return;
+    }
+
+    const bankEvent = getBankEventForYear(currentYear);
+    const baseRate = getBaseInterestRate(score);
+    if (baseRate === null) {
+      alert('Empréstimo recusado! Seu Score Financeiro está baixo demais para o banco aprovar crédito.');
+      return;
+    }
+    const specialDiscount = bankEvent.specialLine && score >= 90 ? 0.002 : 0;
+    const ratePerRound = Math.max(0.002, baseRate + bankEvent.rateModifier - specialDiscount);
+
+    const multiplier = getCreditMultiplier(score);
+    const creditLimit = (userClub.lastSeasonRevenue ?? 1000000) * multiplier;
+    const outstandingDebt = (userClub.loans ?? []).reduce((sum, l) => sum + l.balance, 0);
+    const availableCredit = Math.max(0, creditLimit - outstandingDebt);
+    if (amount > availableCredit) {
+      alert(`Limite de crédito insuficiente! Disponível: ${formatCurrency(Math.round(availableCredit))}.`);
+      return;
+    }
+
+    const installment = calculateInstallment(amount, ratePerRound, totalRounds);
+    const newLoan: Loan = {
+      id: `loan_${Date.now()}`,
+      principal: amount,
+      balance: amount,
+      ratePerRound,
+      installment,
+      totalRounds,
+      roundsPaid: 0,
+      lateStreak: 0,
+      purpose,
+      startedYear: currentYear
+    };
+
+    const updatedClubs = clubs.map(c => c.id === userClubId
+      ? { ...c, finances: c.finances + amount, loans: [...(c.loans ?? []), newLoan] }
+      : c);
+    setClubs(updatedClubs);
+
+    setNews(prev => [...prev, {
+      id: `loan_taken_${newLoan.id}`,
+      week: currentRound,
+      text: `Empréstimo aprovado! O ${userClub.name} tomou ${formatCurrency(amount)} do banco para ${purpose.toLowerCase()}, em ${totalRounds} parcelas de ${formatCurrency(Math.round(installment))}.`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Pays off a loan's remaining balance early, at a 40% discount on the interest that would
+  // still have been charged over the rest of the term.
+  const payOffLoanEarly = (loanId: string) => {
+    if (!userClub || !userClubId) return;
+    const loan = (userClub.loans ?? []).find(l => l.id === loanId);
+    if (!loan) return;
+
+    const payoffAmount = calculatePayoffAmount(loan);
+    if (userClub.finances < payoffAmount) {
+      alert(`Caixa insuficiente para quitar! Necessário: ${formatCurrency(payoffAmount)}.`);
+      return;
+    }
+
+    const updatedClubs = clubs.map(c => c.id === userClubId
+      ? {
+          ...c,
+          finances: c.finances - payoffAmount,
+          loans: (c.loans ?? []).filter(l => l.id !== loanId),
+          financialScore: Math.min(100, (c.financialScore ?? 70) + 4)
+        }
+      : c);
+    setClubs(updatedClubs);
+
+    setNews(prev => [...prev, {
+      id: `loan_payoff_${loanId}`,
+      week: currentRound,
+      text: `Empréstimo quitado antecipadamente por ${formatCurrency(payoffAmount)}! Seu Score Financeiro melhorou.`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Renegotiates a loan that's fallen 2+ installments behind: longer term, higher rate, lower
+  // installment -- a lifeline that costs more overall but eases the immediate cash crunch.
+  const renegotiateLoanAction = (loanId: string) => {
+    if (!userClub || !userClubId) return;
+    const loan = (userClub.loans ?? []).find(l => l.id === loanId);
+    if (!loan) return;
+    if (loan.lateStreak < 2) {
+      alert('A renegociação só fica disponível depois de 2 parcelas atrasadas seguidas.');
+      return;
+    }
+
+    const renegotiated = renegotiateLoanCalc(loan);
+    const updatedClubs = clubs.map(c => c.id === userClubId
+      ? { ...c, loans: (c.loans ?? []).map(l => l.id === loanId ? renegotiated : l) }
+      : c);
+    setClubs(updatedClubs);
+
+    setNews(prev => [...prev, {
+      id: `loan_renegotiated_${loanId}_${currentRound}`,
+      week: currentRound,
+      text: `Empréstimo renegociado com o banco: prazo estendido e parcela reduzida para ${formatCurrency(Math.round(renegotiated.installment))}.`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
   // Accept job offer from another club at season end
   const acceptJobOffer = (clubId: string) => {
     // Reset player flag on current club
@@ -1537,6 +1764,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const nextNews: NewsItem[] = [
       { id: `job_accept_${Date.now()}`, week: 0, text: `Nova Era! ${managerName} assumiu oficialmente o comando técnico do ${newClub.name}! Boa sorte na Série ${newClub.division}!`, type: 'BOARD' }
     ];
+    const bankEvent = getBankEventForYear(currentYear + 1);
+    if (bankEvent.label) {
+      nextNews.push({ id: `bank_event_${currentYear + 1}`, week: 0, text: bankEvent.label, type: 'INFO' });
+    }
     setNews(nextNews);
     setGameState('PLAYING');
 
@@ -1582,6 +1813,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       { id: `renew_${Date.now()}`, week: 0, text: `Contrato renovado! ${managerName} confirmou que permanece no ${userClubInstance.name} por mais uma temporada!`, type: 'BOARD' },
       { id: `tv_pay_${Date.now()}`, week: 0, text: `Cotas de TV pagas! O ${userClubInstance.name} recebeu R$ ${tvPay.toLocaleString()} pelos direitos de transmissão da Série ${userClubInstance.division}.`, type: 'INFO' }
     ];
+    const bankEvent = getBankEventForYear(currentYear + 1);
+    if (bankEvent.label) {
+      nextNews.push({ id: `bank_event_${currentYear + 1}`, week: 0, text: bankEvent.label, type: 'INFO' });
+    }
     setNews(nextNews);
     setGameState('PLAYING');
 
@@ -1797,6 +2032,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sellPlayer,
       upgradeStadium,
       buildVipBoxes,
+      requestLoan,
+      payOffLoanEarly,
+      renegotiateLoanAction,
       signSponsor,
       acceptJobOffer,
       stayAtClub,

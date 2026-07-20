@@ -4,6 +4,7 @@ import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
+import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getCreditMultiplier, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -16,7 +17,7 @@ const AppContent: React.FC = () => {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
-    upgradeStadium, buildVipBoxes, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
+    upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
 
@@ -48,6 +49,11 @@ const AppContent: React.FC = () => {
 
   // Market filter states
   const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | PlayerPosition>('ALL');
+
+  // Bank loan request form state
+  const [loanAmountIdx, setLoanAmountIdx] = useState(2); // default R$ 20M
+  const [loanTermIdx, setLoanTermIdx] = useState(2); // default 36 rounds
+  const [loanPurposeIdx, setLoanPurposeIdx] = useState(0);
 
   // Match Simulation variables
   const [simMinute, setSimMinute] = useState(0);
@@ -347,7 +353,14 @@ const AppContent: React.FC = () => {
       const positionFactor = totalTeams > 1 && rank > 0
         ? 0.7 + (1 - (rank - 1) / (totalTeams - 1)) * 0.6
         : 1.0;
-      const finalMultiplier = divMultiplier * positionFactor;
+
+      // Heavy bank debt spooks sponsors too -- the more a club owes relative to its revenue,
+      // the less they're willing to offer.
+      const outstandingDebt = (userClub.loans ?? []).reduce((s, l) => s + l.balance, 0);
+      const debtRatio = (userClub.lastSeasonRevenue ?? 0) > 0 ? outstandingDebt / (userClub.lastSeasonRevenue ?? 1) : 0;
+      const debtFactor = Math.max(0.6, 1 - debtRatio * 0.4);
+
+      const finalMultiplier = divMultiplier * positionFactor * debtFactor;
 
       const sponsors: Sponsor[] = [
         {
@@ -2577,10 +2590,21 @@ const AppContent: React.FC = () => {
                   const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
                   const vipIncome = vipIncomeByDiv[userClub.division] ?? 20000;
                   return (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#9ca3af' }}>Camarotes VIP:</span>
                       <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
                         +{formatCurrency(vipIncome)}
+                      </span>
+                    </div>
+                  );
+                })()}
+                {(userClub.loans ?? []).length > 0 && (() => {
+                  const loanInstallments = (userClub.loans ?? []).reduce((sum, l) => sum + l.installment, 0);
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                      <span style={{ color: '#9ca3af' }}>Parcelas de Empréstimos:</span>
+                      <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                        -{formatCurrency(Math.round(loanInstallments))}
                       </span>
                     </div>
                   );
@@ -2595,10 +2619,12 @@ const AppContent: React.FC = () => {
                     const merchIncome = Math.round(merchBase * confidenceFactor * starMultiplier);
                     const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
                     const vipIncome = userClub.hasVipBoxes ? (vipIncomeByDiv[userClub.division] ?? 20000) : 0;
+                    const loanInstallments = (userClub.loans ?? []).reduce((sum, l) => sum + l.installment, 0);
                     const balance = Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0) +
                                     Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice) +
                                     merchIncome + vipIncome -
-                                    userClub.squad.reduce((sum, p) => sum + p.salary, 0);
+                                    userClub.squad.reduce((sum, p) => sum + p.salary, 0) -
+                                    loanInstallments;
                     return (
                       <span style={{ color: balance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                         {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
@@ -2697,6 +2723,165 @@ const AppContent: React.FC = () => {
                     >
                       Construir Camarotes VIP (Custo: {formatCurrency(cost)})
                     </button>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Bank Loans */}
+            <div className="card">
+              <div className="card-title"><DollarSign size={18} color="var(--accent-gold)" /> Banco Nacional — Empréstimos</div>
+              {(() => {
+                const score = userClub.financialScore ?? 70;
+                const scoreLabel = getScoreLabel(score);
+                const bankEvent = getBankEventForYear(currentYear);
+                const baseRate = getBaseInterestRate(score);
+                const multiplier = getCreditMultiplier(score);
+                const creditLimit = (userClub.lastSeasonRevenue ?? 1000000) * multiplier;
+                const outstandingDebt = (userClub.loans ?? []).reduce((s, l) => s + l.balance, 0);
+                const availableCredit = Math.max(0, creditLimit - outstandingDebt);
+                const blocked = (userClub.lateStrikes ?? 0) >= 3 && score < 70;
+
+                const amount = LOAN_AMOUNTS[loanAmountIdx];
+                const term = LOAN_TERMS[loanTermIdx];
+                const specialDiscount = bankEvent.specialLine && score >= 90 ? 0.002 : 0;
+                const ratePerRound = baseRate !== null ? Math.max(0.002, baseRate + bankEvent.rateModifier - specialDiscount) : null;
+                const installment = ratePerRound !== null ? calculateInstallment(amount, ratePerRound, term) : null;
+                const totalPaid = installment !== null ? installment * term : null;
+
+                const scoreColor = score >= 80 ? 'var(--accent-green)' : score >= 60 ? 'var(--accent-gold)' : 'var(--accent-red)';
+
+                return (
+                  <>
+                    <div className="stat-grid" style={{ marginBottom: '12px' }}>
+                      <div className="stat-box">
+                        <span className="stat-label">Score Financeiro</span>
+                        <span className="stat-value" style={{ color: scoreColor }}>{score} ({scoreLabel})</span>
+                      </div>
+                      <div className="stat-box">
+                        <span className="stat-label">Limite Disponível</span>
+                        <span className="stat-value">{formatCurrency(Math.round(availableCredit))}</span>
+                      </div>
+                    </div>
+
+                    {bankEvent.label && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', marginBottom: '10px', padding: '6px 10px', background: 'rgba(255,193,7,0.06)', borderRadius: '8px', border: '1px solid rgba(255,193,7,0.15)' }}>
+                        📰 {bankEvent.label}
+                      </div>
+                    )}
+
+                    {blocked ? (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--accent-red)', padding: '10px', background: 'rgba(255,23,68,0.06)', borderRadius: '8px', border: '1px solid rgba(255,23,68,0.2)' }}>
+                        🚫 O banco bloqueou novos empréstimos por atrasos recorrentes. Melhore seu Score Financeiro pagando as parcelas em dia.
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ marginBottom: '10px' }}>
+                          <span className="stat-label">Valor Solicitado</span>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                            {LOAN_AMOUNTS.map((amt, idx) => (
+                              <button
+                                key={amt}
+                                onClick={() => setLoanAmountIdx(idx)}
+                                disabled={amt > availableCredit}
+                                className={`sub-tab-btn ${loanAmountIdx === idx ? 'active' : ''}`}
+                                style={{ opacity: amt > availableCredit ? 0.35 : 1, fontSize: '0.7rem', padding: '6px 8px' }}
+                              >
+                                {formatCurrency(amt)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ marginBottom: '10px' }}>
+                          <span className="stat-label">Prazo</span>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                            {LOAN_TERMS.map((t, idx) => (
+                              <button
+                                key={t}
+                                onClick={() => setLoanTermIdx(idx)}
+                                className={`sub-tab-btn ${loanTermIdx === idx ? 'active' : ''}`}
+                                style={{ fontSize: '0.7rem', padding: '6px 8px' }}
+                              >
+                                {t} rodadas
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ marginBottom: '10px' }}>
+                          <span className="stat-label">Finalidade</span>
+                          <select
+                            value={loanPurposeIdx}
+                            onChange={e => setLoanPurposeIdx(Number(e.target.value))}
+                            style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '8px', background: '#121316', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: '0.78rem' }}
+                          >
+                            {LOAN_PURPOSES.map((p, idx) => <option key={p} value={idx}>{p}</option>)}
+                          </select>
+                        </div>
+
+                        {ratePerRound === null ? (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--accent-red)', marginBottom: '10px' }}>
+                            Empréstimo recusado: Score Financeiro baixo demais para o banco aprovar crédito.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', marginBottom: '12px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Taxa:</span><span>{(ratePerRound * 100).toFixed(2)}% por rodada</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Parcela:</span><span>{formatCurrency(Math.round(installment!))}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Total pago:</span><span>{formatCurrency(Math.round(totalPaid!))}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#9ca3af' }}>Juros totais:</span><span>{formatCurrency(Math.round(totalPaid! - amount))}</span></div>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => requestLoan(amount, term, LOAN_PURPOSES[loanPurposeIdx])}
+                          disabled={ratePerRound === null || amount > availableCredit}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', fontSize: '0.8rem', padding: '10px', opacity: (ratePerRound === null || amount > availableCredit) ? 0.4 : 1 }}
+                        >
+                          💰 Solicitar Empréstimo
+                        </button>
+                      </>
+                    )}
+
+                    {(userClub.loans ?? []).length > 0 && (
+                      <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <span className="stat-label">Empréstimos Ativos</span>
+                        {(userClub.loans ?? []).map(loan => {
+                          const payoff = calculatePayoffAmount(loan);
+                          return (
+                            <div key={loan.id} style={{ padding: '10px', background: '#121316', borderRadius: '10px', border: loan.lateStreak > 0 ? '1px solid rgba(255,23,68,0.3)' : '1px solid rgba(255,255,255,0.05)', fontSize: '0.75rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: '4px' }}>
+                                <span>{loan.purpose}</span>
+                                <span>{formatCurrency(loan.balance)}</span>
+                              </div>
+                              <div style={{ color: '#9ca3af', marginBottom: '6px' }}>
+                                Parcela: {formatCurrency(Math.round(loan.installment))} • {loan.roundsPaid}/{loan.totalRounds} pagas
+                                {loan.lateStreak > 0 && <span style={{ color: 'var(--accent-red)' }}> • {loan.lateStreak} atrasada(s)</span>}
+                              </div>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  onClick={() => payOffLoanEarly(loan.id)}
+                                  className="btn btn-secondary"
+                                  style={{ flex: 1, fontSize: '0.68rem', padding: '6px' }}
+                                >
+                                  Quitar ({formatCurrency(payoff)})
+                                </button>
+                                {loan.lateStreak >= 2 && (
+                                  <button
+                                    onClick={() => renegotiateLoanAction(loan.id)}
+                                    className="btn btn-secondary"
+                                    style={{ flex: 1, fontSize: '0.68rem', padding: '6px', color: 'var(--accent-gold)' }}
+                                  >
+                                    Renegociar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </>
                 );
               })()}
