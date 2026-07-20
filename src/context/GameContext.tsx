@@ -1042,17 +1042,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return list;
   };
 
+  // Formation position requirements (mirrors App.tsx's getTacticNeeds) used to make sure
+  // a squad can always field at least one valid tactical scheme, not a fixed headcount.
+  const FORMATION_NEEDS: Record<PlayerPosition, number>[] = [
+    { GOL: 1, ZAG: 2, LD: 1, LE: 1, VOL: 1, MEI: 2, PON: 2, CA: 1 }, // 4-3-3
+    { GOL: 1, ZAG: 3, LD: 1, LE: 1, VOL: 1, MEI: 2, PON: 0, CA: 2 }, // 3-5-2
+    { GOL: 1, ZAG: 2, LD: 1, LE: 1, VOL: 2, MEI: 2, PON: 0, CA: 2 }, // 4-4-2
+  ];
+  const MIN_SQUAD_SIZE = 16; // 11 titulares + 5 reservas
+
+  const canFieldAnyFormation = (squad: Player[]) => {
+    const healthy = squad.filter(p => !p.isInjured);
+    const count = (pos: PlayerPosition) => healthy.filter(p => p.position === pos).length;
+    return FORMATION_NEEDS.some(needs =>
+      (Object.keys(needs) as PlayerPosition[]).every(pos => count(pos) >= needs[pos])
+    );
+  };
+
   // Buy player from transfer market
   const buyPlayer = (player: Player) => {
     if (!userClub) return;
 
     if (userClub.finances < player.value) {
       alert('Finanças insuficientes para contratar este jogador.');
-      return;
-    }
-
-    if (userClub.squad.length >= 22) {
-      alert('Limite máximo de elenco atingido (22 jogadores). Venda alguns antes.');
       return;
     }
 
@@ -1094,13 +1106,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const sellPlayer = (player: Player) => {
     if (!userClub) return;
 
-    if (userClub.squad.length <= 14) {
-      alert('Elenco muito reduzido! Você precisa de pelo menos 14 jogadores no elenco.');
+    if (userClub.squad.length <= MIN_SQUAD_SIZE) {
+      alert(`Elenco muito reduzido! Você precisa manter pelo menos ${MIN_SQUAD_SIZE} jogadores no elenco (11 titulares + 5 reservas).`);
       return;
     }
 
-    if (player.position === 'GOL' && userClub.squad.filter(p => p.position === 'GOL').length <= 1) {
-      alert('Impossível vender! Você precisa manter pelo menos 1 goleiro no elenco.');
+    const squadAfterSale = userClub.squad.filter(p => p.id !== player.id);
+    if (!canFieldAnyFormation(squadAfterSale)) {
+      alert('Impossível vender! Isso deixaria o elenco sem jogadores suficientes para montar nenhum esquema tático.');
       return;
     }
 
@@ -1160,11 +1173,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (userClub.finances < pricePaid) {
       alert('Finanças insuficientes para fechar este negócio.');
-      return;
-    }
-
-    if (userClub.squad.length >= 22) {
-      alert('Limite de elenco atingido (máximo de 22 jogadores). Venda alguns antes.');
       return;
     }
 
@@ -1459,13 +1467,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const acceptIncomingProposal = (player: Player, buyerClubId: string, amount: number) => {
     if (!userClub) return;
 
-    if (userClub.squad.length <= 14) {
-      alert('Elenco muito reduzido! Você precisa de pelo menos 14 jogadores no elenco.');
+    if (userClub.squad.length <= MIN_SQUAD_SIZE) {
+      alert(`Elenco muito reduzido! Você precisa manter pelo menos ${MIN_SQUAD_SIZE} jogadores no elenco (11 titulares + 5 reservas).`);
       return;
     }
 
-    if (player.position === 'GOL' && userClub.squad.filter(p => p.position === 'GOL').length <= 1) {
-      alert('Impossível vender! Você precisa manter pelo menos 1 goleiro no elenco.');
+    const squadAfterSale = userClub.squad.filter(p => p.id !== player.id);
+    if (!canFieldAnyFormation(squadAfterSale)) {
+      alert('Impossível vender! Isso deixaria o elenco sem jogadores suficientes para montar nenhum esquema tático.');
       return;
     }
 

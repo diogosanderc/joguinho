@@ -438,8 +438,11 @@ const AppContent: React.FC = () => {
     if (userClub && gameState === 'PLAYING' && currentRound > 1) {
       // 22% chance of receiving an offer for a player in the squad
       if (Math.random() < 0.22) {
-        // Only target players who are not locked and are either Star profile, or highly rated (Rating >= 75), or high goals scorers
-        const potentialPlayers = userClub.squad.filter(p => !p.isInjured && !p.contractLocked && (p.isStar || p.rating >= 75 || p.goals >= 3));
+        // Only target players who are not locked and are either a clear standout (star profile,
+        // highly rated, or top scorer) OR a promising young talent on the rise (system-identified:
+        // 23 or younger, decent rating, and trending up in form).
+        const isPromisingYoungster = (p: Player) => p.age <= 23 && p.rating >= 68 && p.performanceTrend === 'UP';
+        const potentialPlayers = userClub.squad.filter(p => !p.isInjured && !p.contractLocked && (p.isStar || p.rating >= 75 || p.goals >= 3 || isPromisingYoungster(p)));
         if (potentialPlayers.length > 0) {
           const targetPlayer = potentialPlayers[Math.floor(Math.random() * potentialPlayers.length)];
           const otherClubs = clubs.filter(c => c.id !== userClubId).sort((a, b) => a.name.localeCompare(b.name));
@@ -1785,7 +1788,7 @@ const AppContent: React.FC = () => {
               </div>
 
             {/* List of squad players */}
-            <div className="card-title"><Users size={18} color="var(--accent-green)" /> Todos os Jogadores ({userClub.squad.length}/22-26)</div>
+            <div className="card-title"><Users size={18} color="var(--accent-green)" /> Todos os Jogadores ({userClub.squad.length}, mín. 16)</div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {userClub.squad.map(player => {
