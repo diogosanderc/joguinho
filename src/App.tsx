@@ -1459,53 +1459,6 @@ const AppContent: React.FC = () => {
               </button>
             </div>
 
-            {/* Round info */}
-            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(22, 24, 28, 0.9) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid var(--accent-green-glow)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 700, textTransform: 'uppercase' }}>Campeonato Brasileiro</span>
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Rodada {currentRound} de 38</h2>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', textAlign: 'center' }}>
-                  <span style={{ display: 'block', fontSize: '0.6rem', color: '#9ca3af' }}>Confiança</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: userClub.confidence > 50 ? 'var(--accent-green)' : userClub.confidence > 25 ? 'var(--accent-gold)' : 'var(--accent-red)' }}>
-                    {userClub.confidence}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Match preview */}
-              {(() => {
-                const roundMatches = schedule.filter(m => m.round === currentRound);
-                const pMatch = roundMatches.find(m => m.homeId === userClubId || m.awayId === userClubId);
-                if (!pMatch) return <p>Fim da temporada.</p>;
-                
-                const isHome = pMatch.homeId === userClubId;
-                const oppId = isHome ? pMatch.awayId : pMatch.homeId;
-                const opponent = clubs.find(c => c.id === oppId)!;
-                
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHome ? 'Casa' : 'Fora'})</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
-                      <span>Força: {opponent.reputation}</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <button 
-                className="btn btn-primary" 
-                onClick={() => nextRound(starters)}
-                style={{ marginTop: '16px', height: '48px' }}
-              >
-                <Play size={18} fill="#000" /> Iniciar Partida
-              </button>
-            </div>
-
             {/* News feed */}
             <div className="card-title"><Activity size={18} color="var(--accent-green)" /> Feed de Notícias</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
@@ -1535,6 +1488,53 @@ const AppContent: React.FC = () => {
         {/* --- TAB 1: ELENCO & TÁTICA --- */}
         {activeTab === 1 && (
           <>
+            {/* Round info + Iniciar Partida */}
+            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(22, 24, 28, 0.9) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid var(--accent-green-glow)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 700, textTransform: 'uppercase' }}>Campeonato Brasileiro</span>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Rodada {currentRound} de 38</h2>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', textAlign: 'center' }}>
+                  <span style={{ display: 'block', fontSize: '0.6rem', color: '#9ca3af' }}>Confiança</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: userClub.confidence > 50 ? 'var(--accent-green)' : userClub.confidence > 25 ? 'var(--accent-gold)' : 'var(--accent-red)' }}>
+                    {userClub.confidence}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Match preview */}
+              {(() => {
+                const roundMatches = schedule.filter(m => m.round === currentRound);
+                const pMatch = roundMatches.find(m => m.homeId === userClubId || m.awayId === userClubId);
+                if (!pMatch) return <p>Fim da temporada.</p>;
+
+                const isHome = pMatch.homeId === userClubId;
+                const oppId = isHome ? pMatch.awayId : pMatch.homeId;
+                const opponent = clubs.find(c => c.id === oppId)!;
+
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHome ? 'Casa' : 'Fora'})</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                      <span>Força: {opponent.reputation}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <button
+                className="btn btn-primary"
+                onClick={() => nextRound(starters)}
+                style={{ marginTop: '16px', height: '48px' }}
+              >
+                <Play size={18} fill="#000" /> Iniciar Partida
+              </button>
+            </div>
+
             {/* Tactic dropdown and Force summary */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
