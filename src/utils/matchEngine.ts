@@ -1,4 +1,4 @@
-import type { Player, Club, PlayerPosition } from '../data/database';
+import { isPlayerAvailable, type Player, type Club, type PlayerPosition } from '../data/database';
 
 const MIDFIELD_POSITIONS: PlayerPosition[] = ['VOL', 'MEI'];
 const ATTACK_POSITIONS: PlayerPosition[] = ['PON', 'CA'];
@@ -32,7 +32,7 @@ export interface MatchResult {
 // Auto-selects 11 starters for non-player clubs (default 4-4-2: 2 ZAG, 1 LD, 1 LE, 2 VOL, 2 MEI, 2 CA)
 export const getAutoStarters = (club: Club): Player[] => {
   const usedIds = new Set<string>();
-  const fit = (pos: PlayerPosition) => club.squad.filter(p => p.position === pos && !p.isInjured && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+  const fit = (pos: PlayerPosition) => club.squad.filter(p => p.position === pos && isPlayerAvailable(p) && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
 
   const starters: Player[] = [];
   // CA falls back to PON: a winger can play as a makeshift centre-forward when the club
@@ -56,7 +56,7 @@ export const getAutoStarters = (club: Club): Player[] => {
   // Fill any remaining slots with the best available player regardless of position --
   // real squads can genuinely have gaps now (e.g. zero natural CA or PON), so this triggers often.
   if (starters.length < 11) {
-    const rest = club.squad.filter(p => !p.isInjured && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+    const rest = club.squad.filter(p => isPlayerAvailable(p) && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
     const need = 11 - starters.length; // captured once -- starters.length changes inside the loop below
     for (let i = 0; i < Math.min(need, rest.length); i++) {
       starters.push(rest[i]);
@@ -252,16 +252,20 @@ export const simulateMatch = (
     return { taker, scored, saved };
   };
 
-  // Red card penalty handler
-  const applyRedCardPenalty = (isHome: boolean) => {
-    if (isHome) {
-      homeDef *= 0.82;
-      homeMid *= 0.82;
-      homeAtt *= 0.82;
+  // Red card penalty handler: the sent-off player's line pays the price, not the whole team evenly.
+  // Defenders (GOL/ZAG/LD/LE) get covered by swapping in a fresh defender and sacrificing an
+  // attacker instead, so defense holds but attack drops. Midfielders and attackers who get sent
+  // off just leave their own line a man short.
+  const CARD_PENALTY = 0.80;
+  const applyRedCardPenalty = (isHome: boolean, position: PlayerPosition) => {
+    const isDefender = position === 'GOL' || position === 'ZAG' || position === 'LD' || position === 'LE';
+    const isMidfielder = position === 'VOL' || position === 'MEI';
+    if (isDefender) {
+      if (isHome) homeAtt *= CARD_PENALTY; else awayAtt *= CARD_PENALTY;
+    } else if (isMidfielder) {
+      if (isHome) homeMid *= CARD_PENALTY; else awayMid *= CARD_PENALTY;
     } else {
-      awayDef *= 0.82;
-      awayMid *= 0.82;
-      awayAtt *= 0.82;
+      if (isHome) homeAtt *= CARD_PENALTY; else awayAtt *= CARD_PENALTY;
     }
   };
 
@@ -470,7 +474,7 @@ export const simulateMatch = (
       const cardRoll = Math.random();
       
       if (cardRoll < 0.25) { // Yellow Card
-        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI']);
+        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA']);
         const cards = (yellowCards[player.id] || 0) + 1;
         yellowCards[player.id] = cards;
 
@@ -483,7 +487,7 @@ export const simulateMatch = (
             clubId: offendingClub.id,
             description: `Cartão vermelho! ${player.name} recebe o segundo amarelo e é expulso de campo!`
           });
-          applyRedCardPenalty(isHomeFoul);
+          applyRedCardPenalty(isHomeFoul, player.position);
         } else {
           events.push({
             minute: min,
@@ -494,7 +498,7 @@ export const simulateMatch = (
           });
         }
       } else if (cardRoll < 0.28) { // Direct Red Card (very rare)
-        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI']);
+        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA']);
         redCarded.add(player.id);
         events.push({
           minute: min,
@@ -503,24 +507,31 @@ export const simulateMatch = (
           clubId: offendingClub.id,
           description: `Cartão vermelho direto! ${player.name} atinge o adversário por trás e está expulso!`
         });
-        applyRedCardPenalty(isHomeFoul);
+        applyRedCardPenalty(isHomeFoul, player.position);
       }
     }
 
-    // Injury check (approx 0.5% chance per minute)
+    // Injury close-call check (approx 0.5% chance per minute). Whether it actually becomes an
+    // injury depends on how fatigued that specific player already is -- a well-rested player
+    // shrugs it off almost every time, while someone who's been playing non-stop without rest
+    // is genuinely at risk.
     if (Math.random() < 0.005) {
       const isHomeInjury = Math.random() > 0.5;
       const targetStarters = isHomeInjury ? homeStarters : awayStarters;
       const targetClub = isHomeInjury ? homeClub : awayClub;
-      
+
       const injuredPlayer = choosePlayer(targetStarters);
-      events.push({
-        minute: min,
-        type: 'INJURY',
-        player: injuredPlayer.name,
-        clubId: targetClub.id,
-        description: `Lesão! ${injuredPlayer.name} cai sentindo dores musculares e precisa deixar o campo.`
-      });
+      const fatigue = 100 - (injuredPlayer.energy ?? 100); // 0 (rested) to ~70 (exhausted)
+      const injuryChance = 0.05 + (fatigue / 100) * 0.65; // 5% baseline, up to ~50% when gassed
+      if (Math.random() < injuryChance) {
+        events.push({
+          minute: min,
+          type: 'INJURY',
+          player: injuredPlayer.name,
+          clubId: targetClub.id,
+          description: `Lesão! ${injuredPlayer.name} cai sentindo dores musculares e precisa deixar o campo.`
+        });
+      }
     }
   }
 

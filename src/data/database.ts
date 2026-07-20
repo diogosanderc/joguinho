@@ -29,7 +29,12 @@ export interface Player {
   benchRounds?: number;
   contractLockYears?: number; // Number of years contract is locked
   performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
+  suspendedMatches?: number; // League matches still missed due to a red card or 3rd accumulated yellow
 }
+
+// A player is fit to be selected: not injured, and not serving a card suspension.
+export const isPlayerAvailable = (p: Player): boolean =>
+  !p.isInjured && !(p.suspendedMatches && p.suspendedMatches > 0);
 
 export interface Club {
   id: string;

@@ -442,17 +442,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let redCards = player.redCards;
         let goals = player.goals;
         let justInjured = false;
+        let suspendedMatches = player.suspendedMatches || 0;
+        let justSuspended = false;
 
         // If player has cards/goals in the simulated match, update them
         if (clubMatch && clubMatch.result) {
           const matchRes = clubMatch.result;
           const playerEvents = matchRes.events.filter(e => e.player === player.name);
-          
+
           playerEvents.forEach(ev => {
             if (ev.type === 'GOAL') goals++;
-            if (ev.type === 'YELLOW') yellowCards++;
+            if (ev.type === 'YELLOW') {
+              yellowCards++;
+              if (yellowCards % 3 === 0) {
+                suspendedMatches = Math.max(suspendedMatches, 1);
+                justSuspended = true;
+                if (club.id === userClubId) {
+                  pushNews({
+                    id: `susp_yellow_${player.id}_${Date.now()}`,
+                    week: currentRound,
+                    text: `${player.name} (${player.position}) chegou ao ${yellowCards}º cartão amarelo no campeonato e está suspenso para a próxima rodada.`,
+                    type: 'MATCH'
+                  });
+                }
+              }
+            }
             if (ev.type === 'RED') {
               redCards++;
+              suspendedMatches = Math.max(suspendedMatches, 1);
+              justSuspended = true;
               if (club.id === userClubId) {
                 pushNews({
                   id: `red_${player.id}_${Date.now()}`,
@@ -480,11 +498,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
 
-        // Random injury chance per round even without match events (older players are more prone)
+        // Random injury chance per round even without match events. A normally-rested player
+        // barely ever gets hurt here -- this mostly matters for older players, and especially
+        // for anyone who's been playing heavy minutes without a rest (low current energy).
         if (!isInjured && club.id === userClubId) {
-          const ageFactor = player.age > 30 ? (player.age - 30) * 0.008 : 0.002;
-          // Very low chance per round, increasing with age
-          if (Math.random() < ageFactor) {
+          const ageFactor = player.age > 30 ? (player.age - 30) * 0.003 : 0.0008;
+          const fatigue = 100 - energy;
+          const fatigueFactor = fatigue > 40 ? (fatigue - 40) * 0.0015 : 0;
+          const injuryChance = ageFactor + fatigueFactor;
+          if (Math.random() < injuryChance) {
             isInjured = true;
             justInjured = true;
             injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
@@ -623,9 +645,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
             }
           }
+
+          // The deeper the club sinks into the red, the more nervous every player gets about
+          // getting paid -- this fires independently of playing time, for starters too.
+          if (benchRounds !== 999 && !contractLocked && finances < 0) {
+            const debtSeverity = Math.min(5, Math.floor(Math.abs(finances) / 500000)); // 0-5 steps of -500k
+            if (debtSeverity > 0 && Math.random() < debtSeverity * 0.006) {
+              benchRounds = 999;
+              pushNews({
+                id: `unhappy_debt_${player.id}_${Date.now()}`,
+                week: currentRound,
+                text: `${player.name} (${player.position}) está preocupado com a crise financeira do ${club.name} e pede transferência.`,
+                type: 'INFO'
+              });
+            }
+          }
         }
 
-        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend };
+        // --- Suspension (red card / 3rd accumulated yellow) countdown ---
+        if (suspendedMatches > 0 && !justSuspended) {
+          suspendedMatches -= 1;
+        }
+
+        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches };
       });
 
       return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft };

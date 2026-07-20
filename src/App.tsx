@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
 import {
@@ -170,7 +170,7 @@ const AppContent: React.FC = () => {
   // Helper function to check if the club has enough healthy players for a tactic
   const isTacticAvailable = (tactic: string, squadList: Player[]) => {
     const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(tactic);
-    const healthy = squadList.filter(p => !p.isInjured);
+    const healthy = squadList.filter(isPlayerAvailable);
     const count = (pos: PlayerPosition) => healthy.filter(p => p.position === pos).length;
 
     // PON and CA cover for each other: a winger can play as a makeshift centre-forward (and
@@ -209,15 +209,15 @@ const AppContent: React.FC = () => {
         const saved = startersPerTactic[selectedTactic];
         const validated = saved.map(p => {
           const found = userClub.squad.find(s => s.id === p.id);
-          if (!found || found.isInjured) {
+          if (!found || !isPlayerAvailable(found)) {
             const excludeIds = new Set(saved.map(x => x.id));
-            let replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !excludeIds.has(s.id));
+            let replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !excludeIds.has(s.id));
             // PON and CA cover for each other before resorting to a completely mismatched position
             if (!replacement && (p.position === 'CA' || p.position === 'PON')) {
               const sibling = p.position === 'CA' ? 'PON' : 'CA';
-              replacement = userClub.squad.find(s => s.position === sibling && !s.isInjured && !excludeIds.has(s.id));
+              replacement = userClub.squad.find(s => s.position === sibling && isPlayerAvailable(s) && !excludeIds.has(s.id));
             }
-            return replacement || userClub.squad.find(s => !s.isInjured && !excludeIds.has(s.id)) || p;
+            return replacement || userClub.squad.find(s => isPlayerAvailable(s) && !excludeIds.has(s.id)) || p;
           }
           return found;
         });
@@ -226,7 +226,7 @@ const AppContent: React.FC = () => {
       } else {
         // Auto-pick best 11 matching the new scheme criteria
         const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(selectedTactic);
-        const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
+        const pool = [...userClub.squad].filter(isPlayerAvailable).sort((a, b) => b.rating - a.rating);
         const selected: Player[] = [];
         const gks = pool.filter(p => p.position === 'GOL');
         if (gks[0]) selected.push(gks[0]);
@@ -258,7 +258,7 @@ const AppContent: React.FC = () => {
 
         if (selected.length < 11) {
           const ids = new Set(selected.map(p => p.id));
-          const rest = userClub.squad.filter(p => !p.isInjured && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
+          const rest = userClub.squad.filter(p => isPlayerAvailable(p) && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
           for (let i = 0; i < Math.min(11 - selected.length, rest.length); i++) selected.push(rest[i]);
         }
         setStarters(selected);
@@ -274,10 +274,10 @@ const AppContent: React.FC = () => {
       let changed = false;
       const nextS = starters.map(p => {
         const found = userClub.squad.find(s => s.id === p.id);
-        if (!found || found.isInjured) {
+        if (!found || !isPlayerAvailable(found)) {
           changed = true;
-          const replacement = userClub.squad.find(s => s.position === p.position && !s.isInjured && !starters.some(x => x.id === s.id));
-          return replacement || userClub.squad.find(s => !s.isInjured && !starters.some(x => x.id === s.id)) || p;
+          const replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !starters.some(x => x.id === s.id));
+          return replacement || userClub.squad.find(s => isPlayerAvailable(s) && !starters.some(x => x.id === s.id)) || p;
         }
         if (found.rating !== p.rating || found.energy !== p.energy) {
           changed = true;
@@ -1228,7 +1228,7 @@ const AppContent: React.FC = () => {
 
                 {subslotIndex !== null && (() => {
                   const outgoing = midMatchStarters[subslotIndex];
-                  const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && !p.isInjured);
+                  const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && isPlayerAvailable(p));
                   const samePositionBench = healthyBench.filter(p => p.position === outgoing?.position);
                   const benchPool = samePositionBench.length > 0 ? samePositionBench : healthyBench;
                   return (
@@ -1391,7 +1391,7 @@ const AppContent: React.FC = () => {
         </div>
 
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: 800, color: 'var(--accent-green)', fontSize: '1rem' }}>
+          <div style={{ fontWeight: 800, color: userClub.finances < 0 ? 'var(--accent-red)' : 'var(--accent-green)', fontSize: '1rem' }}>
             {formatCurrency(userClub.finances)}
           </div>
           <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600 }}>
@@ -1623,7 +1623,7 @@ const AppContent: React.FC = () => {
                     // Helper logic to grab target tactic sizes
                     const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(selectedTactic);
 
-                    const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.rating - a.rating);
+                    const pool = [...userClub.squad].filter(isPlayerAvailable).sort((a, b) => b.rating - a.rating);
                     const bestSelected: Player[] = [];
                     const gks = pool.filter(p => p.position === 'GOL');
                     if (gks[0]) bestSelected.push(gks[0]);
@@ -1656,7 +1656,7 @@ const AppContent: React.FC = () => {
                     // Fill to 11 if needed
                     if (bestSelected.length < 11) {
                       const ids = new Set(bestSelected.map(p => p.id));
-                      const rest = userClub.squad.filter(p => !p.isInjured && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
+                      const rest = userClub.squad.filter(p => isPlayerAvailable(p) && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
                       for (let i = 0; i < Math.min(11 - bestSelected.length, rest.length); i++) bestSelected.push(rest[i]);
                     }
 
@@ -1676,7 +1676,7 @@ const AppContent: React.FC = () => {
                     const { targetZAG, targetLD, targetLE, targetVOL, targetMEI, targetPON, targetCA } = getTacticNeeds(selectedTactic);
 
                     // Sort all non-injured squad by energy level (higher energy first), then by rating
-                    const pool = [...userClub.squad].filter(p => !p.isInjured).sort((a, b) => b.energy - a.energy || b.rating - a.rating);
+                    const pool = [...userClub.squad].filter(isPlayerAvailable).sort((a, b) => b.energy - a.energy || b.rating - a.rating);
 
                     const selected: Player[] = [];
                     // Force pick the gk with best energy
@@ -1896,7 +1896,7 @@ const AppContent: React.FC = () => {
                 return (
                   <div key={player.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <div 
-                      className={`player-row ${player.isInjured ? 'injured' : ''}`}
+                      className={`player-row ${player.isInjured || (player.suspendedMatches ?? 0) > 0 ? 'injured' : ''}`}
                       onClick={() => setSelectedManagePlayerId(isExpanded ? null : player.id)}
                       style={{
                         borderLeft: isStarter ? '3px solid var(--accent-green)' : '3px solid transparent',
@@ -1912,6 +1912,7 @@ const AppContent: React.FC = () => {
                           {userClub.penaltyTakerId === player.id && <span style={{ fontSize: '0.75rem' }} title="Cobrador de Pênalti">🎯</span>}
                           {player.contractLocked && <span style={{ fontSize: '0.75rem' }} title="Contrato Trancado">🔒</span>}
                           {player.isInjured && <span title="Lesionado - indisponível para escalação" style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>❌ Lesionado ({player.injuryWeeks} {player.injuryWeeks === 1 ? 'jogo' : 'jogos'})</span>}
+                          {!player.isInjured && (player.suspendedMatches ?? 0) > 0 && <span title="Suspenso - indisponível para escalação" style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>🟥 Suspenso ({player.suspendedMatches} {player.suspendedMatches === 1 ? 'jogo' : 'jogos'})</span>}
                           {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
                         </div>
                         <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {formatCurrency(player.value)}</span>
@@ -2024,7 +2025,7 @@ const AppContent: React.FC = () => {
                       Substituindo titular: **{starters[subslotIndex]?.name}** ({starters[subslotIndex]?.position})
                     </p>
                     {userClub.squad
-                      .filter(p => !starters.some(s => s.id === p.id) && !p.isInjured && p.position === starters[subslotIndex]?.position)
+                      .filter(p => !starters.some(s => s.id === p.id) && isPlayerAvailable(p) && p.position === starters[subslotIndex]?.position)
                       .map(p => (
                         <div 
                           key={p.id}
@@ -2051,7 +2052,7 @@ const AppContent: React.FC = () => {
                           <span className="rating-badge">{p.rating}</span>
                         </div>
                       ))}
-                      {userClub.squad.filter(p => !starters.some(s => s.id === p.id) && !p.isInjured && p.position === starters[subslotIndex]?.position).length === 0 && (
+                      {userClub.squad.filter(p => !starters.some(s => s.id === p.id) && isPlayerAvailable(p) && p.position === starters[subslotIndex]?.position).length === 0 && (
                         <p style={{ fontSize: '0.8rem', color: 'var(--accent-red)', textAlign: 'center' }}>Nenhum reserva saudável disponível para esta posição.</p>
                       )}
                   </div>
@@ -2256,7 +2257,7 @@ const AppContent: React.FC = () => {
                         </div>
                         <div>
                           <span>Caixa Disponível: </span>
-                          <span style={{ fontWeight: 700, color: 'var(--accent-green)' }}>{formatCurrency(userClub?.finances || 0)}</span>
+                          <span style={{ fontWeight: 700, color: (userClub?.finances || 0) < 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>{formatCurrency(userClub?.finances || 0)}</span>
                         </div>
                       </div>
 
