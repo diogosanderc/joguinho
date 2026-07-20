@@ -92,6 +92,8 @@ const AppContent: React.FC = () => {
   // Mid-match substitution variables
   const [midMatchSubModal, setMidMatchSubModal] = useState(false);
   const [midMatchStarters, setMidMatchStarters] = useState<Player[]>([]);
+  const [subsUsed, setSubsUsed] = useState(0);
+  const MAX_SUBS = 5;
 
   // Half-time and red-card modals
   const [halftimeModalOpen, setHalftimeModalOpen] = useState(false);
@@ -441,6 +443,7 @@ const AppContent: React.FC = () => {
       setLastRedCardMinute(-1);
       setInjuryModalOpen(false);
       setLastInjuryMinute(-1);
+      setSubsUsed(0);
     }
   }, [gameState, currentMatchResult]);
 
@@ -464,7 +467,12 @@ const AppContent: React.FC = () => {
       setLastRedCardMinute(latest.minute);
       if (userClub && latest.player) {
         const pObj = userClub.squad.find(x => x.name === latest.player);
-        if (pObj) setRedCardPlayer(pObj);
+        if (pObj) {
+          setRedCardPlayer(pObj);
+          // A red card forces the player off immediately -- the team plays a man down for
+          // the rest of the match, there's no "keep him on" option like with a yellow.
+          setMidMatchStarters(prev => prev.filter(p => p.id !== pObj.id));
+        }
       }
       setRedCardModalOpen(true);
       setIsSimPaused(true);
@@ -585,10 +593,12 @@ const AppContent: React.FC = () => {
   // Helper to make substitution in current match
   const handleMidMatchSub = (inPlayer: Player, outPlayer: Player) => {
     if (!currentMatch || !currentMatchResult) return;
-    
+    if (subsUsed >= MAX_SUBS) return;
+
     // Replace in starters
     const nextStarters = midMatchStarters.map(p => p.id === outPlayer.id ? inPlayer : p);
     setMidMatchStarters(nextStarters);
+    setSubsUsed(prev => prev + 1);
     setMidMatchSubModal(false);
 
     // Append sub news/event
@@ -980,7 +990,7 @@ const AppContent: React.FC = () => {
         {/* TOP USER GAME CONTROL BANNER */}
         <div className="match-scoreboard" style={{ padding: '14px 16px', gap: '8px', zIndex: 10, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700 }}>
-            <span>SEU JOGO • SÉRIE {userClub.division}</span>
+            <span>SEU JOGO • SÉRIE {userClub.division} • 🔄 {subsUsed}/{MAX_SUBS}</span>
             <span style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}>
               {simMinute}' - {simMinute <= 45 ? '1º Tempo' : simMinute < 90 ? '2º Tempo' : 'Fim de Jogo'}
             </span>
@@ -1063,12 +1073,19 @@ const AppContent: React.FC = () => {
               Pular
             </button>
             {!matchDone && (
-              <button 
+              <button
                 onClick={() => setMidMatchSubModal(true)}
+                disabled={subsUsed >= MAX_SUBS}
                 className="btn btn-secondary"
-                style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)' }}
+                style={{
+                  padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px',
+                  background: subsUsed >= MAX_SUBS ? 'rgba(255,255,255,0.03)' : 'rgba(255, 193, 7, 0.1)',
+                  border: subsUsed >= MAX_SUBS ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(255, 193, 7, 0.2)',
+                  color: subsUsed >= MAX_SUBS ? '#6b7280' : 'var(--accent-gold)',
+                  cursor: subsUsed >= MAX_SUBS ? 'not-allowed' : 'pointer'
+                }}
               >
-                Substituir
+                Substituir ({MAX_SUBS - subsUsed})
               </button>
             )}
           </div>
@@ -1166,16 +1183,18 @@ const AppContent: React.FC = () => {
               <div style={{ textAlign: 'center', marginBottom: '12px' }}>
                 <span style={{ fontSize: '2rem' }}>⏸️</span>
                 <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-gold)' }}>Intervalo — 45'</h3>
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>O árbitro apita o fim do primeiro tempo. Deseja fazer alguma substituição?</p>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>O árbitro apita o fim do primeiro tempo. Deseja fazer alguma substituição? ({MAX_SUBS - subsUsed}/{MAX_SUBS} disponíveis)</p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                <button
-                  className="btn btn-secondary"
-                  style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)' }}
-                  onClick={() => { setHalftimeModalOpen(false); setMidMatchSubModal(true); }}
-                >
-                  🔄 Fazer Substituição
-                </button>
+                {subsUsed < MAX_SUBS && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)' }}
+                    onClick={() => { setHalftimeModalOpen(false); setMidMatchSubModal(true); }}
+                  >
+                    🔄 Fazer Substituição
+                  </button>
+                )}
                 <button
                   className="btn btn-primary"
                   onClick={() => { setHalftimeModalOpen(false); setIsSimPaused(false); }}
@@ -1199,23 +1218,27 @@ const AppContent: React.FC = () => {
                     Jogador: <strong>{redCardPlayer.name}</strong> ({redCardPlayer.position})
                   </div>
                 )}
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Seu jogador foi expulso e deixou o time desfalcado. O que deseja fazer?</p>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>
+                  Ele foi expulso e já saiu de campo — seu time segue com {midMatchStarters.length} jogadores pelo resto da partida.
+                  {subsUsed < MAX_SUBS
+                    ? ' Você ainda pode reorganizar o time tirando outro jogador para encaixar alguém do banco.'
+                    : ' Suas 5 substituições já foram usadas, não é possível reorganizar mais.'}
+                </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                <button
-                  className="btn btn-secondary"
-                  style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', fontWeight: 700 }}
-                  onClick={() => {
-                    setRedCardModalOpen(false);
-                    if (redCardPlayer) {
-                      const idx = midMatchStarters.findIndex(s => s.id === redCardPlayer.id);
-                      setSubslotIndex(idx >= 0 ? idx : null);
-                    }
-                    setMidMatchSubModal(true);
-                  }}
-                >
-                  🔄 Substituir / Reorganizar
-                </button>
+                {subsUsed < MAX_SUBS && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', fontWeight: 700 }}
+                    onClick={() => {
+                      setRedCardModalOpen(false);
+                      setSubslotIndex(null);
+                      setMidMatchSubModal(true);
+                    }}
+                  >
+                    🔄 Reorganizar Time ({MAX_SUBS - subsUsed} sub. restante{MAX_SUBS - subsUsed === 1 ? '' : 's'})
+                  </button>
+                )}
                 <button
                   className="btn btn-primary"
                   onClick={() => { setRedCardModalOpen(false); setIsSimPaused(false); }}
@@ -1244,23 +1267,42 @@ const AppContent: React.FC = () => {
                     )}
                   </div>
                 )}
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Escolha abaixo quem entra no lugar dele.</p>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>
+                  {subsUsed < MAX_SUBS
+                    ? 'Escolha abaixo quem entra no lugar dele.'
+                    : 'Suas 5 substituições já foram usadas — o time segue desfalcado nessa posição pelo resto da partida.'}
+                </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                <button
-                  className="btn btn-secondary"
-                  style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)', fontWeight: 700 }}
-                  onClick={() => {
-                    setInjuryModalOpen(false);
-                    if (injuryPlayer) {
-                      const idx = midMatchStarters.findIndex(s => s.id === injuryPlayer.id);
-                      setSubslotIndex(idx >= 0 ? idx : null);
-                    }
-                    setMidMatchSubModal(true);
-                  }}
-                >
-                  🔄 Substituir Agora
-                </button>
+                {subsUsed < MAX_SUBS ? (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)', fontWeight: 700 }}
+                    onClick={() => {
+                      setInjuryModalOpen(false);
+                      if (injuryPlayer) {
+                        const idx = midMatchStarters.findIndex(s => s.id === injuryPlayer.id);
+                        setSubslotIndex(idx >= 0 ? idx : null);
+                      }
+                      setMidMatchSubModal(true);
+                    }}
+                  >
+                    🔄 Substituir Agora
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setInjuryModalOpen(false);
+                      setIsSimPaused(false);
+                      if (injuryPlayer) {
+                        setMidMatchStarters(prev => prev.filter(p => p.id !== injuryPlayer.id));
+                      }
+                    }}
+                  >
+                    ▶️ Continuar Jogo
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1276,9 +1318,21 @@ const AppContent: React.FC = () => {
               </div>
 
               <div>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  marginBottom: '12px', padding: '8px 10px', borderRadius: '8px',
+                  background: subsUsed >= MAX_SUBS ? 'rgba(255,23,68,0.08)' : 'rgba(0,230,118,0.06)',
+                  border: `1px solid ${subsUsed >= MAX_SUBS ? 'rgba(255,23,68,0.25)' : 'rgba(0,230,118,0.2)'}`
+                }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: subsUsed >= MAX_SUBS ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                    Substituições: {subsUsed}/{MAX_SUBS}
+                  </span>
+                  {subsUsed >= MAX_SUBS && <span style={{ fontSize: '0.72rem', color: 'var(--accent-red)' }}>Limite atingido</span>}
+                </div>
+
                 <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '12px' }}>Ajuste seus titulares. Substitua jogadores cansados ou taticamente inviáveis.</p>
-                
-                <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo:</h4>
+
+                <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo ({midMatchStarters.length}):</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', marginBottom: '14px' }}>
                   {midMatchStarters.map(star => {
                     return (
@@ -1294,11 +1348,17 @@ const AppContent: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontSize: '0.7rem', color: star.energy < 50 ? 'var(--accent-red)' : '#9ca3af' }}>⚡{star.energy}%</span>
-                          <button 
+                          <button
                             onClick={() => {
                               setSubslotIndex(midMatchStarters.indexOf(star));
                             }}
-                            style={{ background: 'var(--accent-red)', color: 'white', border: 'none', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                            disabled={subsUsed >= MAX_SUBS}
+                            style={{
+                              background: subsUsed >= MAX_SUBS ? '#2a2d33' : 'var(--accent-red)',
+                              color: subsUsed >= MAX_SUBS ? '#6b7280' : 'white',
+                              border: 'none', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700,
+                              cursor: subsUsed >= MAX_SUBS ? 'not-allowed' : 'pointer'
+                            }}
                           >
                             Mudar
                           </button>
