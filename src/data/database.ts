@@ -62,20 +62,6 @@ export interface ClubDefinition {
   stars: { name: string; position: PlayerPosition; rating: number; age?: number }[];
 }
 
-const FIRST_NAMES = [
-  'Lucas', 'Gabriel', 'Bruno', 'Rodrigo', 'Felipe', 'Marcos', 'Gustavo', 'Daniel', 'Rafael', 'Thiago',
-  'Matheus', 'Arthur', 'Diego', 'Vinicius', 'Alex', 'Guilherme', 'Douglas', 'Everton', 'Henrique', 'Eduardo',
-  'Marcelo', 'Ronaldo', 'Alan', 'Cauan', 'Dudu', 'Fabio', 'Gerson', 'Igor', 'Joao', 'Leo',
-  'Mauricio', 'Nene', 'Otavio', 'Paulo', 'Ricardo', 'Samuel', 'Victor', 'Wellington', 'Yago', 'Zander'
-];
-
-const LAST_NAMES = [
-  'Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes',
-  'Costa', 'Ribeiro', 'Martins', 'Carvalho', 'Almeida', 'Lopes', 'Soares', 'Fernandes', 'Vieira', 'Barbosa',
-  'Rocha', 'Dias', 'Nascimento', 'Moreira', 'Nunes', 'Mendes', 'Cardoso', 'Teixeira', 'Araujo', 'Melo',
-  'Pinto', 'Cabral', 'Castro', 'Cardoso', 'Cavalcanti', 'Fontes', 'Borges', 'Neves', 'Motta', 'Miranda'
-];
-
 export const STAR_PLAYERS: Record<string, { name: string; position: PlayerPosition; rating: number; age?: number }[]> = {
   athletico_pr: [
     { name: "Mycael", position: "GOL", rating: 77, age: 22 },
@@ -1944,17 +1930,12 @@ const calculatePlayerValueAndSalary = (rating: number, age: number, position: Pl
 const MIN_PLAYER_AGE = 22;
 const MAX_PLAYER_AGE = 34;
 
-export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: { name: string; position: PlayerPosition; rating: number; age?: number }[] = []): Player[] => {
+export const generateSquad = (clubId: string, stars: { name: string; position: PlayerPosition; rating: number; age?: number }[] = []): Player[] => {
   const squad: Player[] = [];
   let idCounter = 1;
 
-  const minRating = division === 'A' ? 75 : division === 'B' ? 65 : 53;
-  const maxRating = division === 'A' ? 83 : division === 'B' ? 74 : 64;
-
-  const usedPositions: Record<PlayerPosition, number> = { GOL: 0, ZAG: 0, LD: 0, LE: 0, VOL: 0, MEI: 0, PON: 0, CA: 0 };
-
   stars.forEach(star => {
-    // Never field anyone under 22 - skip; the position-quota fill below covers the slot
+    // Never field anyone under 22
     if (star.age !== undefined && star.age < MIN_PLAYER_AGE) return;
     const age = star.age !== undefined ? star.age : randomRange(MIN_PLAYER_AGE, MAX_PLAYER_AGE);
 
@@ -1975,48 +1956,6 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
       isStar: star.rating >= 80,
       contractLocked: star.rating >= 83
     });
-    usedPositions[star.position]++;
-  });
-
-  const positionTargets: Record<PlayerPosition, number> = { GOL: 3, ZAG: 5, LD: 2, LE: 2, VOL: 3, MEI: 4, PON: 3, CA: 3 };
-
-  (Object.keys(positionTargets) as PlayerPosition[]).forEach(pos => {
-    const current = usedPositions[pos];
-    const targetMin = positionTargets[pos];
-    if (current < targetMin) {
-      for (let i = current; i < targetMin; i++) {
-        let firstName = FIRST_NAMES[randomRange(0, FIRST_NAMES.length - 1)];
-        let lastName = LAST_NAMES[randomRange(0, LAST_NAMES.length - 1)];
-        let name = `${firstName} ${lastName}`;
-
-        while (squad.some(p => p.name === name)) {
-          firstName = FIRST_NAMES[randomRange(0, FIRST_NAMES.length - 1)];
-          lastName = LAST_NAMES[randomRange(0, LAST_NAMES.length - 1)];
-          name = `${firstName} ${lastName}`;
-        }
-
-        const age = randomRange(MIN_PLAYER_AGE, MAX_PLAYER_AGE);
-        const rating = randomRange(minRating, maxRating);
-        const { value, salary } = calculatePlayerValueAndSalary(rating, age, pos);
-
-        squad.push({
-          id: `${clubId}_p_${idCounter++}`,
-          name,
-          age,
-          position: pos,
-          rating,
-          energy: 100,
-          value,
-          salary,
-          goals: 0,
-          yellowCards: 0,
-          redCards: 0,
-          isInjured: false,
-          isStar: false,
-          contractLocked: rating >= 83
-        });
-      }
-    }
   });
 
   const posOrder: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
@@ -2030,7 +1969,7 @@ export const generateSquad = (clubId: string, division: 'A' | 'B' | 'C', stars: 
 
 export const initializeClubs = (): Club[] => {
   return CLUB_DEFINITIONS.map(def => {
-    const squad = generateSquad(def.id, def.division, def.stars);
+    const squad = generateSquad(def.id, def.stars);
     const tvMoney = def.division === 'A' ? 8000000 : def.division === 'B' ? 2000000 : 500000;
     const finances = Math.round(def.reputation * def.reputation * 3000) + tvMoney;
     return {

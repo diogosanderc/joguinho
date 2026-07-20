@@ -40,11 +40,13 @@ export const getAutoStarters = (club: Club): Player[] => {
     for (let i = 0; i < Math.min(count, pool.length); i++) starters.push(pool[i]);
   });
 
-  // If we don't have enough players (unlikely), fill with anyone who is fit
+  // Fill any remaining slots with the best available player regardless of position --
+  // real squads can genuinely have gaps now (e.g. zero natural CA), so this triggers often.
   if (starters.length < 11) {
     const ids = new Set(starters.map(p => p.id));
     const rest = club.squad.filter(p => !p.isInjured && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
-    for (let i = 0; i < Math.min(11 - starters.length, rest.length); i++) {
+    const need = 11 - starters.length; // captured once -- starters.length changes inside the loop below
+    for (let i = 0; i < Math.min(need, rest.length); i++) {
       starters.push(rest[i]);
     }
   }
