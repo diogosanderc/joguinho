@@ -112,6 +112,35 @@ const AppContent: React.FC = () => {
     return (yiq >= 128) ? '#111827' : '#ffffff';
   };
 
+  // Player condition badge: green (Bom/Ótimo) for players in good shape or improving,
+  // red (Ruim) for players trending down and not recommended to field right now.
+  const getPlayerCondition = (trend?: 'UP' | 'DOWN' | 'NEUTRAL') => {
+    if (trend === 'DOWN') return { label: 'Ruim', arrow: '↓', color: 'var(--accent-red)', bg: 'rgba(255, 23, 68, 0.12)', border: 'rgba(255, 23, 68, 0.25)' };
+    if (trend === 'UP') return { label: 'Ótimo', arrow: '↑', color: 'var(--accent-green)', bg: 'rgba(0, 230, 118, 0.18)', border: 'rgba(0, 230, 118, 0.35)' };
+    return { label: 'Bom', arrow: '↑', color: 'var(--accent-green)', bg: 'rgba(0, 230, 118, 0.08)', border: 'rgba(0, 230, 118, 0.2)' };
+  };
+
+  const ConditionBadge: React.FC<{ trend?: 'UP' | 'DOWN' | 'NEUTRAL' }> = ({ trend }) => {
+    const c = getPlayerCondition(trend);
+    return (
+      <span style={{
+        fontSize: '0.62rem',
+        fontWeight: 800,
+        padding: '1px 6px',
+        borderRadius: '6px',
+        background: c.bg,
+        color: c.color,
+        border: `1px solid ${c.border}`,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '2px',
+        whiteSpace: 'nowrap'
+      }}>
+        {c.arrow} {c.label}
+      </span>
+    );
+  };
+
   const [startersPerTactic, setStartersPerTactic] = useState<Record<string, Player[]>>({});
   const [lastUserClubId, setLastUserClubId] = useState('');
 
@@ -967,19 +996,16 @@ const AppContent: React.FC = () => {
                 <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo:</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', marginBottom: '14px' }}>
                   {midMatchStarters.map(star => {
-                    const trend = star.performanceTrend || 'NEUTRAL';
-                    const trendSymbol = trend === 'UP' ? '🟢 ↗️' : trend === 'DOWN' ? '🔴 ↘️' : '🟡 ➡️';
-                    
                     return (
-                      <div 
-                        key={star.id} 
+                      <div
+                        key={star.id}
                         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#1e2126', borderRadius: '8px', fontSize: '0.8rem', border: star.redCards > 0 ? '1px solid var(--accent-red)' : 'none' }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span className={`pos-badge ${star.position}`} style={{ padding: '2px 4px', fontSize: '0.65rem' }}>{star.position}</span>
                           <span style={{ fontWeight: 700 }}>{star.isStar ? '⭐ ' : ''}{star.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>({star.rating})</span>
-                          <span style={{ fontSize: '0.75rem' }} title="Rendimento">{trendSymbol}</span>
+                          <ConditionBadge trend={star.performanceTrend} />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontSize: '0.7rem', color: star.energy < 50 ? 'var(--accent-red)' : '#9ca3af' }}>⚡{star.energy}%</span>
@@ -1004,18 +1030,16 @@ const AppContent: React.FC = () => {
                       {userClub.squad
                         .filter(p => !midMatchStarters.some(s => s.id === p.id) && !p.isInjured)
                         .map(bench => {
-                          const trend = bench.performanceTrend || 'NEUTRAL';
-                          const trendSymbol = trend === 'UP' ? '🟢 ↗️' : trend === 'DOWN' ? '🔴 ↘️' : '🟡 ➡️';
                           return (
-                            <div 
-                              key={bench.id} 
+                            <div
+                              key={bench.id}
                               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#1e2126', borderRadius: '8px', fontSize: '0.8rem' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span className={`pos-badge ${bench.position}`} style={{ padding: '2px 4px', fontSize: '0.65rem' }}>{bench.position}</span>
                                 <span style={{ fontWeight: 700 }}>{bench.isStar ? '⭐ ' : ''}{bench.name}</span>
                                 <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>({bench.rating})</span>
-                                <span style={{ fontSize: '0.75rem' }}>{trendSymbol}</span>
+                                <ConditionBadge trend={bench.performanceTrend} />
                               </div>
                               <button 
                                 onClick={() => {
@@ -1594,10 +1618,7 @@ const AppContent: React.FC = () => {
                 const isStarter = starters.some(s => s.id === player.id);
                 const isExpanded = selectedManagePlayerId === player.id;
                 const remainingWeeks = player.contractWeeks ?? 38;
-                
-                const trend = player.performanceTrend || 'NEUTRAL';
-                const trendSymbol = trend === 'UP' ? '🟢 ↗️' : trend === 'DOWN' ? '🔴 ↘️' : '🟡 ➡️';
-                
+
                 return (
                   <div key={player.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <div 
@@ -1611,14 +1632,15 @@ const AppContent: React.FC = () => {
                     >
                       <span className={`pos-badge ${player.position}`}>{player.position}</span>
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          <ConditionBadge trend={player.performanceTrend} />
                           {userClub.penaltyTakerId === player.id && <span style={{ fontSize: '0.75rem' }} title="Cobrador de Pênalti">🎯</span>}
                           {player.contractLocked && <span style={{ fontSize: '0.75rem' }} title="Contrato Trancado">🔒</span>}
                           {player.isInjured && <span style={{ fontSize: '0.65rem', background: 'var(--accent-red)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>DM ({player.injuryWeeks}s)</span>}
                           {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
                         </div>
-                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • {formatCurrency(player.value)} • Rendimento: {trendSymbol}</span>
+                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {formatCurrency(player.value)}</span>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1814,7 +1836,7 @@ const AppContent: React.FC = () => {
                         <span className={`pos-badge ${player.position}`}>{player.position}</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
-                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Salário: {formatCurrency(player.salary)}/sem</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • Salário: {formatCurrency(player.salary)}/sem</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1892,7 +1914,7 @@ const AppContent: React.FC = () => {
                           <span className={`pos-badge ${player.position}`}>{player.position}</span>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
-                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {player.age} anos • Valor: {formatCurrency(player.value)}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • Valor: {formatCurrency(player.value)}</span>
                           </div>
                           
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1948,7 +1970,7 @@ const AppContent: React.FC = () => {
                         <span className={`pos-badge ${negotiatingPlayer.position}`}>{negotiatingPlayer.position}</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{negotiatingPlayer.isStar ? '⭐ ' : ''}{negotiatingPlayer.name}</span>
-                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Idade: {negotiatingPlayer.age} anos • Força: {negotiatingPlayer.rating}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{negotiatingPlayer.age} anos • Força: {negotiatingPlayer.rating}</span>
                         </div>
                       </div>
 
@@ -1963,25 +1985,50 @@ const AppContent: React.FC = () => {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Sua Oferta (R$):</label>
-                        <input 
-                          type="number"
-                          value={offerAmount}
-                          onChange={(e) => setOfferAmount(Number(e.target.value))}
-                          style={{
-                            padding: '10px',
-                            background: '#121316',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            color: 'white',
-                            fontSize: '0.85rem',
-                            fontWeight: 700
-                          }}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 600 }}>
-                          Valor Digitado: {formatCurrency(offerAmount)}
-                        </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Sua Oferta:</label>
+
+                        {/* Fine adjustment: +/- 5% of market value per tap, no typing needed */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            onClick={() => setOfferAmount(prev => Math.max(0, prev - Math.max(1000, Math.round(negotiatingPlayer.value * 0.05))))}
+                            className="btn btn-secondary"
+                            style={{ width: '44px', height: '44px', padding: 0, fontSize: '1.2rem', fontWeight: 800 }}
+                          >
+                            −
+                          </button>
+                          <div style={{ flex: 1, textAlign: 'center', fontSize: '1.15rem', fontWeight: 800, color: 'var(--accent-gold)' }}>
+                            {formatCurrency(offerAmount)}
+                          </div>
+                          <button
+                            onClick={() => setOfferAmount(prev => prev + Math.max(1000, Math.round(negotiatingPlayer.value * 0.05)))}
+                            className="btn btn-secondary"
+                            style={{ width: '44px', height: '44px', padding: 0, fontSize: '1.2rem', fontWeight: 800 }}
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Quick presets as a % of market value */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                          {[0.9, 1.0, 1.1, 1.2, 1.3, 1.5].map(mult => (
+                            <button
+                              key={mult}
+                              onClick={() => setOfferAmount(Math.round(negotiatingPlayer.value * mult))}
+                              className="btn btn-secondary"
+                              style={{
+                                padding: '8px 0',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: offerAmount === Math.round(negotiatingPlayer.value * mult) ? 'rgba(255, 193, 7, 0.15)' : undefined,
+                                border: offerAmount === Math.round(negotiatingPlayer.value * mult) ? '1px solid var(--accent-gold)' : undefined,
+                                color: offerAmount === Math.round(negotiatingPlayer.value * mult) ? 'var(--accent-gold)' : undefined
+                              }}
+                            >
+                              {Math.round(mult * 100)}%
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       <button
