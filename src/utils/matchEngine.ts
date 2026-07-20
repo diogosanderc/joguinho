@@ -77,6 +77,10 @@ export const calculateTeamForces = (starters: Player[]) => {
     } else if (p.position === 'MEI') {
       addDef(p.rating, 0.2);
       addAtk(p.rating, 0.8);
+      // Meias are the backbone of "midfield" (possession/initiative) even though their
+      // defense/attack split above stays untouched — without this, teams playing with a
+      // single Volante would have midfield default to a flat 40 regardless of their Meias.
+      addMid(p.rating, 1);
     } else if (p.position === 'PON' || p.position === 'CA') {
       addAtk(p.rating, 1);
     }
@@ -276,13 +280,16 @@ export const simulateMatch = (
     homeStats.possession = Math.max(25, Math.min(75, Math.round((homeStats.possession * (min - 1) + currentPossession) / min)));
     awayStats.possession = 100 - homeStats.possession;
 
-    // Apply blowout booster if not already triggered
+    // Once a 2-goal gap opens, the match swings one of two ways: the leader presses on
+    // for a goleada (60%), or the trailing side finds some fight and claws momentum back
+    // (40%) — without this second branch, a 2-0 lead only ever snowballed further.
     if (!blowoutTriggered && Math.abs(homeScore - awayScore) >= 2 && Math.random() < 0.20) {
       blowoutTriggered = true;
-      if (homeScore > awayScore) {
-        homeAtt *= 1.30; // Home is dominating, give them chance for a blowout (goleada)
+      const homeLeading = homeScore > awayScore;
+      if (Math.random() < 0.6) {
+        if (homeLeading) homeAtt *= 1.30; else awayAtt *= 1.30;
       } else {
-        awayAtt *= 1.30;
+        if (homeLeading) awayAtt *= 1.20; else homeAtt *= 1.20;
       }
     }
 
@@ -503,11 +510,15 @@ export const simulateMatch = (
   }
 
   // Decisive result enforcer (75% Decisive / 25% Draw)
+  // Uses the same attack-vs-defense threat ratios as every other chance in the match
+  // (already carrying luck, home advantage, standings and star boosts) instead of a
+  // separate overall-rating ratio, so the tie-breaker's odds match the run of play.
   if (homeScore === awayScore && Math.random() < 0.50) {
-    const homeOverall = homeForces.overall * homeAdvantage;
-    const awayOverall = awayForces.overall;
-    const homeWinChance = homeOverall / (homeOverall + awayOverall);
-    
+    const homeThreat = homeAtt / (homeAtt + awayDef);
+    const awayThreat = awayAtt / (awayAtt + homeDef);
+    const totalThreat = homeThreat + awayThreat;
+    const homeWinChance = totalThreat > 0 ? homeThreat / totalThreat : 0.5;
+
     // Distribute the goal across a random minute in the second half rather than always at 89'
     const randomSecondHalfMin = Math.floor(Math.random() * 40) + 46;
     if (Math.random() < homeWinChance) {

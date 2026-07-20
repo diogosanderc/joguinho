@@ -839,7 +839,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Reset squad card stats (clean slate for goals/cards) & evaluate Stars
       const isRelegated = (club.division === 'A' && relegations.A.includes(club.id)) ||
                           (club.division === 'B' && relegations.B.includes(club.id));
-      
+      const isChampion = rankIndex === 0;
+      const isPromoted = (club.division === 'B' && promotions.B.includes(club.id)) ||
+                         (club.division === 'C' && promotions.C.includes(club.id));
+
+      // Board confidence for next season carries some of this year's performance forward
+      // instead of always flattening to 70 — a title run or promotion buys goodwill,
+      // a relegation costs it.
+      const nextConfidence = isChampion ? 85 : isPromoted ? 78 : isRelegated ? 55 : 70;
+
       const squad = club.squad.map(p => {
         const posGroup = getPositionGroup(p.position);
         const isMF_FW = posGroup === 'MF' || posGroup === 'FW';
@@ -877,8 +885,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
 
-      // Board confidence resets to 70 for next year
-      return { ...club, division: div, confidence: 70, finances, squad };
+      return { ...club, division: div, confidence: nextConfidence, finances, squad };
     });
 
     // Find player performance
