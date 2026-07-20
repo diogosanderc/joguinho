@@ -1792,24 +1792,39 @@ const AppContent: React.FC = () => {
 
                   const currentSlots = roleCoords[selectedTactic] || roleCoords['4-4-2'];
 
-                  // Keep track of which starters have already been placed in a slot
+                  // Assign every slot in 3 ordered passes -- doing this per-slot inline (as
+                  // before) made the outcome depend on array order: if a MEI slot came before
+                  // the CA slots and had no exact match, its generic "any leftover player"
+                  // fallback could grab a PON that a later CA slot actually needed, leaving
+                  // the attack empty. Resolving all slots in dedicated passes first prevents
+                  // an earlier slot's loose fallback from stealing a later slot's rightful sibling.
                   const placedIds = new Set<string>();
+                  const slotAssignments: (Player | null)[] = new Array(currentSlots.length).fill(null);
 
-                  // Match each slot coordinate with a starter player matching that exact position
+                  // Pass 1: exact position match
+                  currentSlots.forEach((slot, i) => {
+                    const match = starters.find(p => !placedIds.has(p.id) && p.position === slot.role);
+                    if (match) { slotAssignments[i] = match; placedIds.add(match.id); }
+                  });
+
+                  // Pass 2: PON and CA cover for each other (a winger playing as makeshift
+                  // striker, or vice versa) before any slot resorts to a mismatched position.
+                  currentSlots.forEach((slot, i) => {
+                    if (slotAssignments[i] || (slot.role !== 'CA' && slot.role !== 'PON')) return;
+                    const sibling = slot.role === 'CA' ? 'PON' : 'CA';
+                    const match = starters.find(p => !placedIds.has(p.id) && p.position === sibling);
+                    if (match) { slotAssignments[i] = match; placedIds.add(match.id); }
+                  });
+
+                  // Pass 3: fill whatever is still empty with any leftover player (safeguard)
+                  currentSlots.forEach((_slot, i) => {
+                    if (slotAssignments[i]) return;
+                    const match = starters.find(p => !placedIds.has(p.id));
+                    if (match) { slotAssignments[i] = match; placedIds.add(match.id); }
+                  });
+
                   return currentSlots.map((slot, index) => {
-                    let matchingPlayer = starters.find(p => !placedIds.has(p.id) && p.position === slot.role);
-
-                    // PON and CA cover for each other (a winger playing as makeshift striker,
-                    // or vice versa) before resorting to a totally mismatched position below.
-                    if (!matchingPlayer && (slot.role === 'CA' || slot.role === 'PON')) {
-                      const sibling = slot.role === 'CA' ? 'PON' : 'CA';
-                      matchingPlayer = starters.find(p => !placedIds.has(p.id) && p.position === sibling);
-                    }
-
-                    // Fallback to any unplaced player if none matching the exact position (safeguard)
-                    if (!matchingPlayer) {
-                      matchingPlayer = starters.find(p => !placedIds.has(p.id));
-                    }
+                    const matchingPlayer = slotAssignments[index];
 
                     if (!matchingPlayer) {
                       // Empty slot placeholder (should not happen with 11 starters, but good for safety)
@@ -1819,8 +1834,6 @@ const AppContent: React.FC = () => {
                         </div>
                       );
                     }
-
-                    placedIds.add(matchingPlayer.id);
 
                     const p = matchingPlayer;
                     const sideLabel: string = p.position;
