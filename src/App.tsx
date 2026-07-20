@@ -16,7 +16,7 @@ const AppContent: React.FC = () => {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
-    upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
+    upgradeStadium, buildVipBoxes, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker
   } = useGame();
 
@@ -298,30 +298,40 @@ const AppContent: React.FC = () => {
       const rep = userClub.reputation;
       const div = userClub.division;
       const divMultiplier = div === 'A' ? 5.0 : div === 'B' ? 2.0 : div === 'C' ? 0.8 : 0.3;
-      
+
+      // Sponsors pay better when the club is well-placed in its own table --
+      // rank 1 gets the full 1.3x, last place only 0.7x.
+      const divStandings = getStandingsData()[div];
+      const totalTeams = divStandings.length;
+      const rank = divStandings.findIndex(e => e.clubId === userClub.id) + 1;
+      const positionFactor = totalTeams > 1 && rank > 0
+        ? 0.7 + (1 - (rank - 1) / (totalTeams - 1)) * 0.6
+        : 1.0;
+      const finalMultiplier = divMultiplier * positionFactor;
+
       const sponsors: Sponsor[] = [
         {
           id: 'sp_master',
           name: 'PixBet Master',
           type: 'MASTER',
-          signingBonus: Math.round(rep * rep * 250 * divMultiplier),
-          weeklyPayment: Math.round(rep * 120 * divMultiplier),
+          signingBonus: Math.round(rep * rep * 250 * finalMultiplier),
+          weeklyPayment: Math.round(rep * 120 * finalMultiplier),
           contractWeeks: 38
         },
         {
           id: 'sp_costas',
           name: 'SuperBet Costas',
           type: 'COSTAS',
-          signingBonus: Math.round(rep * rep * 130 * divMultiplier),
-          weeklyPayment: Math.round(rep * 60 * divMultiplier),
+          signingBonus: Math.round(rep * rep * 130 * finalMultiplier),
+          weeklyPayment: Math.round(rep * 60 * finalMultiplier),
           contractWeeks: 38
         },
         {
           id: 'sp_mangas',
           name: 'CredFácil Mangas',
           type: 'MANGAS',
-          signingBonus: Math.round(rep * rep * 70 * divMultiplier),
-          weeklyPayment: Math.round(rep * 30 * divMultiplier),
+          signingBonus: Math.round(rep * rep * 70 * finalMultiplier),
+          weeklyPayment: Math.round(rep * 30 * finalMultiplier),
           contractWeeks: 38
         }
       ];
@@ -2457,17 +2467,52 @@ const AppContent: React.FC = () => {
                     +{formatCurrency(Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0))}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#9ca3af' }}>Público Estimado (Bilheteria):</span>
                   <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
                     ~{formatCurrency(Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice))}
                   </span>
                 </div>
+                {(() => {
+                  const starCount = userClub.squad.filter(p => p.isStar).length;
+                  const merchBase = userClub.reputation * 60;
+                  const confidenceFactor = 0.6 + (userClub.confidence / 100) * 0.6;
+                  const starMultiplier = 1 + Math.min(starCount, 5) * 0.08;
+                  const merchIncome = Math.round(merchBase * confidenceFactor * starMultiplier);
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>Vendas de Camisas/Merchandising:</span>
+                      <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
+                        +{formatCurrency(merchIncome)}
+                      </span>
+                    </div>
+                  );
+                })()}
+                {userClub.hasVipBoxes && (() => {
+                  const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
+                  const vipIncome = vipIncomeByDiv[userClub.division] ?? 20000;
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                      <span style={{ color: '#9ca3af' }}>Camarotes VIP:</span>
+                      <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
+                        +{formatCurrency(vipIncome)}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
                   <span>Saldo Semanal (Projetado):</span>
                   {(() => {
-                    const balance = Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0) + 
-                                    Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice) - 
+                    const starCount = userClub.squad.filter(p => p.isStar).length;
+                    const merchBase = userClub.reputation * 60;
+                    const confidenceFactor = 0.6 + (userClub.confidence / 100) * 0.6;
+                    const starMultiplier = 1 + Math.min(starCount, 5) * 0.08;
+                    const merchIncome = Math.round(merchBase * confidenceFactor * starMultiplier);
+                    const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
+                    const vipIncome = userClub.hasVipBoxes ? (vipIncomeByDiv[userClub.division] ?? 20000) : 0;
+                    const balance = Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0) +
+                                    Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice) +
+                                    merchIncome + vipIncome -
                                     userClub.squad.reduce((sum, p) => sum + p.salary, 0);
                     return (
                       <span style={{ color: balance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
@@ -2521,7 +2566,7 @@ const AppContent: React.FC = () => {
                   >
                     Ampliar +5.000 (Cost: {formatCurrency(5000*350)})
                   </button>
-                  <button 
+                  <button
                     onClick={() => upgradeStadium(10000)}
                     className="btn btn-secondary"
                     style={{ fontSize: '0.8rem', padding: '10px' }}
@@ -2530,6 +2575,46 @@ const AppContent: React.FC = () => {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* VIP Boxes */}
+            <div className="card">
+              <div className="card-title"><DollarSign size={18} color="var(--accent-gold)" /> Camarotes VIP</div>
+              {(() => {
+                const costByDiv: Record<string, number> = { A: 4000000, B: 2000000, C: 1000000 };
+                const cost = costByDiv[userClub.division] ?? 1000000;
+                const incomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
+                const income = incomeByDiv[userClub.division] ?? 20000;
+
+                if (userClub.hasVipBoxes) {
+                  return (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)' }}>
+                      ✅ Camarotes VIP concluídos! Gerando +{formatCurrency(income)} extras a cada jogo em casa.
+                    </div>
+                  );
+                }
+                if (userClub.vipBoxesWeeksLeft && userClub.vipBoxesWeeksLeft > 0) {
+                  return (
+                    <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
+                      🚧 Obras em andamento: {userClub.vipBoxesWeeksLeft} rodadas restantes.
+                    </div>
+                  );
+                }
+                return (
+                  <>
+                    <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: '10px' }}>
+                      Construa camarotes VIP para gerar +{formatCurrency(income)} extras a cada jogo em casa, independente do público.
+                    </div>
+                    <button
+                      onClick={() => buildVipBoxes()}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.8rem', padding: '10px', width: '100%' }}
+                    >
+                      Construir Camarotes VIP (Custo: {formatCurrency(cost)})
+                    </button>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Sponsors */}

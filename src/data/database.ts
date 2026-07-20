@@ -47,6 +47,8 @@ export interface Club {
   isPlayerClub: boolean;
   squad: Player[];
   penaltyTakerId?: string; // Player designated to take penalty kicks
+  hasVipBoxes?: boolean; // Premium seating built -- adds a flat revenue bonus per home match
+  vipBoxesWeeksLeft?: number; // Weeks remaining while VIP boxes are under construction
 }
 
 export interface ClubDefinition {
@@ -1992,13 +1994,13 @@ export const initializeClubs = (): Club[] => {
 };
 
 export const formatCurrency = (value: number): string => {
-  if (value >= 1000) {
+  if (Math.abs(value) >= 1000000) {
     const val = value / 1000000;
-    // If it's less than 1M, show decimals like 0.25M, else show like 2.5M or 2M
-    if (val < 1) {
-      return `R$ ${val.toFixed(2)} M`;
-    }
     return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} M`;
+  }
+  if (Math.abs(value) >= 1000) {
+    const val = value / 1000;
+    return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} mil`;
   }
   return `R$ ${value}`;
 };

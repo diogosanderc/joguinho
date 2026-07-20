@@ -76,6 +76,7 @@ interface GameContextType {
   buyPlayer: (player: Player) => void;
   sellPlayer: (player: Player) => void;
   upgradeStadium: (capacity: number) => void;
+  buildVipBoxes: () => void;
   signSponsor: (sponsor: Sponsor) => void;
   acceptJobOffer: (clubId: string) => void;
   stayAtClub: () => void;
@@ -334,6 +335,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let confidence = club.confidence;
 
       // Handle user's stadium progress
+      let hasVipBoxes = club.hasVipBoxes;
+      let vipBoxesWeeksLeft = club.vipBoxesWeeksLeft;
       if (club.id === userClubId) {
         // Player wages expense
         const wages = club.squad.reduce((sum, p) => sum + p.salary, 0);
@@ -346,12 +349,48 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         finances += sponsorIncome;
 
+        // Merchandising / shirt sales -- scales with the club's fame, how happy the fans
+        // are right now, and how many star players are currently on the roster.
+        const starCount = club.squad.filter(p => p.isStar).length;
+        const merchBase = club.reputation * 60;
+        const confidenceFactor = 0.6 + (club.confidence / 100) * 0.6; // 0.6x to 1.2x
+        const starMultiplier = 1 + Math.min(starCount, 5) * 0.08; // up to +40% with 5+ stars
+        const merchIncome = Math.round(merchBase * confidenceFactor * starMultiplier);
+        finances += merchIncome;
+
+        // VIP boxes under construction
+        if (vipBoxesWeeksLeft && vipBoxesWeeksLeft > 0) {
+          if (vipBoxesWeeksLeft > 1) {
+            vipBoxesWeeksLeft -= 1;
+          } else {
+            vipBoxesWeeksLeft = 0;
+            hasVipBoxes = true;
+            pushNews({
+              id: `vip_done_${Date.now()}`,
+              week: currentRound,
+              text: `Camarotes VIP concluídos! O ${club.name} agora tem uma nova fonte de receita em cada jogo em casa.`,
+              type: 'INFO'
+            });
+          }
+        }
+
         // Apply player match results
         const userScore = isHome ? playerMatchResult.homeScore : playerMatchResult.awayScore;
         const oppScore = isHome ? playerMatchResult.awayScore : playerMatchResult.homeScore;
 
         if (userScore > oppScore) {
           confidence = Math.min(100, confidence + 8);
+          // Sponsors pay an extra victory bonus on top of the fixed weekly payment
+          if (sponsorIncome > 0) {
+            const victoryBonus = Math.round(sponsorIncome * 0.3);
+            finances += victoryBonus;
+            pushNews({
+              id: `spbonus_${Date.now()}`,
+              week: currentRound,
+              text: `Bônus de patrocínio! Seus patrocinadores pagaram ${formatCurrency(victoryBonus)} extra pela vitória.`,
+              type: 'INFO'
+            });
+          }
         } else if (userScore === oppScore) {
           confidence = Math.min(100, Math.max(0, confidence + 2));
         } else {
@@ -383,6 +422,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const fansAttending = Math.min(club.stadiumCapacity, Math.round(club.stadiumCapacity * occupancyRate));
           const ticketIncome = fansAttending * club.ticketPrice;
           finances += ticketIncome;
+
+          // VIP boxes: flat premium revenue per home match, independent of attendance
+          const effectiveHasVip = club.id === userClubId ? hasVipBoxes : club.hasVipBoxes;
+          if (effectiveHasVip) {
+            const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
+            finances += vipIncomeByDiv[club.division] ?? 20000;
+          }
         }
       }
 
@@ -582,7 +628,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend };
       });
 
-      return { ...club, finances, confidence, squad };
+      return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft };
     });
 
     // Handle stadium upgrades for player
@@ -1353,6 +1399,47 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, nextUpgrade, activeSponsors);
   };
 
+  // Build premium VIP boxes -- a flat revenue bonus on every home match, separate from
+  // and stackable with regular ticket income and capacity upgrades.
+  const buildVipBoxes = () => {
+    if (!userClub) return;
+
+    if (userClub.hasVipBoxes) {
+      alert('Seu estádio já tem camarotes VIP.');
+      return;
+    }
+    if (userClub.vipBoxesWeeksLeft && userClub.vipBoxesWeeksLeft > 0) {
+      alert('Os camarotes VIP já estão em construção.');
+      return;
+    }
+
+    const costByDiv: Record<string, number> = { A: 4000000, B: 2000000, C: 1000000 };
+    const cost = costByDiv[userClub.division] ?? 1000000;
+    if (userClub.finances < cost) {
+      alert('Finanças insuficientes para construir os camarotes VIP.');
+      return;
+    }
+
+    const weeksLeft = 6;
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances - cost, vipBoxesWeeksLeft: weeksLeft };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+
+    setNews(prev => [...prev, {
+      id: `vip_start_${Date.now()}`,
+      week: currentRound,
+      text: `Obras iniciadas! Construção de camarotes VIP no ${userClub.stadiumName} vai levar ${weeksLeft} rodadas.`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
   // Accept job offer from another club at season end
   const acceptJobOffer = (clubId: string) => {
     // Reset player flag on current club
@@ -1634,6 +1721,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyPlayer,
       sellPlayer,
       upgradeStadium,
+      buildVipBoxes,
       signSponsor,
       acceptJobOffer,
       stayAtClub,
