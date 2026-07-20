@@ -1644,7 +1644,7 @@ const AppContent: React.FC = () => {
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-green)' }}>E: {player.energy}%</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: player.energy < 60 ? 'var(--accent-red)' : 'var(--accent-green)' }}>⚡{player.energy}%</span>
                         <span className={`rating-badge ${player.rating >= 80 ? 'gold' : player.rating >= 70 ? 'silver' : ''}`}>{player.rating}</span>
                       </div>
                     </div>
