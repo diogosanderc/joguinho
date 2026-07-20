@@ -281,6 +281,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const nextRound = (playerStarters: Player[]) => {
     if (!userClub) return;
 
+    // Accumulates every news item pushed during this round so saveGame() below
+    // (which runs synchronously in this same call) sees them, avoiding the stale
+    // `news` closure that setNews's functional updates don't resolve until re-render.
+    const roundNews: NewsItem[] = [];
+    const pushNews = (item: NewsItem) => {
+      roundNews.push(item);
+      setNews(prev => [...prev, item]);
+    };
+
     // Find the player's match in this round
     const roundMatches = schedule.filter(m => m.round === currentRound);
     const playerMatchIndex = roundMatches.findIndex(m => m.homeId === userClubId || m.awayId === userClubId);
@@ -397,12 +406,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (ev.type === 'YELLOW') yellowCards++;
             if (ev.type === 'RED') {
               redCards++;
+              if (club.id === userClubId) {
+                pushNews({
+                  id: `red_${player.id}_${Date.now()}`,
+                  week: currentRound,
+                  text: `${player.name} (${player.position}) foi expulso de campo e vai desfalcar o time na próxima rodada.`,
+                  type: 'MATCH'
+                });
+              }
             }
             if (ev.type === 'INJURY') {
               isInjured = true;
               // 70% chance of a light 1-week injury, otherwise 2-4 weeks
               injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
               energy = 100; // recovers fatigue on injury!
+              if (club.id === userClubId) {
+                pushNews({
+                  id: `inj_match_${player.id}_${Date.now()}`,
+                  week: currentRound,
+                  text: `${player.name} (${player.position}) se lesionou durante o jogo e ficará afastado por ${injuryWeeks} semana(s).`,
+                  type: 'MATCH'
+                });
+              }
             }
           });
         }
@@ -415,6 +440,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isInjured = true;
             injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
             energy = 100; // recovers fatigue on injury!
+            pushNews({
+              id: `inj_rand_${player.id}_${Date.now()}`,
+              week: currentRound,
+              text: `${player.name} (${player.position}) sofreu uma lesão no departamento médico e desfalcará o time por ${injuryWeeks} semana(s).`,
+              type: 'INFO'
+            });
           }
         }
 
@@ -475,6 +506,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           performanceTrend = 'NEUTRAL';
         }
 
+        if (club.id === userClubId && performanceTrend !== player.performanceTrend && (player.isStar || player.rating >= 75)) {
+          if (performanceTrend === 'UP') {
+            pushNews({
+              id: `form_up_${player.id}_${Date.now()}`,
+              week: currentRound,
+              text: `${player.name} (${player.position}) está em ótima fase e vem crescendo de rendimento nos treinos.`,
+              type: 'INFO'
+            });
+          } else if (performanceTrend === 'DOWN') {
+            pushNews({
+              id: `form_down_${player.id}_${Date.now()}`,
+              week: currentRound,
+              text: `${player.name} (${player.position}) vive fase ruim e vem caindo de rendimento.`,
+              type: 'INFO'
+            });
+          }
+        }
+
         let value = player.value;
         let salary = player.salary;
         if (rating !== player.rating) {
@@ -512,6 +561,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // A contractLocked player CANNOT request to leave (cannot get dissatisfied)
             if (!contractLocked && benchRounds >= 2 && Math.random() < 0.015) {
               benchRounds = 999;
+              pushNews({
+                id: `unhappy_${player.id}_${Date.now()}`,
+                week: currentRound,
+                text: `${player.name} (${player.position}) está insatisfeito no banco de reservas e pede uma oportunidade ou transferência.`,
+                type: 'INFO'
+              });
             }
           }
         }
@@ -540,12 +595,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return c;
         });
         nextUpgrade = null;
-        setNews(prev => [...prev, {
+        pushNews({
           id: `stad_${Date.now()}`,
           week: currentRound,
           text: `Obras concluídas! A capacidade do seu estádio aumentou em ${stadiumUpgrade.capacityAdded.toLocaleString()} lugares!`,
           type: 'INFO'
-        }]);
+        });
       }
     }
 
@@ -559,12 +614,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updatedSponsors[type] = { ...sp, contractWeeks: sp.contractWeeks - 1 };
         } else {
           updatedSponsors[type] = null;
-          setNews(prev => [...prev, {
+          pushNews({
             id: `spon_end_${Date.now()}`,
             week: currentRound,
             text: `Contrato de patrocínio com a ${sp.name} expirou.`,
             type: 'INFO'
-          }]);
+          });
         }
       }
     });
@@ -576,12 +631,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (userConfidence <= 0) {
       // SACKED!
-      setNews(prev => [...prev, {
+      pushNews({
         id: `sack_${Date.now()}`,
         week: currentRound,
         text: `Você foi DEMITIDO! A diretoria perdeu totalmente a confiança no seu trabalho após os últimos resultados.`,
         type: 'BOARD'
-      }]);
+      });
       
       // Generate immediate job offers from Série C clubs (lower tier)
       const cClubs = finalClubs.filter(c => c.division === 'C' && c.id !== userClubId);
@@ -600,12 +655,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextOffers = generatedOffers;
       nextGameState = 'SEASON_END'; // Go to decision screen
     } else if (userConfidence < 20) {
-      setNews(prev => [...prev, {
+      pushNews({
         id: `warn_${Date.now()}`,
         week: currentRound,
         text: `AVISO: A diretoria está extremamente descontente. Melhore seus resultados ou será demitido!`,
         type: 'BOARD'
-      }]);
+      });
+    } else if (userConfidence >= 85 && Math.random() < 0.2) {
+      pushNews({
+        id: `board_happy_${Date.now()}`,
+        week: currentRound,
+        text: `A diretoria está muito satisfeita com seu trabalho à frente do ${userClub.name}!`,
+        type: 'BOARD'
+      });
     }
 
     // --- MID-SEASON OFFERS FROM HIGHER DIVISION BOTS IN CRISIS ---
@@ -627,12 +689,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               salaryBonus: 15
             }];
 
-            setNews(prev => [...prev, {
+            pushNews({
               id: `mid_offer_${Date.now()}`,
               week: currentRound,
               text: `ESPECULAÇÃO: O ${selectedCrisis.name} (Série ${targetDiv}) está em crise e monitora a contratação do técnico ${managerName}!`,
               type: 'OFFER'
-            }]);
+            });
           }
         }
       }
@@ -659,7 +721,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Advance round or end season
     if (currentRound < 38) {
       setCurrentRound(prev => prev + 1);
-      saveGame(nextGameState === 'SEASON_END' ? 'SEASON_END' : 'PLAYING', managerName, currentYear, currentRound + 1, finalClubs, userClubId, updatedMatches, nextMarket, nextOffers, news, history, nextUpgrade, updatedSponsors);
+      saveGame(nextGameState === 'SEASON_END' ? 'SEASON_END' : 'PLAYING', managerName, currentYear, currentRound + 1, finalClubs, userClubId, updatedMatches, nextMarket, nextOffers, [...news, ...roundNews], history, nextUpgrade, updatedSponsors);
     } else {
       // Trigger season end
       endSeason(finalClubs, updatedMatches, updatedSponsors, nextUpgrade);

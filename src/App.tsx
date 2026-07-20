@@ -54,7 +54,7 @@ const AppContent: React.FC = () => {
   const [simScoreHome, setSimScoreHome] = useState(0);
   const [simScoreAway, setSimScoreAway] = useState(0);
   const [simEvents, setSimEvents] = useState<any[]>([]);
-  const [simSpeedMode, setSimSpeedMode] = useState<'LENTO' | 'MEDIO' | 'RAPIDO'>('MEDIO');
+  const [simSpeedMode, setSimSpeedMode] = useState<'LENTO' | 'MEDIO' | 'RAPIDO'>('LENTO');
   const simSpeed = simSpeedMode === 'LENTO' ? 250 : simSpeedMode === 'MEDIO' ? 100 : 35;
   const [isSimPaused, setIsSimPaused] = useState(false);
   const [matchDone, setMatchDone] = useState(false);
@@ -69,6 +69,9 @@ const AppContent: React.FC = () => {
   const [redCardModalOpen, setRedCardModalOpen] = useState(false);
   const [lastRedCardMinute, setLastRedCardMinute] = useState(-1);
   const [redCardPlayer, setRedCardPlayer] = useState<Player | null>(null);
+  const [injuryModalOpen, setInjuryModalOpen] = useState(false);
+  const [lastInjuryMinute, setLastInjuryMinute] = useState(-1);
+  const [injuryPlayer, setInjuryPlayer] = useState<Player | null>(null);
   const [savesModalOpen, setSavesModalOpen] = useState(false);
 
   // Sponsors list generator (deterministic based on club reputation)
@@ -326,6 +329,8 @@ const AppContent: React.FC = () => {
       setHalftimeModalOpen(false);
       setRedCardModalOpen(false);
       setLastRedCardMinute(-1);
+      setInjuryModalOpen(false);
+      setLastInjuryMinute(-1);
     }
   }, [gameState, currentMatchResult]);
 
@@ -355,6 +360,24 @@ const AppContent: React.FC = () => {
       setIsSimPaused(true);
     }
   }, [simEvents, userClubId, lastRedCardMinute, gameState, currentMatchResult, matchDone, userClub]);
+
+  // Auto-open injury modal when a player gets injured in user's match
+  useEffect(() => {
+    if (gameState !== 'MATCH_DAY' || !currentMatchResult || matchDone) return;
+    const userInjuries = simEvents.filter(
+      e => e.type === 'INJURY' && e.clubId === userClubId && e.minute > lastInjuryMinute
+    );
+    if (userInjuries.length > 0) {
+      const latest = userInjuries[userInjuries.length - 1];
+      setLastInjuryMinute(latest.minute);
+      if (userClub && latest.player) {
+        const pObj = userClub.squad.find(x => x.name === latest.player);
+        if (pObj) setInjuryPlayer(pObj);
+      }
+      setInjuryModalOpen(true);
+      setIsSimPaused(true);
+    }
+  }, [simEvents, userClubId, lastInjuryMinute, gameState, currentMatchResult, matchDone, userClub]);
 
 
   useEffect(() => {
@@ -853,6 +876,12 @@ const AppContent: React.FC = () => {
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{!isHome ? userClub.name : opponent.name}</span>
           </div>
 
+          {currentMatchResult?.attendance !== undefined && (
+            <div style={{ textAlign: 'center', fontSize: '0.68rem', color: '#9ca3af', marginBottom: '2px' }}>
+              🏟️ Público: <strong style={{ color: '#e8f5e9' }}>{currentMatchResult.attendance.toLocaleString('pt-BR')}</strong>
+            </div>
+          )}
+
           {/* Match event ticker (goals, penalties, red cards) — fixed height so it never shifts the banner below */}
           <div style={{
             height: '16px',
@@ -1049,7 +1078,14 @@ const AppContent: React.FC = () => {
                 <button
                   className="btn btn-secondary"
                   style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', fontWeight: 700 }}
-                  onClick={() => { setRedCardModalOpen(false); setMidMatchSubModal(true); }}
+                  onClick={() => {
+                    setRedCardModalOpen(false);
+                    if (redCardPlayer) {
+                      const idx = midMatchStarters.findIndex(s => s.id === redCardPlayer.id);
+                      setSubslotIndex(idx >= 0 ? idx : null);
+                    }
+                    setMidMatchSubModal(true);
+                  }}
                 >
                   🔄 Substituir / Reorganizar
                 </button>
@@ -1058,6 +1094,40 @@ const AppContent: React.FC = () => {
                   onClick={() => { setRedCardModalOpen(false); setIsSimPaused(false); }}
                 >
                   ▶️ Continuar Jogo
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* INJURY MODAL (auto-opens when a player gets injured in user's match) */}
+        {injuryModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ padding: '20px', maxWidth: '340px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '2.4rem' }}>🚑</span>
+                <h3 style={{ fontWeight: 800, marginTop: '6px', color: 'var(--accent-gold)' }}>Jogador Lesionado!</h3>
+                {injuryPlayer && (
+                  <div style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: '8px', padding: '8px', margin: '8px 0', fontSize: '0.8rem' }}>
+                    Jogador: <strong>{injuryPlayer.name}</strong> ({injuryPlayer.position})
+                  </div>
+                )}
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Seu jogador sofreu uma lesão e precisa ser substituído imediatamente.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)', fontWeight: 700 }}
+                  onClick={() => {
+                    setInjuryModalOpen(false);
+                    if (injuryPlayer) {
+                      const idx = midMatchStarters.findIndex(s => s.id === injuryPlayer.id);
+                      setSubslotIndex(idx >= 0 ? idx : null);
+                    }
+                    setMidMatchSubModal(true);
+                  }}
+                >
+                  🔄 Substituir Agora
                 </button>
               </div>
             </div>
@@ -1997,6 +2067,7 @@ const AppContent: React.FC = () => {
                   <option value="" disabled>Escolha um clube...</option>
                   {clubs
                     .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
+                    .sort((a, b) => a.name.localeCompare(b.name))
                     .map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
