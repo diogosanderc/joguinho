@@ -4,9 +4,10 @@ import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
-import { 
-  Home, Users, TrendingUp, DollarSign, Trophy, 
-  Play, Shield, AlertTriangle, Activity, CheckCircle
+import {
+  Home, Users, TrendingUp, DollarSign, Trophy,
+  Play, Shield, AlertTriangle, Activity, CheckCircle,
+  PlusCircle, FolderOpen
 } from 'lucide-react';
 
 // Wrapper to enable context access
@@ -15,12 +16,15 @@ const AppContent: React.FC = () => {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
-    upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, clearCurrentMatch,
+    upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
   
+  // Main menu states (New Game / Load Game)
+  const [menuView, setMenuView] = useState<'ROOT' | 'LOAD'>('ROOT');
+
   // Starting state states
   const [inputName, setInputName] = useState('');
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
@@ -514,6 +518,110 @@ const AppContent: React.FC = () => {
 
   const topScorers = getTopScorers();
 
+  // --- MAIN MENU RENDER (New Game / Load Game) ---
+  if (gameState === 'MENU') {
+    const getSaveLabel = (key: string): string | null => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      try {
+        const data = JSON.parse(raw);
+        const club = data.clubs?.find((c: any) => c.isPlayerClub);
+        return `${data.managerName} - ${club?.name || 'Time'} (Ano ${data.currentYear}, Rodada ${data.currentRound})`;
+      } catch (e) {
+        return 'Save corrompido';
+      }
+    };
+
+    const saveSlots = [
+      { key: 'elifoot_2026_save', label: 'Continuar Última Campanha' },
+      { key: 'elifoot_2026_save_slot_1', label: 'Slot 01' },
+      { key: 'elifoot_2026_save_slot_2', label: 'Slot 02' },
+      { key: 'elifoot_2026_save_slot_3', label: 'Slot 03' },
+      { key: 'elifoot_2026_save_slot_4', label: 'Slot 04' }
+    ];
+
+    if (menuView === 'LOAD') {
+      return (
+        <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-gold)', letterSpacing: '-1px' }}>Carregar Jogo</h1>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>Escolha uma campanha salva para continuar</p>
+          </div>
+
+          <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflow: 'hidden' }}>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
+              {saveSlots.map(slot => {
+                const label = getSaveLabel(slot.key);
+                return (
+                  <div
+                    key={slot.key}
+                    onClick={() => {
+                      if (!label) return;
+                      const raw = localStorage.getItem(slot.key);
+                      if (!raw) return;
+                      try {
+                        const data = JSON.parse(raw);
+                        loadGame(data);
+                        localStorage.setItem('elifoot_2026_save', raw);
+                      } catch (e) {
+                        alert('Não foi possível carregar este save.');
+                      }
+                    }}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      background: label ? '#121316' : '#0d0e10',
+                      border: label ? '1px solid rgba(0, 230, 118, 0.15)' : '1px solid rgba(255,255,255,0.03)',
+                      cursor: label ? 'pointer' : 'default',
+                      opacity: label ? 1 : 0.5
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: label ? 'var(--accent-green)' : '#9ca3af' }}>{slot.label}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{label || 'Vazio'}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setMenuView('ROOT')}
+            style={{ marginTop: '16px', height: '48px', fontSize: '0.9rem' }}
+          >
+            ← Voltar
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mobile-wrapper" style={{ justifyContent: 'center', alignItems: 'center', padding: '30px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>ELIFOOT 2026</h1>
+          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', maxWidth: '320px' }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => setGameState('START')}
+            style={{ height: '56px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <PlusCircle size={20} /> Novo Jogo
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setMenuView('LOAD')}
+            style={{ height: '56px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <FolderOpen size={20} /> Carregar Jogo
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // --- START SCREEN RENDER ---
   if (gameState === 'START') {
     const cClubs = CLUB_DEFINITIONS.filter(c => c.division === 'C').sort((a, b) => a.name.localeCompare(b.name));
@@ -577,13 +685,20 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-        <button 
-          className="btn btn-primary" 
+        <button
+          className="btn btn-primary"
           disabled={!inputName.trim() || !selectedStartClubId}
           onClick={() => startGame(inputName, selectedStartClubId)}
           style={{ marginTop: '16px', height: '52px', fontSize: '1rem' }}
         >
           Iniciar Carreira
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => setGameState('MENU')}
+          style={{ marginTop: '8px', height: '40px', fontSize: '0.85rem' }}
+        >
+          ← Voltar ao Menu
         </button>
       </div>
     );
@@ -621,16 +736,28 @@ const AppContent: React.FC = () => {
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{!isHome ? userClub.name : opponent.name}</span>
           </div>
 
-          {/* Goal Scorers list for user match */}
-          {(() => {
-            const userGoals = simEvents.filter(e => e.type === 'GOAL');
-            if (userGoals.length === 0) return null;
-            return (
-              <div style={{ fontSize: '0.68rem', color: '#e8f5e9', textAlign: 'center', fontStyle: 'italic', marginBottom: '4px' }}>
-                ⚽ {userGoals.map(g => `${g.player} ${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''}`).join(', ')}
-              </div>
-            );
-          })()}
+          {/* Match event ticker (goals, penalties, red cards) — fixed height so it never shifts the banner below */}
+          <div style={{
+            height: '16px',
+            lineHeight: '16px',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
+            fontSize: '0.68rem',
+            color: '#e8f5e9',
+            textAlign: 'center',
+            fontStyle: 'italic',
+            marginBottom: '4px'
+          }}>
+            {simEvents
+              .filter(e => e.type === 'GOAL' || e.type === 'RED')
+              .map(e => {
+                const icon = e.type === 'RED' ? '🟥' : '⚽';
+                const suffix = e.isPenalty ? ' (P)' : e.isHeader ? ' (C)' : '';
+                return `${icon} ${e.player} ${e.minute}'${suffix}`;
+              })
+              .join('   ')}
+          </div>
 
           {/* Quick controls */}
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -726,8 +853,20 @@ const AppContent: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Stadium and Attendance below the score */}
-                        <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#a5d6a7', marginTop: '4px', fontFamily: 'monospace', opacity: 0.9 }}>
+                        {/* Stadium and Attendance below the score — fixed height, scrolls horizontally instead of growing the row */}
+                        <div style={{
+                          textAlign: 'center',
+                          fontSize: '0.62rem',
+                          color: '#a5d6a7',
+                          marginTop: '4px',
+                          fontFamily: 'monospace',
+                          opacity: 0.9,
+                          height: '14px',
+                          lineHeight: '14px',
+                          whiteSpace: 'nowrap',
+                          overflowX: 'auto',
+                          overflowY: 'hidden'
+                        }}>
                           🏟️ {home.stadiumName} • {scorersText || 'Sem gols'}
                         </div>
                       </div>

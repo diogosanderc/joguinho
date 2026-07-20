@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { initializeClubs, formatCurrency, getPositionGroup } from '../data/database';
 import type { Player, Club, PlayerPosition } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters } from '../utils/matchEngine';
 import type { MatchResult } from '../utils/matchEngine';
 
-export type GameState = 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
+export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
 
 export interface LeagueMatch {
   round: number;
@@ -95,7 +95,7 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [gameState, setGameState] = useState<GameState>('START');
+  const [gameState, setGameState] = useState<GameState>('MENU');
   const [managerName, setManagerName] = useState('');
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentRound, setCurrentRound] = useState(1);
@@ -114,36 +114,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [currentMatch, setCurrentMatch] = useState<LeagueMatch | null>(null);
   const [currentMatchResult, setCurrentMatchResult] = useState<MatchResult | null>(null);
-
-  // Auto-load state on start
-  useEffect(() => {
-    const saved = localStorage.getItem('elifoot_2026_save');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        // Se for um save antigo ou sem versão 3 atualizada dos elencos, ignora e limpa
-        if (!data.dbVersion || data.dbVersion < 3) {
-          localStorage.removeItem('elifoot_2026_save');
-          return;
-        }
-        setGameState(data.gameState);
-        setManagerName(data.managerName);
-        setCurrentYear(data.currentYear);
-        setCurrentRound(data.currentRound);
-        setClubs(data.clubs);
-        setUserClubId(data.userClubId);
-        setSchedule(data.schedule);
-        setMarketPlayers(data.marketPlayers);
-        setOffers(data.offers);
-        setNews(data.news);
-        setHistory(data.history);
-        setStadiumUpgrade(data.stadiumUpgrade);
-        setActiveSponsors(data.activeSponsors);
-      } catch (e) {
-        console.error('Error loading save', e);
-      }
-    }
-  }, []);
 
   // Auto-save state on changes
   const saveGame = (
@@ -1470,6 +1440,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadGame = (data: any) => {
     if (!data) return;
+    // Ignore saves from before the current squad/position data version
+    if (!data.dbVersion || data.dbVersion < 3) {
+      alert('Este save é de uma versão antiga e incompatível do jogo. Não é possível carregá-lo.');
+      return;
+    }
     setGameState(data.gameState);
     setManagerName(data.managerName);
     setCurrentYear(data.currentYear);
