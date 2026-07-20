@@ -130,6 +130,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const SAVE_SLOT_COUNT = 4;
   const currentSlotRef = useRef<number | null>(null);
   const [currentSlot, setCurrentSlotState] = useState<number | null>(null);
+
+  // MATCH_DAY is always a temporary detour to show the live match animation. This remembers
+  // where to actually land once the user dismisses it (back to normal play, the season-end
+  // screen, or the sacked/job-offer screen) -- without it, the unconditional setGameState
+  // ('MATCH_DAY') at the end of nextRound clobbers whatever real transition (SEASON_END from
+  // a completed season, or from getting sacked mid-season) was supposed to happen.
+  const pendingGameStateRef = useRef<GameState>('PLAYING');
   const setActiveSlot = (slot: number | null) => {
     currentSlotRef.current = slot;
     setCurrentSlotState(slot);
@@ -894,18 +901,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveSponsors(updatedSponsors);
     setMarketPlayers(nextMarket);
     setOffers(nextOffers);
-    
-    if (nextGameState !== gameState) {
-      setGameState(nextGameState);
-    }
 
-    // Advance round or end season
+    // Advance round or end season. Whichever real state this leads to (back to normal
+    // play, sacked, or the season just finished) is only applied once the user dismisses
+    // the match view -- see pendingGameStateRef.
     if (currentRound < 38) {
       setCurrentRound(prev => prev + 1);
       saveGame(nextGameState === 'SEASON_END' ? 'SEASON_END' : 'PLAYING', managerName, currentYear, currentRound + 1, finalClubs, userClubId, updatedMatches, nextMarket, nextOffers, [...news, ...roundNews], history, nextUpgrade, updatedSponsors);
+      pendingGameStateRef.current = nextGameState;
     } else {
       // Trigger season end
       endSeason(finalClubs, updatedMatches, updatedSponsors, nextUpgrade);
+      pendingGameStateRef.current = 'SEASON_END';
     }
 
     // Launch Match Simulation Overlay screen
@@ -1850,7 +1857,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentMatch(null);
     setCurrentMatchResult(null);
     if (gameState === 'MATCH_DAY') {
-      setGameState('PLAYING');
+      setGameState(pendingGameStateRef.current);
     }
   };
 
