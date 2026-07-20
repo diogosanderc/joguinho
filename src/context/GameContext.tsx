@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useRef } from 'react';
 import { initializeClubs, formatCurrency, getPositionGroup } from '../data/database';
 import type { Player, Club, PlayerPosition } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters } from '../utils/matchEngine';
@@ -69,7 +69,9 @@ interface GameContextType {
   activeSponsors: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>;
   currentMatch: LeagueMatch | null;
   currentMatchResult: MatchResult | null;
-  startGame: (name: string, chosenClubId: string) => void;
+  currentSlot: number | null;
+  getFreeSlot: () => number | null;
+  startGame: (name: string, chosenClubId: string, slot?: number) => void;
   nextRound: (starters: Player[]) => void;
   buyPlayer: (player: Player) => void;
   sellPlayer: (player: Player) => void;
@@ -87,7 +89,7 @@ interface GameContextType {
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
   updateTicketPrice: (delta: number) => void;
   setPenaltyTaker: (playerId: string) => void;
-  loadGame: (saveData: any) => void;
+  loadGame: (saveData: any, slot: number) => void;
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
   cheatFinances: () => void;
 }
@@ -115,7 +117,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentMatch, setCurrentMatch] = useState<LeagueMatch | null>(null);
   const [currentMatchResult, setCurrentMatchResult] = useState<MatchResult | null>(null);
 
-  // Auto-save state on changes
+  // Each campaign lives in exactly one of 4 save slots. currentSlotRef gives a
+  // synchronous read (avoids stale-closure issues right after starting/loading
+  // a game), currentSlot mirrors it in state for anything that needs to render it.
+  const SAVE_SLOT_COUNT = 4;
+  const currentSlotRef = useRef<number | null>(null);
+  const [currentSlot, setCurrentSlotState] = useState<number | null>(null);
+  const setActiveSlot = (slot: number | null) => {
+    currentSlotRef.current = slot;
+    setCurrentSlotState(slot);
+  };
+  const getFreeSlot = (): number | null => {
+    for (let i = 1; i <= SAVE_SLOT_COUNT; i++) {
+      if (!localStorage.getItem(`elifoot_2026_save_slot_${i}`)) return i;
+    }
+    return null;
+  };
+
+  // Auto-save state on changes — always writes to the campaign's own slot
   const saveGame = (
     state: GameState,
     name: string,
@@ -147,15 +166,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stadiumUpgrade: upgrade,
       activeSponsors: sponsorsList
     };
-    localStorage.setItem('elifoot_2026_save', JSON.stringify(data));
+    if (currentSlotRef.current) {
+      localStorage.setItem(`elifoot_2026_save_slot_${currentSlotRef.current}`, JSON.stringify(data));
+    }
   };
 
   const userClub = clubs.find(c => c.id === userClubId) || null;
 
   // Initialize a new game
-  const startGame = (name: string, chosenClubId: string) => {
+  const startGame = (name: string, chosenClubId: string, slot?: number) => {
+    const targetSlot = slot ?? getFreeSlot();
+    if (!targetSlot) return; // no free slot and none explicitly chosen — caller must resolve this first
+    setActiveSlot(targetSlot);
+
     const initializedClubs = initializeClubs();
-    
+
     // Set player club
     const updatedClubs = initializedClubs.map(c => {
       if (c.id === chosenClubId) {
@@ -1317,7 +1342,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Reset/delete save game
   const resetGame = () => {
-    localStorage.removeItem('elifoot_2026_save');
+    if (currentSlotRef.current) {
+      localStorage.removeItem(`elifoot_2026_save_slot_${currentSlotRef.current}`);
+    }
+    setActiveSlot(null);
     setGameState('MENU');
     setManagerName('');
     setCurrentYear(2026);
@@ -1438,13 +1466,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
-  const loadGame = (data: any) => {
+  const loadGame = (data: any, slot: number) => {
     if (!data) return;
     // Ignore saves from before the current squad/position data version
     if (!data.dbVersion || data.dbVersion < 3) {
       alert('Este save é de uma versão antiga e incompatível do jogo. Não é possível carregá-lo.');
       return;
     }
+    setActiveSlot(slot);
     setGameState(data.gameState);
     setManagerName(data.managerName);
     setCurrentYear(data.currentYear);
@@ -1486,6 +1515,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activeSponsors,
       currentMatch,
       currentMatchResult,
+      currentSlot,
+      getFreeSlot,
       startGame,
       nextRound,
       buyPlayer,

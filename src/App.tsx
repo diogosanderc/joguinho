@@ -15,7 +15,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, startGame, nextRound, buyPlayer, sellPlayer,
+    currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker
   } = useGame();
@@ -24,6 +24,8 @@ const AppContent: React.FC = () => {
   
   // Main menu states (New Game / Load Game)
   const [menuView, setMenuView] = useState<'ROOT' | 'LOAD'>('ROOT');
+  const [, setSlotRefreshTick] = useState(0); // bumped to force re-reading save slots from localStorage
+  const [overwriteSlotPicker, setOverwriteSlotPicker] = useState<{ name: string; clubId: string } | null>(null);
 
   // Always land on the root menu (not a leftover "Load Game" sub-view) whenever we arrive at the main menu
   useEffect(() => {
@@ -552,27 +554,23 @@ const AppContent: React.FC = () => {
 
   const topScorers = getTopScorers();
 
+  // Reads a save slot's headline info for display (Menu load screen, overwrite picker)
+  const getSaveLabel = (key: string): string | null => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      const club = data.clubs?.find((c: any) => c.isPlayerClub);
+      return `${data.managerName} - ${club?.name || 'Time'} (Ano ${data.currentYear}, Rodada ${data.currentRound})`;
+    } catch (e) {
+      return 'Save corrompido';
+    }
+  };
+
   // --- MAIN MENU RENDER (New Game / Load Game) ---
   if (gameState === 'MENU') {
-    const getSaveLabel = (key: string): string | null => {
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      try {
-        const data = JSON.parse(raw);
-        const club = data.clubs?.find((c: any) => c.isPlayerClub);
-        return `${data.managerName} - ${club?.name || 'Time'} (Ano ${data.currentYear}, Rodada ${data.currentRound})`;
-      } catch (e) {
-        return 'Save corrompido';
-      }
-    };
 
-    const saveSlots = [
-      { key: 'elifoot_2026_save', label: 'Continuar Última Campanha' },
-      { key: 'elifoot_2026_save_slot_1', label: 'Slot 01' },
-      { key: 'elifoot_2026_save_slot_2', label: 'Slot 02' },
-      { key: 'elifoot_2026_save_slot_3', label: 'Slot 03' },
-      { key: 'elifoot_2026_save_slot_4', label: 'Slot 04' }
-    ];
+    const saveSlots = [1, 2, 3, 4].map(n => ({ slot: n, key: `elifoot_2026_save_slot_${n}` }));
 
     if (menuView === 'LOAD') {
       return (
@@ -584,34 +582,61 @@ const AppContent: React.FC = () => {
 
           <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflow: 'hidden' }}>
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
-              {saveSlots.map(slot => {
-                const label = getSaveLabel(slot.key);
+              {saveSlots.map(({ slot, key }) => {
+                const label = getSaveLabel(key);
                 return (
                   <div
-                    key={slot.key}
-                    onClick={() => {
-                      if (!label) return;
-                      const raw = localStorage.getItem(slot.key);
-                      if (!raw) return;
-                      try {
-                        const data = JSON.parse(raw);
-                        loadGame(data);
-                        localStorage.setItem('elifoot_2026_save', raw);
-                      } catch (e) {
-                        alert('Não foi possível carregar este save.');
-                      }
-                    }}
+                    key={key}
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                       padding: '14px 16px',
                       borderRadius: '12px',
                       background: label ? '#121316' : '#0d0e10',
                       border: label ? '1px solid rgba(0, 230, 118, 0.15)' : '1px solid rgba(255,255,255,0.03)',
-                      cursor: label ? 'pointer' : 'default',
                       opacity: label ? 1 : 0.5
                     }}
                   >
-                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: label ? 'var(--accent-green)' : '#9ca3af' }}>{slot.label}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{label || 'Vazio'}</div>
+                    <div
+                      onClick={() => {
+                        if (!label) return;
+                        const raw = localStorage.getItem(key);
+                        if (!raw) return;
+                        try {
+                          const data = JSON.parse(raw);
+                          loadGame(data, slot);
+                        } catch (e) {
+                          alert('Não foi possível carregar este save.');
+                        }
+                      }}
+                      style={{ flex: 1, cursor: label ? 'pointer' : 'default' }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: label ? 'var(--accent-green)' : '#9ca3af' }}>Slot 0{slot}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{label || 'Vazio'}</div>
+                    </div>
+                    {label && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
+                            localStorage.removeItem(key);
+                            setSlotRefreshTick(t => t + 1);
+                          }
+                        }}
+                        style={{
+                          background: 'rgba(255, 23, 68, 0.1)',
+                          border: '1px solid rgba(255, 23, 68, 0.25)',
+                          color: 'var(--accent-red)',
+                          borderRadius: '8px',
+                          padding: '8px 10px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer'
+                        }}
+                        title="Excluir esta campanha"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -659,6 +684,57 @@ const AppContent: React.FC = () => {
   // --- START SCREEN RENDER ---
   if (gameState === 'START') {
     const cClubs = CLUB_DEFINITIONS.filter(c => c.division === 'C').sort((a, b) => a.name.localeCompare(b.name));
+
+    // All 4 save slots are occupied — ask which one to overwrite before starting
+    if (overwriteSlotPicker) {
+      return (
+        <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-red)', letterSpacing: '-1px' }}>Slots Cheios</h1>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>
+              Os 4 slots de save já estão ocupados. Escolha uma campanha para substituir:
+            </p>
+          </div>
+
+          <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflow: 'hidden' }}>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
+              {[1, 2, 3, 4].map(slot => {
+                const label = getSaveLabel(`elifoot_2026_save_slot_${slot}`);
+                return (
+                  <div
+                    key={slot}
+                    onClick={() => {
+                      if (confirm(`Substituir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
+                        startGame(overwriteSlotPicker.name, overwriteSlotPicker.clubId, slot);
+                        setOverwriteSlotPicker(null);
+                      }
+                    }}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      background: '#121316',
+                      border: '1px solid rgba(255, 23, 68, 0.2)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-red)' }}>Slot 0{slot}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setOverwriteSlotPicker(null)}
+            style={{ marginTop: '16px', height: '48px', fontSize: '0.9rem' }}
+          >
+            ← Cancelar
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
@@ -722,7 +798,14 @@ const AppContent: React.FC = () => {
         <button
           className="btn btn-primary"
           disabled={!inputName.trim() || !selectedStartClubId}
-          onClick={() => startGame(inputName, selectedStartClubId)}
+          onClick={() => {
+            const free = getFreeSlot();
+            if (free) {
+              startGame(inputName, selectedStartClubId, free);
+            } else {
+              setOverwriteSlotPicker({ name: inputName, clubId: selectedStartClubId });
+            }
+          }}
           style={{ marginTop: '16px', height: '52px', fontSize: '1rem' }}
         >
           Iniciar Carreira
@@ -1191,8 +1274,29 @@ const AppContent: React.FC = () => {
         {/* --- TAB 0: ESCRITÓRIO --- */}
         {activeTab === 0 && (
           <>
-            {/* discrete save slots button */}
+            {/* discrete save slots / menu buttons */}
             <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
+              <button
+                onClick={() => setGameState('MENU')}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#e5e7eb',
+                  borderRadius: '10px',
+                  padding: '9px 0',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'background 0.2s'
+                }}
+              >
+                🏠 Voltar ao Menu
+              </button>
               <button
                 onClick={() => setSavesModalOpen(true)}
                 style={{
@@ -1212,7 +1316,7 @@ const AppContent: React.FC = () => {
                   transition: 'background 0.2s'
                 }}
               >
-                💾 Gerenciar Saves (Slots)
+                💾 Slots ({currentSlot ? `0${currentSlot}` : '-'})
               </button>
             </div>
             {/* Save / Delete campaign buttons */}
@@ -2636,72 +2740,59 @@ const AppContent: React.FC = () => {
             </div>
 
             <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '14px', lineHeight: '1.4' }}>
-              Salve seu progresso atual ou carregue uma campanha existente em um dos slots independentes disponíveis.
+              Seu progresso é salvo automaticamente neste slot a cada ação. Você pode trocar para outra campanha ou excluir slots que não usa mais.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               {[1, 2, 3, 4].map(slot => {
                 const saveKey = `elifoot_2026_save_slot_${slot}`;
-                const slotExists = !!localStorage.getItem(saveKey);
-                let slotInfo = 'Vazio (Livre)';
-                if (slotExists) {
-                  try {
-                    const data = JSON.parse(localStorage.getItem(saveKey) || '');
-                    slotInfo = `${data.managerName} - ${data.clubs.find((c: any) => c.isPlayerClub)?.name || 'Time'} (Ano ${data.currentYear}, R:${data.currentRound})`;
-                  } catch (e) {
-                    slotInfo = 'Slot Ocupado';
-                  }
-                }
+                const label = getSaveLabel(saveKey);
+                const isCurrent = currentSlot === slot;
 
                 return (
-                  <div key={slot} style={{ background: '#121316', border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div key={slot} style={{ background: '#121316', border: isCurrent ? '1px solid var(--accent-green)' : '1px solid rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 800 }}>Slot 0{slot}</span>
-                      <span style={{ fontSize: '0.62rem', color: '#9ca3af' }}>{slotExists ? '💾 Salvo' : '⚪ Livre'}</span>
+                      <span style={{ fontSize: '0.8rem', color: isCurrent ? 'var(--accent-green)' : '#9ca3af', fontWeight: 800 }}>Slot 0{slot}{isCurrent ? ' (Atual)' : ''}</span>
+                      <span style={{ fontSize: '0.62rem', color: '#9ca3af' }}>{label ? '💾 Salvo' : '⚪ Livre'}</span>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={slotInfo}>
-                      {slotInfo}
+                    <div style={{ fontSize: '0.72rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label || ''}>
+                      {label || 'Vazio'}
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
-                      <button
-                        onClick={() => {
-                          const dataToSave = JSON.parse(localStorage.getItem('elifoot_2026_save') || '{}');
-                          if (Object.keys(dataToSave).length > 0) {
-                            localStorage.setItem(saveKey, JSON.stringify(dataToSave));
-                            alert(`Salvo com sucesso no Slot ${slot}!`);
-                            // Force update by triggering state reset
-                            setSavesModalOpen(false);
-                            setSavesModalOpen(true);
-                          } else {
-                            alert('Nenhuma campanha ativa para salvar.');
-                          }
-                        }}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, fontSize: '0.7rem', padding: '6px 0', borderRadius: '6px', background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.2)', color: 'var(--accent-green)', fontWeight: 700 }}
-                      >
-                        Salvar
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (!slotExists) {
-                            alert('Slot vazio!');
-                            return;
-                          }
-                          if (confirm(`Deseja carregar a campanha do Slot ${slot}?`)) {
-                            const loadedData = JSON.parse(localStorage.getItem(saveKey) || '{}');
-                            loadGame(loadedData);
-                            localStorage.setItem('elifoot_2026_save', JSON.stringify(loadedData));
-                            setSavesModalOpen(false);
-                            alert(`Slot ${slot} carregado com sucesso!`);
-                          }
-                        }}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, fontSize: '0.7rem', padding: '6px 0', borderRadius: '6px', background: slotExists ? 'rgba(255,193,7,0.1)' : '#1e2126', border: slotExists ? '1px solid rgba(255,193,7,0.2)' : '1px solid rgba(255,255,255,0.02)', color: slotExists ? 'var(--accent-gold)' : '#9ca3af', cursor: slotExists ? 'pointer' : 'not-allowed', fontWeight: 700 }}
-                        disabled={!slotExists}
-                      >
-                        Carregar
-                      </button>
-                    </div>
+                    {!isCurrent && (
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                        <button
+                          onClick={() => {
+                            if (!label) return;
+                            if (confirm(`Trocar para a campanha do Slot 0${slot}? Seu progresso atual já está salvo neste slot e você pode voltar a ele depois.`)) {
+                              const raw = localStorage.getItem(saveKey);
+                              if (raw) {
+                                loadGame(JSON.parse(raw), slot);
+                                setSavesModalOpen(false);
+                              }
+                            }
+                          }}
+                          className="btn btn-secondary"
+                          style={{ flex: 1, fontSize: '0.7rem', padding: '6px 0', borderRadius: '6px', background: label ? 'rgba(255,193,7,0.1)' : '#1e2126', border: label ? '1px solid rgba(255,193,7,0.2)' : '1px solid rgba(255,255,255,0.02)', color: label ? 'var(--accent-gold)' : '#9ca3af', cursor: label ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+                          disabled={!label}
+                        >
+                          Jogar
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!label) return;
+                            if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
+                              localStorage.removeItem(saveKey);
+                              setSlotRefreshTick(t => t + 1);
+                            }
+                          }}
+                          className="btn btn-secondary"
+                          style={{ flex: 1, fontSize: '0.7rem', padding: '6px 0', borderRadius: '6px', background: label ? 'rgba(255,23,68,0.1)' : '#1e2126', border: label ? '1px solid rgba(255,23,68,0.2)' : '1px solid rgba(255,255,255,0.02)', color: label ? 'var(--accent-red)' : '#9ca3af', cursor: label ? 'pointer' : 'not-allowed', fontWeight: 700 }}
+                          disabled={!label}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
