@@ -316,6 +316,13 @@ const AppContent: React.FC = () => {
   // Live match simulator runner
   const feedEndRef = useRef<HTMLDivElement>(null);
   const userMatchRef = useRef<HTMLDivElement>(null);
+  const scrollableRef = useRef<HTMLDivElement>(null);
+
+  // Reset scroll to the top whenever the visible tab changes or a match just ended
+  // (returning from the live-match overlay used to leave the tab scrolled wherever it was).
+  useEffect(() => {
+    scrollableRef.current?.scrollTo(0, 0);
+  }, [activeTab, gameState]);
 
   useEffect(() => {
     if (gameState === 'MATCH_DAY' && currentMatchResult) {
@@ -1359,8 +1366,8 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* RENDER TABS CONTENT */}
-      <div className="scrollable">
-        
+      <div className="scrollable" ref={scrollableRef}>
+
         {/* --- TAB 0: ESCRITÓRIO --- */}
         {activeTab === 0 && (
           <>
@@ -1461,7 +1468,7 @@ const AppContent: React.FC = () => {
 
             {/* News feed */}
             <div className="card-title"><Activity size={18} color="var(--accent-green)" /> Feed de Notícias</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {news.slice().reverse().map((n) => (
                 <div 
                   key={n.id}
