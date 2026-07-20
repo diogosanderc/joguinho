@@ -47,6 +47,15 @@ const AppContent: React.FC = () => {
   const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C'>('C');
   const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'HISTORY'>('TABLE');
 
+  // Whenever the user's club actually changes division (promotion/relegation at season
+  // rollover, or picking a new club), snap the Classificação tab to that division -- otherwise
+  // it keeps showing whatever division was last viewed, even after moving up/down a tier.
+  useEffect(() => {
+    if (userClub) {
+      setStandingsTab(userClub.division);
+    }
+  }, [userClub?.division]);
+
   // Market filter states
   const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | PlayerPosition>('ALL');
 
