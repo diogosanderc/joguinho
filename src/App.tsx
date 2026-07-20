@@ -25,6 +25,11 @@ const AppContent: React.FC = () => {
   // Main menu states (New Game / Load Game)
   const [menuView, setMenuView] = useState<'ROOT' | 'LOAD'>('ROOT');
 
+  // Always land on the root menu (not a leftover "Load Game" sub-view) whenever we arrive at the main menu
+  useEffect(() => {
+    if (gameState === 'MENU') setMenuView('ROOT');
+  }, [gameState]);
+
   // Starting state states
   const [inputName, setInputName] = useState('');
   const [selectedStartClubId, setSelectedStartClubId] = useState('');

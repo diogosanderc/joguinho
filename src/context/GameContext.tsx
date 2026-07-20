@@ -1318,7 +1318,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Reset/delete save game
   const resetGame = () => {
     localStorage.removeItem('elifoot_2026_save');
-    setGameState('START');
+    setGameState('MENU');
     setManagerName('');
     setCurrentYear(2026);
     setCurrentRound(1);
