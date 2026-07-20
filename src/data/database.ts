@@ -30,6 +30,7 @@ export interface Player {
   contractLockYears?: number; // Number of years contract is locked
   performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
   suspendedMatches?: number; // League matches still missed due to a red card or 3rd accumulated yellow
+  lockCooldown?: boolean; // Has used up their contract lock; blocked from locking again until a fresh renewal
 }
 
 // A player is fit to be selected: not injured, and not serving a card suspension.

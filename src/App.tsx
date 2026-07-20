@@ -17,7 +17,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, buildVipBoxes, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
@@ -149,12 +149,40 @@ const AppContent: React.FC = () => {
   const [startersPerTactic, setStartersPerTactic] = useState<Record<string, Player[]>>({});
   const [lastUserClubId, setLastUserClubId] = useState('');
 
+  // Tactic/lineup choices (selected formation + whatever "Escalar Melhores"/"Poupar Cansados"/
+  // manual edits produced per tactic) aren't part of the main save blob -- they live here in
+  // local state. Persist them to their own localStorage entry per slot so switching tabs,
+  // reloading, or coming back to a save doesn't silently revert to the auto-picked default.
   useEffect(() => {
     if (userClubId !== lastUserClubId) {
-      setStartersPerTactic({});
+      let restored = false;
+      if (currentSlot) {
+        const raw = localStorage.getItem(`elifoot_2026_tactics_slot_${currentSlot}`);
+        if (raw) {
+          try {
+            const saved = JSON.parse(raw);
+            if (saved && saved.userClubId === userClubId) {
+              setSelectedTactic(saved.selectedTactic || '4-4-2');
+              setStartersPerTactic(saved.startersPerTactic || {});
+              restored = true;
+            }
+          } catch {
+            // ignore corrupt entry, fall through to reset
+          }
+        }
+      }
+      if (!restored) {
+        setStartersPerTactic({});
+      }
       setLastUserClubId(userClubId);
     }
-  }, [userClubId, lastUserClubId]);
+  }, [userClubId, lastUserClubId, currentSlot]);
+
+  useEffect(() => {
+    if (currentSlot && userClubId) {
+      localStorage.setItem(`elifoot_2026_tactics_slot_${currentSlot}`, JSON.stringify({ userClubId, selectedTactic, startersPerTactic }));
+    }
+  }, [currentSlot, userClubId, selectedTactic, startersPerTactic]);
 
   // Helper to determine positional requirements for each tactic
   const getTacticNeeds = (tactic: string) => {
@@ -175,13 +203,13 @@ const AppContent: React.FC = () => {
 
     // PON and CA cover for each other: a winger can play as a makeshift centre-forward (and
     // vice versa) until the club buys a natural fit, so only the combined total needs to add up.
+    // A Meia can likewise fill in for a missing Volante until the club buys one.
     return (
       count('GOL') >= 1 &&
       count('ZAG') >= targetZAG &&
       count('LD') >= targetLD &&
       count('LE') >= targetLE &&
-      count('VOL') >= targetVOL &&
-      count('MEI') >= targetMEI &&
+      count('VOL') + count('MEI') >= targetVOL + targetMEI &&
       count('PON') + count('CA') >= targetPON + targetCA
     );
   };
@@ -212,10 +240,14 @@ const AppContent: React.FC = () => {
           if (!found || !isPlayerAvailable(found)) {
             const excludeIds = new Set(saved.map(x => x.id));
             let replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !excludeIds.has(s.id));
-            // PON and CA cover for each other before resorting to a completely mismatched position
+            // PON and CA cover for each other, and MEI covers VOL, before resorting to a
+            // completely mismatched position
             if (!replacement && (p.position === 'CA' || p.position === 'PON')) {
               const sibling = p.position === 'CA' ? 'PON' : 'CA';
               replacement = userClub.squad.find(s => s.position === sibling && isPlayerAvailable(s) && !excludeIds.has(s.id));
+            }
+            if (!replacement && p.position === 'VOL') {
+              replacement = userClub.squad.find(s => s.position === 'MEI' && isPlayerAvailable(s) && !excludeIds.has(s.id));
             }
             return replacement || userClub.squad.find(s => isPlayerAvailable(s) && !excludeIds.has(s.id)) || p;
           }
@@ -254,6 +286,14 @@ const AppContent: React.FC = () => {
           const usedIds = new Set(selected.map(p => p.id));
           const extra = [...pons, ...cas].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
           for (let i = 0; i < Math.min(ponCaShort, extra.length); i++) selected.push(extra[i]);
+        }
+
+        // A Meia can anchor the midfield when the club has no natural Volante at all.
+        const volMeiShort = (targetVOL + targetMEI) - selected.filter(p => p.position === 'VOL' || p.position === 'MEI').length;
+        if (volMeiShort > 0) {
+          const usedIds = new Set(selected.map(p => p.id));
+          const extra = [...vols, ...meis].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+          for (let i = 0; i < Math.min(volMeiShort, extra.length); i++) selected.push(extra[i]);
         }
 
         if (selected.length < 11) {
@@ -456,7 +496,10 @@ const AppContent: React.FC = () => {
     }
   }, [simMinute, gameState]);
 
-  // Detect unhappy players who triggered the randomized dissatisfaction roll (benchRounds === 999)
+  // Detect unhappy players who triggered the randomized dissatisfaction roll (benchRounds === 999).
+  // Deliberately depends only on currentRound/gameState, not userClub -- userClub gets a new
+  // object reference on every unrelated club update too (ticket price, penalty taker, etc.), and
+  // re-running this on those would re-open the modal for a player whose flag hasn't been resolved.
   useEffect(() => {
     if (userClub && gameState === 'PLAYING') {
       const unhappy = userClub.squad.find(p => p.benchRounds === 999);
@@ -464,7 +507,8 @@ const AppContent: React.FC = () => {
         setUnhappyPlayer(unhappy);
       }
     }
-  }, [currentRound, userClub, gameState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRound, gameState]);
 
   // Roll for incoming purchase proposal from other clubs for user's players after rounds
   useEffect(() => {
@@ -679,6 +723,7 @@ const AppContent: React.FC = () => {
                         onClick={() => {
                           if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                             localStorage.removeItem(key);
+                            localStorage.removeItem(`elifoot_2026_tactics_slot_${slot}`);
                             setSlotRefreshTick(t => t + 1);
                           }
                         }}
@@ -1653,6 +1698,14 @@ const AppContent: React.FC = () => {
                       for (let i = 0; i < Math.min(ponCaShort, extra.length); i++) bestSelected.push(extra[i]);
                     }
 
+                    // A Meia can anchor the midfield when the club has no natural Volante at all.
+                    const volMeiShort = (targetVOL + targetMEI) - bestSelected.filter(p => p.position === 'VOL' || p.position === 'MEI').length;
+                    if (volMeiShort > 0) {
+                      const usedIds = new Set(bestSelected.map(p => p.id));
+                      const extra = [...vols, ...meis].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+                      for (let i = 0; i < Math.min(volMeiShort, extra.length); i++) bestSelected.push(extra[i]);
+                    }
+
                     // Fill to 11 if needed
                     if (bestSelected.length < 11) {
                       const ids = new Set(bestSelected.map(p => p.id));
@@ -1706,6 +1759,14 @@ const AppContent: React.FC = () => {
                       const usedIds = new Set(selected.map(p => p.id));
                       const extra = [...pons, ...cas].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
                       for (let i = 0; i < Math.min(ponCaShort, extra.length); i++) selected.push(extra[i]);
+                    }
+
+                    // A Meia can anchor the midfield when the club has no natural Volante at all.
+                    const volMeiShort = (targetVOL + targetMEI) - selected.filter(p => p.position === 'VOL' || p.position === 'MEI').length;
+                    if (volMeiShort > 0) {
+                      const usedIds = new Set(selected.map(p => p.id));
+                      const extra = [...vols, ...meis].filter(p => !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+                      for (let i = 0; i < Math.min(volMeiShort, extra.length); i++) selected.push(extra[i]);
                     }
 
                     // Fill to 11
@@ -1818,10 +1879,15 @@ const AppContent: React.FC = () => {
                   });
 
                   // Pass 2: PON and CA cover for each other (a winger playing as makeshift
-                  // striker, or vice versa) before any slot resorts to a mismatched position.
+                  // striker, or vice versa), and MEI covers VOL, before any slot resorts to a
+                  // mismatched position.
                   currentSlots.forEach((slot, i) => {
-                    if (slotAssignments[i] || (slot.role !== 'CA' && slot.role !== 'PON')) return;
-                    const sibling = slot.role === 'CA' ? 'PON' : 'CA';
+                    if (slotAssignments[i]) return;
+                    let sibling: PlayerPosition | null = null;
+                    if (slot.role === 'CA') sibling = 'PON';
+                    else if (slot.role === 'PON') sibling = 'CA';
+                    else if (slot.role === 'VOL') sibling = 'MEI';
+                    if (!sibling) return;
                     const match = starters.find(p => !placedIds.has(p.id) && p.position === sibling);
                     if (match) { slotAssignments[i] = match; placedIds.add(match.id); }
                   });
@@ -1971,30 +2037,48 @@ const AppContent: React.FC = () => {
                           >
                             📝 Renovar 1 Ano (+38s)
                           </button>
-                          <button
-                            onClick={() => { renewContract(player.id, 'LOCK_6M'); setSelectedManagePlayerId(null); }}
-                            className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.12)', border: '1px solid rgba(255, 193, 7, 0.35)', color: 'var(--accent-gold)', minWidth: '100px' }}
-                            title="Renova o contrato por 6 meses e tranca o jogador"
-                          >
-                            🔒 Trancar 6 Meses
-                          </button>
-                          <button
-                            onClick={() => { renewContract(player.id, 'LOCK_1Y'); setSelectedManagePlayerId(null); }}
-                            className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.12)', border: '1px solid rgba(255, 193, 7, 0.35)', color: 'var(--accent-gold)', minWidth: '100px' }}
-                            title="Renova o contrato por 1 ano e tranca o jogador"
-                          >
-                            🔒 Trancar 1 Ano
-                          </button>
-                          <button
-                            onClick={() => { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); }}
-                            className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.15)', border: '1px solid rgba(255, 193, 7, 0.4)', color: 'var(--accent-gold)', minWidth: '100px' }}
-                            title="Renova o contrato por 2 anos e tranca o jogador"
-                          >
-                            🔒 Trancar 2 Anos
-                          </button>
+                          {(() => {
+                            const lockBlocked = player.contractLocked || player.lockCooldown;
+                            const lockBtnStyle = (opacity: number) => ({
+                              flex: 1, padding: '6px', fontSize: '0.72rem',
+                              background: lockBlocked ? 'rgba(255,255,255,0.03)' : `rgba(255, 193, 7, ${opacity})`,
+                              border: lockBlocked ? '1px solid rgba(255,255,255,0.06)' : `1px solid rgba(255, 193, 7, ${opacity + 0.23})`,
+                              color: lockBlocked ? '#6b7280' : 'var(--accent-gold)',
+                              minWidth: '100px',
+                              cursor: lockBlocked ? 'not-allowed' : 'pointer'
+                            });
+                            return (
+                              <>
+                                <button
+                                  onClick={() => { if (!lockBlocked) { renewContract(player.id, 'LOCK_6M'); setSelectedManagePlayerId(null); } }}
+                                  disabled={lockBlocked}
+                                  className="btn btn-secondary"
+                                  style={lockBtnStyle(0.12)}
+                                  title={lockBlocked ? 'Só é possível trancar novamente após renovar o contrato' : 'Renova o contrato por 6 meses e tranca o jogador'}
+                                >
+                                  🔒 Trancar 6 Meses
+                                </button>
+                                <button
+                                  onClick={() => { if (!lockBlocked) { renewContract(player.id, 'LOCK_1Y'); setSelectedManagePlayerId(null); } }}
+                                  disabled={lockBlocked}
+                                  className="btn btn-secondary"
+                                  style={lockBtnStyle(0.12)}
+                                  title={lockBlocked ? 'Só é possível trancar novamente após renovar o contrato' : 'Renova o contrato por 1 ano e tranca o jogador'}
+                                >
+                                  🔒 Trancar 1 Ano
+                                </button>
+                                <button
+                                  onClick={() => { if (!lockBlocked) { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); } }}
+                                  disabled={lockBlocked}
+                                  className="btn btn-secondary"
+                                  style={lockBtnStyle(0.15)}
+                                  title={lockBlocked ? 'Só é possível trancar novamente após renovar o contrato' : 'Renova o contrato por 2 anos e tranca o jogador'}
+                                >
+                                  🔒 Trancar 2 Anos
+                                </button>
+                              </>
+                            );
+                          })()}
                           <button
                             onClick={() => { if (!player.contractLocked) { sellPlayer(player); setSelectedManagePlayerId(null); } }}
                             disabled={player.contractLocked}
@@ -2859,8 +2943,7 @@ const AppContent: React.FC = () => {
               <button
                 className="btn btn-secondary"
                 onClick={() => {
-                  // user ignores or closes, but reset dissatisfaction counters slightly to not prompt on every click
-                  // Or let them resolve it by putting him in next match
+                  resolvePlayerDissatisfaction(unhappyPlayer.id);
                   setUnhappyPlayer(null);
                 }}
               >
@@ -3030,6 +3113,7 @@ const AppContent: React.FC = () => {
                             if (!label) return;
                             if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                               localStorage.removeItem(saveKey);
+                              localStorage.removeItem(`elifoot_2026_tactics_slot_${slot}`);
                               setSlotRefreshTick(t => t + 1);
                             }
                           }}

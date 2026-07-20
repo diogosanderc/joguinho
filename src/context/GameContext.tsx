@@ -90,6 +90,7 @@ interface GameContextType {
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
   updateTicketPrice: (delta: number) => void;
   setPenaltyTaker: (playerId: string) => void;
+  resolvePlayerDissatisfaction: (playerId: string) => void;
   loadGame: (saveData: any, slot: number) => void;
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
   cheatFinances: () => void;
@@ -634,8 +635,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             benchRounds = 0; // reset if played
           } else if (!isInjured) {
             benchRounds += 1;
-            // A contractLocked player CANNOT request to leave (cannot get dissatisfied)
-            if (!contractLocked && benchRounds >= 2 && Math.random() < 0.015) {
+            // A contractLocked player CANNOT request to leave (cannot get dissatisfied).
+            // Only kicks in once a player has sat out more than half of the 38-round season.
+            if (!contractLocked && benchRounds > 19 && Math.random() < 0.015) {
               benchRounds = 999;
               pushNews({
                 id: `unhappy_${player.id}_${Date.now()}`,
@@ -650,7 +652,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // getting paid -- this fires independently of playing time, for starters too.
           if (benchRounds !== 999 && !contractLocked && finances < 0) {
             const debtSeverity = Math.min(5, Math.floor(Math.abs(finances) / 500000)); // 0-5 steps of -500k
-            if (debtSeverity > 0 && Math.random() < debtSeverity * 0.006) {
+            if (debtSeverity > 0 && Math.random() < debtSeverity * 0.003) {
               benchRounds = 999;
               pushNews({
                 id: `unhappy_debt_${player.id}_${Date.now()}`,
@@ -960,6 +962,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Gain star check
           if (isMF_FW && p.goals >= 10) isStar = true;
           else if (!isMF_FW && p.rating >= 78 && !isRelegated) isStar = true;
+          else {
+            // A player clearly playing above his division's level (Série B caliber in Série C,
+            // or Série A caliber in Série B) stood out all season -- give him a real, if not
+            // guaranteed, shot at breaking out as a star next year.
+            const standoutThreshold = club.division === 'C' ? 68 : club.division === 'B' ? 78 : Infinity;
+            if (p.rating >= standoutThreshold && !isRelegated && Math.random() < 0.25) isStar = true;
+          }
         }
 
         // Any player who scored 10+ goals this season earns a star and a 10% rating
@@ -1610,7 +1619,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Renew player contract
+  // Renew player contract. Renewing always makes the player happier (clears dissatisfaction,
+  // small rating bump). Locking is one-shot: once a player has been locked, they can't be locked
+  // again until a fresh renewal happens (locking itself counts as one, resetting the cooldown).
   const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y' | 'LOCK_6M' | 'LOCK_1Y') => {
     if (!userClubId) return;
     const addedWeeks = (duration === '6M' || duration === 'LOCK_6M') ? 19 : (duration === '1Y' || duration === 'LOCK_1Y') ? 38 : 76;
@@ -1620,12 +1631,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (c.id !== userClubId) return c;
       const updatedSquad = c.squad.map(p => {
         if (p.id !== playerId) return p;
+        if (lockContract && (p.contractLocked || p.lockCooldown)) return p; // blocked -- must renew first
         const currentW = p.contractWeeks ?? 38;
+        const rating = Math.min(99, p.rating + (lockContract ? 2 : 1));
+        const group = getPositionGroup(p.position);
+        const ageFactor = p.age < 24 ? 1.3 : p.age > 30 ? 0.7 : 1.0;
+        const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
+        const valBase = Math.pow(rating - 30, 2.5) * 800;
+        const value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
+        const salary = Math.round(value * 0.005);
         return {
           ...p,
           contractWeeks: currentW + addedWeeks,
           contractLocked: lockContract ? true : p.contractLocked,
-          contractLockYears: lockYears ? lockYears : p.contractLockYears
+          contractLockYears: lockYears ? lockYears : p.contractLockYears,
+          lockCooldown: lockContract,
+          rating, value, salary,
+          benchRounds: 0
         };
       });
       return { ...c, squad: updatedSquad };
@@ -1707,6 +1729,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  // Clears the dissatisfaction flag once the user has resolved it (kept or sold the player) --
+  // without this the flag stays at the sentinel value forever, and the modal re-triggers on
+  // any unrelated club update (ticket price, penalty taker, etc).
+  const resolvePlayerDissatisfaction = (playerId: string) => {
+    if (!userClubId) return;
+    setClubs(prev => prev.map(c => {
+      if (c.id !== userClubId) return c;
+      return { ...c, squad: c.squad.map(p => p.id === playerId ? { ...p, benchRounds: 0 } : p) };
+    }));
+  };
+
   const loadGame = (data: any, slot: number) => {
     if (!data) return;
     // Ignore saves from before the current squad/position data version
@@ -1775,6 +1808,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       manualSave,
       updateTicketPrice,
       setPenaltyTaker,
+      resolvePlayerDissatisfaction,
       renewContract,
       acceptIncomingProposal,
       loadGame,

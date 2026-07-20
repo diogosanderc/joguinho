@@ -37,8 +37,9 @@ export const getAutoStarters = (club: Club): Player[] => {
   const starters: Player[] = [];
   // CA falls back to PON: a winger can play as a makeshift centre-forward when the club
   // has no natural striker at all, rather than pulling in a defender/keeper as filler.
+  // VOL falls back to MEI: a Meia can anchor the midfield until the club buys a Volante.
   const targets: [PlayerPosition, number, PlayerPosition?][] = [
-    ['GOL', 1], ['ZAG', 2], ['LD', 1], ['LE', 1], ['VOL', 2], ['MEI', 2], ['CA', 2, 'PON']
+    ['GOL', 1], ['ZAG', 2], ['LD', 1], ['LE', 1], ['VOL', 2, 'MEI'], ['MEI', 2], ['CA', 2, 'PON']
   ];
   targets.forEach(([pos, count, fallbackPos]) => {
     const pool = fit(pos);
@@ -129,6 +130,18 @@ export const simulateMatch = (
   const homeForces = calculateTeamForces(homeStarters);
   const awayForces = calculateTeamForces(awayStarters);
 
+  // A player whose rating clears the bar for the division ABOVE their own club is playing
+  // beneath his level and stands out for it -- extra weight in the moments that matter (goals).
+  const isDivisionStandout = (rating: number, division: 'A' | 'B' | 'C') => {
+    if (division === 'C') return rating >= 68; // Série B caliber playing in Série C
+    if (division === 'B') return rating >= 78; // Série A caliber playing in Série B
+    return false; // already in the top flight
+  };
+  const standoutIds = new Set<string>([
+    ...homeStarters.filter(p => isDivisionStandout(p.rating, homeClub.division)).map(p => p.id),
+    ...awayStarters.filter(p => isDivisionStandout(p.rating, awayClub.division)).map(p => p.id)
+  ]);
+
   // Base luck variation between 0.8 and 1.2 (+/- 20%)
   let homeLuck = 0.8 + Math.random() * 0.4;
   let awayLuck = 0.8 + Math.random() * 0.4;
@@ -193,8 +206,12 @@ export const simulateMatch = (
     
     if (list.length === 0) return players[Math.floor(Math.random() * players.length)];
     
-    // Weighted selection (stars get double weight + additional boost)
-    const getWeight = (p: Player) => p.isStar ? p.rating * 3.5 : p.rating;
+    // Weighted selection (stars get double weight + additional boost; a player who's clearly
+    // playing above his division's level also stands out more, though less than a full star)
+    const getWeight = (p: Player) => {
+      if (p.isStar) return p.rating * 3.5;
+      return standoutIds.has(p.id) ? p.rating * 1.6 : p.rating;
+    };
     const totalWeight = list.reduce((sum, p) => sum + getWeight(p), 0);
     let rand = Math.random() * totalWeight;
     for (const p of list) {
