@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico } from '../data/database';
 import type { Player, Club, PlayerPosition } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
@@ -439,9 +439,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (matchInRound) {
         const matchResult = updatedMatches.find(m => m.round === currentRound && m.homeId === club.id)?.result;
         if (matchResult) {
-          // Occupancy base is affected by reputation and performance
+          // Occupancy base is affected by reputation and performance. A real derby ("clássico")
+          // packs the stadium regardless of either club's reputation/form -- fans show up for
+          // the rivalry, not the table position.
           const performanceRep = club.confidence / 100;
-          const baseOccupancy = 0.4 + (club.reputation / 100) * 0.4 + performanceRep * 0.2;
+          const derbyBoost = isClassico(club.id, matchInRound.awayId) ? 0.35 : 0;
+          const baseOccupancy = 0.4 + (club.reputation / 100) * 0.4 + performanceRep * 0.2 + derbyBoost;
 
           // Ticket price factor: base price per division (D=30, C=50, B=80, A=120)
           const baseTicketByDiv: Record<string, number> = { A: 120, B: 80, C: 50, D: 30 };

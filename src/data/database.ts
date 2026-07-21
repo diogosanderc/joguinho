@@ -708,6 +708,38 @@ export const STAR_PLAYERS: Record<string, { name: string; position: PlayerPositi
   ]
 };
 
+// Real Brazilian football derbies ("clássicos") -- these draw much bigger crowds than a normal
+// league match, independent of either club's reputation or form. Pairs use club ids below.
+const RIVALRY_PAIRS: [string, string][] = [
+  ['flamengo', 'fluminense'],   // Fla-Flu
+  ['flamengo', 'vasco'],        // Clássico dos Milhões
+  ['flamengo', 'botafogo'],     // Clássico da Rivalidade
+  ['fluminense', 'vasco'],      // Clássico Carioca
+  ['fluminense', 'botafogo'],   // Clássico Carioca
+  ['vasco', 'botafogo'],        // Clássico Carioca
+  ['corinthians', 'palmeiras'], // Derby/Choque-Rei
+  ['corinthians', 'sao_paulo'], // Majestoso
+  ['sao_paulo', 'palmeiras'],   // Clássico Paulista
+  ['santos', 'corinthians'],    // Clássico Paulista
+  ['santos', 'sao_paulo'],      // Clássico Paulista
+  ['santos', 'palmeiras'],      // Clássico Paulista
+  ['gremio', 'internacional'],  // Grenal
+  ['atletico_mg', 'cruzeiro'],  // Clássico Mineiro
+  ['bahia', 'vitoria'],         // Ba-Vi
+  ['athletico_pr', 'coritiba'], // Atletiba
+  ['sport', 'nautico'],         // Clássico das Multidões
+  ['sport', 'santa_cruz'],      // Clássico dos Clássicos
+  ['nautico', 'santa_cruz'],    // Clássico Pernambucano
+  ['ceara', 'fortaleza'],       // Clássico-Rei
+  ['goias', 'atletico_go'],     // Derby / Clássico do Centro-Oeste
+  ['avai', 'figueirense'],      // Clássico Ave-Leão / Clássico da Ilha
+];
+
+const RIVALRY_SET = new Set(RIVALRY_PAIRS.map(([a, b]) => [a, b].sort().join('|')));
+
+export const isClassico = (clubIdA: string, clubIdB: string): boolean =>
+  RIVALRY_SET.has([clubIdA, clubIdB].sort().join('|'));
+
 export const CLUB_DEFINITIONS: ClubDefinition[] = [
   // --- SERIE A ---
   { id: 'palmeiras', name: 'Palmeiras', division: 'A', primaryColor: '#006437', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 43000, stadiumName: 'Allianz Parque', reputation: 90, stars: STAR_PLAYERS.palmeiras },

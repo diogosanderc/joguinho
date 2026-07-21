@@ -119,6 +119,38 @@ const AppContent: React.FC = () => {
   const [varPhase, setVarPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
   const [varEvent, setVarEvent] = useState<MatchEvent | null>(null);
 
+  // Sound effects + vibration for the live match -- a device-wide preference, not tied to any
+  // particular save slot, so it's read straight from its own localStorage key.
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('elifoot_2026_sound_enabled') !== 'false');
+  const [vibrationEnabled, setVibrationEnabled] = useState<boolean>(() => localStorage.getItem('elifoot_2026_vibration_enabled') !== 'false');
+  useEffect(() => { localStorage.setItem('elifoot_2026_sound_enabled', String(soundEnabled)); }, [soundEnabled]);
+  useEffect(() => { localStorage.setItem('elifoot_2026_vibration_enabled', String(vibrationEnabled)); }, [vibrationEnabled]);
+
+  const apitoAudioRef = useRef<HTMLAudioElement | null>(null);
+  const golAudioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    apitoAudioRef.current = new Audio('/audio/apito.mp3');
+    golAudioRef.current = new Audio('/audio/gol.mp3');
+  }, []);
+
+  const playWhistle = () => {
+    if (soundEnabled && apitoAudioRef.current) {
+      apitoAudioRef.current.currentTime = 0;
+      apitoAudioRef.current.play().catch(() => {});
+    }
+  };
+  const playGoalSound = () => {
+    if (soundEnabled && golAudioRef.current) {
+      golAudioRef.current.currentTime = 0;
+      golAudioRef.current.play().catch(() => {});
+    }
+  };
+  const vibrateGoal = () => {
+    if (vibrationEnabled && typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
+    }
+  };
+
   // Sponsors list generator (deterministic based on club reputation)
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
 
@@ -480,8 +512,31 @@ const AppContent: React.FC = () => {
       // unseen underneath), which looks exactly like "the round played but no live match showed".
       setIncomingProposal(null);
       setUnhappyPlayer(null);
+      playWhistle();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, currentMatch]);
+
+  // Full-time whistle, once per match.
+  useEffect(() => {
+    if (matchDone) playWhistle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchDone]);
+
+  // Goal sound + vibration, on either team's goal, in the user's live match. Watching the
+  // combined goal total (rather than hooking into every individual place a goal gets committed
+  // -- normal ticking, penalty reveal, VAR-confirmed reveal) catches all of them from one spot.
+  // Only fires on an increase, so a new match resetting the score back to 0 never triggers it.
+  const prevTotalGoalsRef = useRef(0);
+  useEffect(() => {
+    const total = simScoreHome + simScoreAway;
+    if (total > prevTotalGoalsRef.current) {
+      playGoalSound();
+      vibrateGoal();
+    }
+    prevTotalGoalsRef.current = total;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simScoreHome, simScoreAway]);
 
   // Auto-open half-time substitution modal at minute 45
   useEffect(() => {
@@ -1881,6 +1936,37 @@ const AppContent: React.FC = () => {
               >
                 🗑️ Excluir Campanha
               </button>
+            </div>
+
+            {/* Sound/vibration settings for the live match */}
+            <div className="card" style={{ marginBottom: '14px' }}>
+              <div className="card-title">🔊 Jogo ao Vivo</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="btn btn-secondary"
+                  style={{
+                    flex: 1, padding: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    background: soundEnabled ? 'rgba(0, 230, 118, 0.1)' : 'rgba(255,255,255,0.03)',
+                    border: soundEnabled ? '1px solid rgba(0, 230, 118, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                    color: soundEnabled ? 'var(--accent-green)' : '#9ca3af'
+                  }}
+                >
+                  {soundEnabled ? '🔊' : '🔇'} Som: {soundEnabled ? 'Ligado' : 'Desligado'}
+                </button>
+                <button
+                  onClick={() => setVibrationEnabled(!vibrationEnabled)}
+                  className="btn btn-secondary"
+                  style={{
+                    flex: 1, padding: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    background: vibrationEnabled ? 'rgba(0, 230, 118, 0.1)' : 'rgba(255,255,255,0.03)',
+                    border: vibrationEnabled ? '1px solid rgba(0, 230, 118, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                    color: vibrationEnabled ? 'var(--accent-green)' : '#9ca3af'
+                  }}
+                >
+                  📳 Vibração: {vibrationEnabled ? 'Ligada' : 'Desligada'}
+                </button>
+              </div>
             </div>
 
             {/* News feed */}

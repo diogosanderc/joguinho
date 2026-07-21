@@ -1,4 +1,4 @@
-import { isPlayerAvailable, type Player, type Club, type PlayerPosition } from '../data/database';
+import { isPlayerAvailable, isClassico, type Player, type Club, type PlayerPosition } from '../data/database';
 
 const MIDFIELD_POSITIONS: PlayerPosition[] = ['VOL', 'MEI'];
 const ATTACK_POSITIONS: PlayerPosition[] = ['PON', 'CA'];
@@ -192,9 +192,11 @@ export const simulateMatch = (
     awayLuck *= 0.82;
   }
 
-  // Home advantage factor depends on stadium occupancy
+  // Home advantage factor depends on stadium occupancy. A real derby ("clássico") packs the
+  // stadium regardless of either club's current reputation/form -- fans show up for the rivalry.
   const performanceRep = homeClub.confidence / 100;
-  const occupancyRate = Math.max(0.0, Math.min(1.0, 0.3 + (homeClub.reputation / 100) * 0.5 + performanceRep * 0.2));
+  const derbyBoost = isClassico(homeClub.id, awayClub.id) ? 0.35 : 0;
+  const occupancyRate = Math.max(0.0, Math.min(1.0, 0.3 + (homeClub.reputation / 100) * 0.5 + performanceRep * 0.2 + derbyBoost));
   const homeAdvantage = 1.0 + (occupancyRate * 0.15); // ranges from 1.0 to 1.15
 
   let homeAtt = homeForces.attack * homeLuck * homeAdvantage;
