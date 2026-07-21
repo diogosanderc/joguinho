@@ -18,7 +18,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, foreignMarketPlayers, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
@@ -206,6 +206,10 @@ const AppContent: React.FC = () => {
   const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS' | 'FOREIGN'>('FREE_AGENTS');
   const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('A');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
+  const [foreignBrowseMode, setForeignBrowseMode] = useState<'SAMPLE' | 'BY_CLUB'>('SAMPLE');
+  const FOREIGN_LEAGUES = ['Premier League', 'Serie A', 'Bundesliga', 'La Liga', 'Ligue 1', 'Libertadores'] as const;
+  const [selectedForeignLeague, setSelectedForeignLeague] = useState<typeof FOREIGN_LEAGUES[number]>('Premier League');
+  const [selectedForeignClub, setSelectedForeignClub] = useState<string>('');
   const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
   const [negotiatingClubId, setNegotiatingClubId] = useState<string>('');
   const [offerAmount, setOfferAmount] = useState<number>(0);
@@ -2821,11 +2825,69 @@ const AppContent: React.FC = () => {
                 <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '-8px 0 12px' }}>
                   Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Libertadores). Custam bem mais caro que o mercado nacional.
                 </p>
+
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                  <button
+                    className={`sub-tab-btn ${foreignBrowseMode === 'SAMPLE' ? 'active' : ''}`}
+                    style={{ flex: 1 }}
+                    onClick={() => setForeignBrowseMode('SAMPLE')}
+                  >
+                    Sorteio do Dia
+                  </button>
+                  <button
+                    className={`sub-tab-btn ${foreignBrowseMode === 'BY_CLUB' ? 'active' : ''}`}
+                    style={{ flex: 1 }}
+                    onClick={() => setForeignBrowseMode('BY_CLUB')}
+                  >
+                    Por Clube
+                  </button>
+                </div>
+
+                {foreignBrowseMode === 'BY_CLUB' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {FOREIGN_LEAGUES.map(lg => (
+                        <button
+                          key={lg}
+                          className={`sub-tab-btn ${selectedForeignLeague === lg ? 'active' : ''}`}
+                          style={{ flex: '1 1 30%', fontSize: '0.72rem', padding: '7px 4px' }}
+                          onClick={() => { setSelectedForeignLeague(lg); setSelectedForeignClub(''); }}
+                        >
+                          {lg}
+                        </button>
+                      ))}
+                    </div>
+
+                    <select
+                      value={selectedForeignClub}
+                      onChange={(e) => setSelectedForeignClub(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px', background: '#121316',
+                        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px',
+                        color: 'white', fontSize: '0.85rem', marginBottom: '4px'
+                      }}
+                    >
+                      <option value="" disabled>Escolha um clube...</option>
+                      {[...new Set(foreignPlayerPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
+                        .sort((a, b) => a.localeCompare(b))
+                        .map(clubName => (
+                          <option key={clubName} value={clubName}>{clubName}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-                  {foreignMarketPlayers.length === 0 && (
+                  {foreignBrowseMode === 'SAMPLE' && foreignMarketPlayers.length === 0 && (
                     <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Carregando mercado internacional...</p>
                   )}
-                  {foreignMarketPlayers
+                  {foreignBrowseMode === 'BY_CLUB' && !selectedForeignClub && (
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Selecione um clube para visualizar o elenco.</p>
+                  )}
+                  {(foreignBrowseMode === 'SAMPLE'
+                    ? foreignMarketPlayers
+                    : foreignPlayerPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
+                  )
                     .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
                     .map(player => (
                       <div key={player.id} className="player-row">

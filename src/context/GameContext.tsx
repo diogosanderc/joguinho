@@ -82,6 +82,8 @@ interface GameContextType {
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
   foreignMarketPlayers: ForeignPlayer[];
+  foreignPlayerPool: ForeignPlayer[];
+  boughtForeignIds: string[];
   buyForeignPlayer: (player: ForeignPlayer) => void;
   currentSlot: number | null;
   getFreeSlot: () => number | null;
@@ -2547,6 +2549,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cupDrawReveal,
       dismissCupDrawReveal,
       foreignMarketPlayers,
+      foreignPlayerPool,
+      boughtForeignIds,
       buyForeignPlayer,
       currentSlot,
       getFreeSlot,
