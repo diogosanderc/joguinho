@@ -3636,8 +3636,11 @@ const AppContent: React.FC = () => {
         )}
       </div>
 
-      {/* UNHAPPY PLAYER DISSATISFACTION MODAL */}
-      {unhappyPlayer && (
+      {/* UNHAPPY PLAYER DISSATISFACTION MODAL -- gated to gameState !== 'MATCH_DAY' because
+          its trigger effect can still land its state update after the user has already
+          tapped into a new match: without this guard it renders on top of the live match
+          screen, hiding the whole thing (sim keeps ticking underneath) until dismissed. */}
+      {unhappyPlayer && gameState !== 'MATCH_DAY' && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>😠</span>
@@ -3669,8 +3672,9 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      {/* INCOMING CLUB TRANSFER PROPOSAL MODAL */}
-      {incomingProposal && (
+      {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
+          above: guard against rendering over a live match that's already in progress. */}
+      {incomingProposal && gameState !== 'MATCH_DAY' && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>💼</span>
