@@ -79,6 +79,8 @@ interface GameContextType {
   currentMatchResult: MatchResult | null;
   cupState: CupState | null;
   startCupMatch: (starters: Player[]) => void;
+  cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
+  dismissCupDrawReveal: () => void;
   currentSlot: number | null;
   getFreeSlot: () => number | null;
   startGame: (name: string, chosenClubId: string, slot?: number) => void;
@@ -134,6 +136,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cupStateRef.current = next;
     setCupStateRaw(next);
   };
+  // Transient (not persisted) info for the "sorteio" draw-reveal modal, shown once when a
+  // fresh Copa do Brasil phase is drawn and the user gets a new opponent.
+  const [cupDrawReveal, setCupDrawReveal] = useState<{ phase: CupPhase; opponentId: string; isHome: boolean } | null>(null);
+  const dismissCupDrawReveal = () => setCupDrawReveal(null);
   const [activeSponsors, setActiveSponsors] = useState<Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>>({
     MASTER: null,
     COSTAS: null,
@@ -2015,8 +2021,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: `cup_champion_${Date.now()}`,
         week: currentRound,
         text: championId === userClubId
-          ? `🏆 CAMPEÃO DA COPA! Seu time conquistou a Copa Mata-Mata e faturou ${formatCurrency(CUP_CHAMPION_PRIZE)}!`
-          : `A Copa Mata-Mata terminou com o título para o ${nameOf(championId)}.`,
+          ? `🏆 CAMPEÃO DA COPA! Seu time conquistou a Copa do Brasil e faturou ${formatCurrency(CUP_CHAMPION_PRIZE)}!`
+          : `A Copa do Brasil terminou com o título para o ${nameOf(championId)}.`,
         type: 'BOARD'
       });
     }
@@ -2064,10 +2070,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
       setCupState(working);
       const opponentId = userPair.homeId === userClubId ? userPair.awayId : userPair.homeId;
+      setCupDrawReveal({ phase, opponentId, isHome: userPair.homeId === userClubId });
       pushNews({
         id: `cup_draw_${Date.now()}`,
         week: currentRound,
-        text: `Copa ${CUP_PHASE_LABEL[phase]}: seu time enfrenta o ${clubs.find(c => c.id === opponentId)?.name ?? '???'}!`,
+        text: `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrenta o ${clubs.find(c => c.id === opponentId)?.name ?? '???'}!`,
         type: 'MATCH'
       });
       return;
@@ -2402,6 +2409,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentMatchResult,
       cupState,
       startCupMatch,
+      cupDrawReveal,
+      dismissCupDrawReveal,
       currentSlot,
       getFreeSlot,
       startGame,

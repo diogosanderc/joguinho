@@ -18,7 +18,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
@@ -119,6 +119,25 @@ const AppContent: React.FC = () => {
   const [varModalOpen, setVarModalOpen] = useState(false);
   const [varPhase, setVarPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
   const [varEvent, setVarEvent] = useState<MatchEvent | null>(null);
+
+  // Copa do Brasil draw reveal: briefly cycles random club names (like a live TV draw) before
+  // landing on the real opponent, whenever a fresh phase pairs the user up with someone new.
+  const [drawAnimating, setDrawAnimating] = useState(false);
+  const [drawDisplayName, setDrawDisplayName] = useState('');
+  useEffect(() => {
+    if (!cupDrawReveal) return;
+    setDrawAnimating(true);
+    const pool = clubs.filter(c => c.id !== userClubId && c.id !== cupDrawReveal.opponentId).map(c => c.name);
+    const interval = setInterval(() => {
+      setDrawDisplayName(pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : '???');
+    }, 90);
+    const stop = setTimeout(() => {
+      clearInterval(interval);
+      setDrawAnimating(false);
+    }, 1600);
+    return () => { clearInterval(interval); clearTimeout(stop); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cupDrawReveal]);
 
   // Sound effects + vibration for the live match -- off by default (no UI to toggle for now),
   // read once from their own localStorage keys in case a settings UI opts a user back in later.
@@ -1321,7 +1340,7 @@ const AppContent: React.FC = () => {
             was drawn), so it's swapped for a short cup-context blurb instead. */}
         {currentMatch.division === 'CUP' ? (
           <div className="classic-board-container" style={{ scrollBehavior: 'smooth', padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.8rem' }}>
-            🏆 Copa Mata-Mata — {CUP_PHASE_LABEL[PHASES[cupState?.phaseIndex ?? 0]]}<br />
+            🏆 Copa do Brasil — {CUP_PHASE_LABEL[PHASES[cupState?.phaseIndex ?? 0]]}<br />
             Os demais confrontos desta fase já foram decididos.
           </div>
         ) : (
@@ -2033,7 +2052,7 @@ const AppContent: React.FC = () => {
               return (
                 <div className="card" style={{ background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid rgba(255, 193, 7, 0.4)' }}>
                   <div style={{ marginBottom: '12px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 700, textTransform: 'uppercase' }}>🏆 Copa Mata-Mata</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 700, textTransform: 'uppercase' }}>🏆 Copa do Brasil</span>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>
                       {CUP_PHASE_LABEL[phase]}{isTwoLegged ? (isSecondLeg ? ' (Jogo de Volta)' : ' (Jogo de Ida)') : ''}
                     </h2>
@@ -3566,7 +3585,7 @@ const AppContent: React.FC = () => {
 
             {statsView === 'GAMES' && cupState && (
               <div className="card" style={{ marginTop: '10px' }}>
-                <div className="card-title">🏆 Copa Mata-Mata - {cupState.year}</div>
+                <div className="card-title">🏆 Copa do Brasil - {cupState.year}</div>
                 <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '10px' }}>
                   {cupState.championId
                     ? (cupState.championId === userClubId ? '🏆 Seu time é o CAMPEÃO da Copa!' : `Campeão: ${clubs.find(c => c.id === cupState.championId)?.name ?? '???'}`)
@@ -3635,6 +3654,40 @@ const AppContent: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* COPA DO BRASIL DRAW REVEAL MODAL -- gated the same way as the other office-screen
+          modals below, so it can never render over a match that's already in progress. */}
+      {cupDrawReveal && gameState !== 'MATCH_DAY' && (() => {
+        const opponentClub = clubs.find(c => c.id === cupDrawReveal.opponentId);
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1200 }}>
+            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2.5rem' }}>🎱</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Sorteio da Copa do Brasil</h3>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '4px 0 16px' }}>{CUP_PHASE_LABEL[cupDrawReveal.phase]}</p>
+              {drawAnimating ? (
+                <div className="match-time-pill" style={{ fontSize: '1rem', padding: '10px 20px', margin: '0 auto' }}>
+                  🔀 {drawDisplayName || '...'}
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, margin: '10px 0' }}>
+                    {cupDrawReveal.isHome ? userClub?.name : opponentClub?.name}
+                    <span style={{ color: 'var(--accent-gold)' }}> x </span>
+                    {cupDrawReveal.isHome ? opponentClub?.name : userClub?.name}
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: '0 0 20px' }}>
+                    {cupDrawReveal.isHome ? '🏠 Você joga em casa' : '✈️ Você joga fora de casa'}
+                  </p>
+                  <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissCupDrawReveal}>
+                    Continuar
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* UNHAPPY PLAYER DISSATISFACTION MODAL -- gated to gameState !== 'MATCH_DAY' because
           its trigger effect can still land its state update after the user has already
