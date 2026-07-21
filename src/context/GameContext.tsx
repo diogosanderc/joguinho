@@ -33,7 +33,7 @@ export interface PenaltyShootoutState {
   legs: CupTieLeg[]; // stashed so the tie can be finalized once the shootout ends
 }
 
-export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
+export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER' | 'UNEMPLOYED';
 
 export interface LeagueMatch {
   round: number;
@@ -125,6 +125,11 @@ interface GameContextType {
   acceptJobOffer: (clubId: string) => void;
   stayAtClub: () => void;
   resetGame: () => void;
+  divisionExperience: Record<'A' | 'B' | 'C', number>;
+  formerClubName: string;
+  requestResignation: () => void;
+  simulateUnemployedRound: () => void;
+  acceptMidSeasonJobOffer: (clubId: string) => void;
   setGameState: (state: GameState) => void;
   clearCurrentMatch: () => void;
   resimulateMidMatch: (updatedUserStarters: Player[], fromMinute: number) => void;
@@ -154,6 +159,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [schedule, setSchedule] = useState<LeagueMatch[]>([]);
   const [marketPlayers, setMarketPlayers] = useState<Player[]>([]);
   const [offers, setOffers] = useState<JobOffer[]>([]);
+  const [divisionExperience, setDivisionExperience] = useState<Record<'A' | 'B' | 'C', number>>({ A: 0, B: 0, C: 0 });
+  const divisionExperienceRef = useRef(divisionExperience);
+  divisionExperienceRef.current = divisionExperience;
+  const [formerClubName, setFormerClubName] = useState('');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [stadiumUpgrade, setStadiumUpgrade] = useState<StadiumUpgrade | null>(null);
@@ -323,7 +332,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activeSponsors: sponsorsList,
       cupState: cupStateRef.current,
       foreignMarketPlayers: foreignMarketRef.current,
-      boughtForeignIds: boughtForeignIdsRef.current
+      boughtForeignIds: boughtForeignIdsRef.current,
+      divisionExperience: divisionExperienceRef.current,
+      formerClubName
     });
 
     const slimSchedule = slimOldMatchEvents(currentSchedule, round);
@@ -473,6 +484,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const nextRoundImpl = (playerStarters: Player[]) => {
     if (!userClub) return;
+
+    // Tracks how many rounds this manager has coached in each division, used to weight which
+    // clubs come calling once he's on the free-agent market (see requestResignation).
+    setDivisionExperience(prev => ({ ...prev, [userClub.division]: prev[userClub.division] + 1 }));
 
     // Accumulates every news item pushed during this round so saveGame() below
     // (which runs synchronously in this same call) sees them, avoiding the stale
@@ -2120,6 +2135,90 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame('PLAYING', managerName, currentYear + 1, 1, updatedClubs, userClubId, newSchedule, marketPlayers, [], nextNews, history, stadiumUpgrade, activeSponsors);
   };
 
+  // Manager voluntarily leaves the current club mid-season, becoming a free agent until a
+  // club makes an offer. The former club stays in the league, simulated by the AI from here on.
+  const requestResignation = () => {
+    if (!userClub) return;
+    const leftClubName = userClub.name;
+    setFormerClubName(leftClubName);
+    setClubs(prev => prev.map(c => c.id === userClubId ? { ...c, isPlayerClub: false } : c));
+    setUserClubId('');
+    setOffers([]);
+    const nextNews: NewsItem[] = [
+      { id: `resign_${Date.now()}`, week: currentRound, text: `${managerName} pediu demissão do ${leftClubName} e está no mercado à procura de um novo clube.`, type: 'BOARD' }
+    ];
+    setNews(prev => [...prev, ...nextNews]);
+    setGameState('UNEMPLOYED');
+    saveGame('UNEMPLOYED', managerName, currentYear, currentRound, clubs.map(c => c.id === userClubId ? { ...c, isPlayerClub: false } : c), '', schedule, marketPlayers, [], [...news, ...nextNews], history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Advances one round while unemployed: every match in the league is simulated bot-vs-bot
+  // (no live match to watch, since the manager has no club), and there's a chance a club comes
+  // in with an offer -- weighted toward whichever division this manager has the most experience
+  // coaching in, mirroring how real clubs court managers with a track record at their level.
+  const simulateUnemployedRound = () => {
+    const updatedSchedule = schedule.map(match => {
+      if (match.round !== currentRound) return match;
+      const home = clubs.find(c => c.id === match.homeId);
+      const away = clubs.find(c => c.id === match.awayId);
+      if (!home || !away) return match;
+      const result = simulateMatch(home, away);
+      return { ...match, simulated: true, result };
+    });
+    setSchedule(updatedSchedule);
+    const nextRoundNum = currentRound + 1;
+    setCurrentRound(nextRoundNum);
+
+    // Roll for a job offer. Chance and division weighting scale with experience.
+    const exp = divisionExperienceRef.current;
+    const totalExp = exp.A + exp.B + exp.C;
+    const weights: Record<'A' | 'B' | 'C', number> = totalExp > 0
+      ? { A: 5 + exp.A, B: 5 + exp.B, C: 5 + exp.C }
+      : { A: 5, B: 6, C: 7 };
+
+    const nextNews: NewsItem[] = [];
+    let nextOffers = offers;
+    if (Math.random() < 0.35) {
+      const divisions: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
+      const totalWeight = weights.A + weights.B + weights.C;
+      let roll = Math.random() * totalWeight;
+      let chosenDiv: 'A' | 'B' | 'C' = 'C';
+      for (const div of divisions) {
+        if (roll < weights[div]) { chosenDiv = div; break; }
+        roll -= weights[div];
+      }
+      const candidates = clubs.filter(c => c.division === chosenDiv && !offers.some(o => o.clubId === c.id));
+      const chosenClub = candidates[Math.floor(Math.random() * candidates.length)];
+      if (chosenClub) {
+        const newOffer: JobOffer = { clubId: chosenClub.id, clubName: chosenClub.name, division: chosenClub.division, salaryBonus: 0 };
+        nextOffers = [...offers, newOffer];
+        setOffers(nextOffers);
+        nextNews.push({ id: `unemp_offer_${Date.now()}`, week: nextRoundNum, text: `Proposta recebida! O ${chosenClub.name} (Série ${chosenClub.division}) quer contratar ${managerName}.`, type: 'OFFER' });
+      }
+    }
+    if (nextNews.length > 0) setNews(prev => [...prev, ...nextNews]);
+
+    saveGame('UNEMPLOYED', managerName, currentYear, nextRoundNum, clubs, '', updatedSchedule, marketPlayers, nextOffers, [...news, ...nextNews], history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Accepts a job offer received while unemployed, taking over the new club immediately
+  // (mid-season, unlike acceptJobOffer which only runs at the season/schedule boundary).
+  const acceptMidSeasonJobOffer = (clubId: string) => {
+    const newClub = clubs.find(c => c.id === clubId);
+    if (!newClub) return;
+    const updatedClubs = clubs.map(c => c.id === clubId ? { ...c, isPlayerClub: true, confidence: 70 } : c);
+    setClubs(updatedClubs);
+    setUserClubId(clubId);
+    setOffers([]);
+    setFormerClubName('');
+    const nextNews: NewsItem[] = [
+      { id: `midseason_hire_${Date.now()}`, week: currentRound, text: `Nova Era! ${managerName} assumiu o comando técnico do ${newClub.name}! Boa sorte na Série ${newClub.division}!`, type: 'BOARD' }
+    ];
+    setNews(prev => [...prev, ...nextNews]);
+    setGameState('PLAYING');
+    saveGame('PLAYING', managerName, currentYear, currentRound, updatedClubs, clubId, schedule, marketPlayers, [], [...news, ...nextNews], history, stadiumUpgrade, activeSponsors);
+  };
+
   // Reset/delete save game
   const resetGame = () => {
     if (currentSlotRef.current) {
@@ -2703,6 +2802,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setForeignMarketPlayers(data.foreignMarketPlayers ?? []);
     setBoughtForeignIds(data.boughtForeignIds ?? []);
+    setDivisionExperience(data.divisionExperience ?? { A: 0, B: 0, C: 0 });
+    setFormerClubName(data.formerClubName ?? '');
   };
 
   const cheatFinances = () => {
@@ -2758,6 +2859,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       acceptJobOffer,
       stayAtClub,
       resetGame,
+      divisionExperience,
+      formerClubName,
+      requestResignation,
+      simulateUnemployedRound,
+      acceptMidSeasonJobOffer,
       setGameState,
       clearCurrentMatch,
       resimulateMidMatch,

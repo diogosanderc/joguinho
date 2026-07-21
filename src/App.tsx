@@ -25,7 +25,8 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction,
+    formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
 
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
@@ -1297,6 +1298,66 @@ const AppContent: React.FC = () => {
     );
   }
 
+  if (gameState === 'UNEMPLOYED') {
+    return (
+      <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px', gap: '16px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Users size={48} color="var(--accent-gold)" style={{ margin: '0 auto 12px auto' }} />
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Mercado de Trabalho</h2>
+          <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+            {managerName} está sem clube{formerClubName ? ` desde a saída do ${formerClubName}` : ''}. Aguardando propostas...
+          </p>
+        </div>
+
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+            Propostas Recebidas
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+            {offers.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Nenhum clube interessado ainda. Simule a próxima rodada.</p>
+            ) : (
+              offers.map((off, idx) => (
+                <div
+                  key={idx}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#121316', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{off.clubName}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Série {off.division}</span>
+                  </div>
+                  <button
+                    onClick={() => acceptMidSeasonJobOffer(off.clubId)}
+                    className="btn btn-primary"
+                    style={{ padding: '6px 12px', width: 'auto', borderRadius: '8px', fontSize: '0.8rem' }}
+                  >
+                    Aceitar
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <button
+          className="btn btn-secondary"
+          onClick={simulateUnemployedRound}
+          style={{ height: '48px' }}
+        >
+          Simular Próxima Rodada (Rodada {currentRound})
+        </button>
+
+        <button
+          className="btn btn-danger"
+          onClick={resetGame}
+          style={{ height: '44px', background: 'none', border: '1px solid rgba(255,23,68,0.2)', color: 'var(--accent-red)' }}
+        >
+          Reiniciar Carreira
+        </button>
+      </div>
+    );
+  }
+
   // Guard safety
   if (!userClub) return null;
 
@@ -2019,12 +2080,16 @@ const AppContent: React.FC = () => {
                 🏠 Voltar ao Menu
               </button>
               <button
-                onClick={() => setSavesModalOpen(true)}
+                onClick={() => {
+                  if (confirm('Tem certeza que deseja pedir demissão? Você ficará sem clube até receber e aceitar uma proposta.')) {
+                    requestResignation();
+                  }
+                }}
                 style={{
                   flex: 1,
-                  background: 'rgba(255, 193, 7, 0.08)',
-                  border: '1px solid rgba(255, 193, 7, 0.25)',
-                  color: 'var(--accent-gold)',
+                  background: 'rgba(255, 23, 68, 0.07)',
+                  border: '1px solid rgba(255, 23, 68, 0.25)',
+                  color: 'var(--accent-red)',
                   borderRadius: '10px',
                   padding: '9px 0',
                   fontWeight: 700,
@@ -2037,7 +2102,7 @@ const AppContent: React.FC = () => {
                   transition: 'background 0.2s'
                 }}
               >
-                💾 Slots ({currentSlot ? `0${currentSlot}` : '-'})
+                🚪 Pedir Demissão
               </button>
             </div>
             {/* Save / Delete campaign buttons */}
@@ -2087,6 +2152,18 @@ const AppContent: React.FC = () => {
                 }}
               >
                 🗑️ Excluir Campanha
+              </button>
+            </div>
+
+            {/* Small, unobtrusive link to the export/import save modal -- the "Slots" card was
+                removed per user request, but this stays reachable since it's the only path to
+                Export when there's no active save (e.g. after a cache wipe). */}
+            <div style={{ textAlign: 'center', margin: '0 0 14px 0' }}>
+              <button
+                onClick={() => setSavesModalOpen(true)}
+                style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Exportar / Importar Save (Slot {currentSlot ? `0${currentSlot}` : '-'})
               </button>
             </div>
 
