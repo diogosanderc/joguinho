@@ -2363,7 +2363,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory(data.history);
     setStadiumUpgrade(data.stadiumUpgrade);
     setActiveSponsors(data.activeSponsors);
-    setCupState(data.cupState ?? null); // older saves predate the Copa -- just start without one
+    if (data.cupState) {
+      setCupState(data.cupState);
+    } else {
+      // Older saves predate the Copa -- retroactively start one for the rest of this season
+      // instead of leaving the club out until next year, skipping milestone rounds already past.
+      const freshCup = startCup(data.clubs.map((c: Club) => c.id), data.currentYear);
+      const alreadyPassed = CUP_MILESTONE_ROUNDS.filter(r => r < data.currentRound).length;
+      setCupState({ ...freshCup, milestonesConsumed: alreadyPassed });
+    }
   };
 
   const cheatFinances = () => {
