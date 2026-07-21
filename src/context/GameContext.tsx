@@ -5,6 +5,12 @@ import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyO
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
 import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
 import type { Loan } from '../utils/loanEngine';
+import {
+  startCup, drawPhaseTies, simulateFullTie, resolveTie, rankFase1WinnersForDirectQualification,
+  getCupTopScorers, PHASES, TWO_LEGGED_PHASES, CUP_MILESTONE_ROUNDS, CUP_PHASE_LABEL,
+  CUP_PRIZE_FOR_REACHING, CUP_CHAMPION_PRIZE, CUP_TOP_SCORER_BONUS
+} from '../utils/cupEngine';
+import type { CupState, CupPhase, CupTieLeg } from '../utils/cupEngine';
 
 export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
 
@@ -12,7 +18,7 @@ export interface LeagueMatch {
   round: number;
   homeId: string;
   awayId: string;
-  division: 'A' | 'B' | 'C';
+  division: 'A' | 'B' | 'C' | 'CUP';
   simulated: boolean;
   result?: MatchResult;
 }
@@ -71,6 +77,8 @@ interface GameContextType {
   activeSponsors: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>;
   currentMatch: LeagueMatch | null;
   currentMatchResult: MatchResult | null;
+  cupState: CupState | null;
+  startCupMatch: (starters: Player[]) => void;
   currentSlot: number | null;
   getFreeSlot: () => number | null;
   startGame: (name: string, chosenClubId: string, slot?: number) => void;
@@ -118,6 +126,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [news, setNews] = useState<NewsItem[]>([]);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [stadiumUpgrade, setStadiumUpgrade] = useState<StadiumUpgrade | null>(null);
+  // Copa Mata-Mata state. Kept in a ref too so saveGame() (which reads it synchronously outside
+  // of any state-setter callback) always sees the latest value, the same pattern as currentSlotRef.
+  const [cupState, setCupStateRaw] = useState<CupState | null>(null);
+  const cupStateRef = useRef<CupState | null>(null);
+  const setCupState = (next: CupState | null) => {
+    cupStateRef.current = next;
+    setCupStateRaw(next);
+  };
   const [activeSponsors, setActiveSponsors] = useState<Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>>({
     MASTER: null,
     COSTAS: null,
@@ -187,7 +203,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       news: feed,
       history: past,
       stadiumUpgrade: upgrade,
-      activeSponsors: sponsorsList
+      activeSponsors: sponsorsList,
+      cupState: cupStateRef.current
     };
     if (currentSlotRef.current) {
       localStorage.setItem(`elifoot_2026_save_slot_${currentSlotRef.current}`, JSON.stringify(data));
@@ -240,6 +257,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory([]);
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
+    setCupState(startCup(updatedClubs.map(c => c.id), 2026));
     
     const initialNews: NewsItem[] = [
       { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${updatedClubs.find(c => c.id === chosenClubId)?.name}. Boa sorte na Série C!`, type: 'BOARD' }
@@ -1811,6 +1829,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSchedule(newSchedule);
     setCurrentRound(1);
     setCurrentYear(prev => prev + 1);
+    setCupState(startCup(updatedClubs.map(c => c.id), currentYear + 1));
     setOffers([]);
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null }); // Clear sponsorships for new club
@@ -1859,6 +1878,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSchedule(newSchedule);
     setCurrentRound(1);
     setCurrentYear(prev => prev + 1);
+    setCupState(startCup(updatedClubs.map(c => c.id), currentYear + 1));
     setOffers([]);
 
     const userClubInstance = clubs.find(c => c.id === userClubId)!;
@@ -1898,28 +1918,232 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCurrentMatch(null);
     setCurrentMatchResult(null);
+    setCupState(null);
   };
 
   const clearCurrentMatch = () => {
-    // nextRound() commits a match result to `schedule` (for the points table/finances/etc.)
-    // the instant "Iniciar Partida" is clicked, before the user has made any live substitutions.
-    // If a mid-match substitution later changed the outcome, resimulateMidMatch only ever
-    // updated currentMatchResult (the live view) -- schedule kept the stale, pre-substitution
-    // score, so the points table and the "other matches" board (both read from `schedule`)
-    // could visibly disagree with what actually happened live. Sync the final live result back
-    // into schedule here so both agree with what the user actually watched play out.
     if (currentMatch && currentMatchResult) {
-      setSchedule(prev => prev.map(m =>
-        m.round === currentMatch.round && m.homeId === currentMatch.homeId && m.awayId === currentMatch.awayId
-          ? { ...m, result: currentMatchResult }
-          : m
-      ));
+      if (currentMatch.division === 'CUP') {
+        resolveCupUserLeg(currentMatch, currentMatchResult);
+      } else {
+        // nextRound() commits a match result to `schedule` (for the points table/finances/etc.)
+        // the instant "Iniciar Partida" is clicked, before the user has made any live substitutions.
+        // If a mid-match substitution later changed the outcome, resimulateMidMatch only ever
+        // updated currentMatchResult (the live view) -- schedule kept the stale, pre-substitution
+        // score, so the points table and the "other matches" board (both read from `schedule`)
+        // could visibly disagree with what actually happened live. Sync the final live result back
+        // into schedule here so both agree with what the user actually watched play out.
+        setSchedule(prev => prev.map(m =>
+          m.round === currentMatch.round && m.homeId === currentMatch.homeId && m.awayId === currentMatch.awayId
+            ? { ...m, result: currentMatchResult }
+            : m
+        ));
+        processCupMilestone(currentMatch.round);
+      }
     }
     setCurrentMatch(null);
     setCurrentMatchResult(null);
     if (gameState === 'MATCH_DAY') {
       setGameState(pendingGameStateRef.current);
     }
+  };
+
+  // --- Copa Mata-Mata (cup) integration -------------------------------------------------
+  // A 60-team knockout bracket (one entry per club in the game) that runs alongside the
+  // league season. Every tie the user isn't personally part of is simulated instantly; their
+  // own tie is played live through the normal match engine (see startCupMatch/resolveCupUserLeg),
+  // gating the next league round until it's resolved -- exactly the "extra midweek fixture,
+  // less rest" rhythm real football has. See src/utils/cupEngine.ts for the bracket rules.
+
+  const applyCupPrize = (clubsList: Club[], clubId: string, amount: number): Club[] => {
+    if (amount <= 0) return clubsList;
+    return clubsList.map(c => (c.id === clubId ? { ...c, finances: c.finances + amount } : c));
+  };
+
+  // Wraps up whichever phase just fully resolved (every tie in it, including the user's own if
+  // they were involved) -- pays the "reached the next stage" prize money, merges Fase 1's direct
+  // qualifiers back in after Fase 2, and hands off to the next phase (or crowns a champion).
+  const finalizeCupPhase = (
+    cup: CupState,
+    phase: CupPhase,
+    clubsList: Club[],
+    pushNews: (item: NewsItem) => void
+  ): { nextCup: CupState; nextClubs: Club[] } => {
+    let nextClubs = clubsList;
+    const phaseTies = cup.history.filter(t => t.phase === phase);
+    const winners = phaseTies.map(t => t.winnerId);
+    const nextCup: CupState = { ...cup, userTie: null, pendingSecondLeg: null };
+    const nameOf = (id: string) => clubsList.find(c => c.id === id)?.name ?? id;
+
+    if (phase === 'FASE1') {
+      const directQualifiers = rankFase1WinnersForDirectQualification(phaseTies);
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.FASE2); });
+      directQualifiers.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.OITAVAS); });
+      nextCup.directQualifiers = directQualifiers;
+      nextCup.aliveClubIds = winners.filter(w => !directQualifiers.includes(w));
+      nextCup.phaseIndex = 1;
+      if (directQualifiers.includes(userClubId)) {
+        pushNews({ id: `cup_direct_${Date.now()}`, week: currentRound, text: `Copa: seu time terminou entre os 2 melhores visitantes da 1ª Fase e avançou direto às Oitavas de Final, sem disputar a 2ª Fase!`, type: 'BOARD' });
+      }
+    } else if (phase === 'FASE2') {
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.OITAVAS); });
+      nextCup.aliveClubIds = [...winners, ...cup.directQualifiers];
+      nextCup.directQualifiers = [];
+      nextCup.phaseIndex = 2;
+    } else if (phase === 'OITAVAS') {
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.QUARTAS); });
+      nextCup.aliveClubIds = winners;
+      nextCup.phaseIndex = 3;
+    } else if (phase === 'QUARTAS') {
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.SEMI); });
+      nextCup.aliveClubIds = winners;
+      nextCup.phaseIndex = 4;
+    } else if (phase === 'SEMI') {
+      nextCup.aliveClubIds = winners;
+      nextCup.phaseIndex = 5;
+    } else {
+      const championId = winners[0];
+      nextClubs = applyCupPrize(nextClubs, championId, CUP_CHAMPION_PRIZE);
+      nextCup.championId = championId;
+      nextCup.phaseIndex = PHASES.length;
+      const topScorers = getCupTopScorers(nextCup);
+      if (topScorers.length > 0) {
+        const share = CUP_TOP_SCORER_BONUS / topScorers.length;
+        topScorers.forEach(s => { nextClubs = applyCupPrize(nextClubs, s.clubId, share); });
+      }
+      pushNews({
+        id: `cup_champion_${Date.now()}`,
+        week: currentRound,
+        text: championId === userClubId
+          ? `🏆 CAMPEÃO DA COPA! Seu time conquistou a Copa Mata-Mata e faturou ${formatCurrency(CUP_CHAMPION_PRIZE)}!`
+          : `A Copa Mata-Mata terminou com o título para o ${nameOf(championId)}.`,
+        type: 'BOARD'
+      });
+    }
+
+    return { nextCup, nextClubs };
+  };
+
+  // Called right after a LEAGUE match ends -- checks whether that round is one of the cup's
+  // scheduled milestones and, if so, draws the phase's ties. Every tie except the user's own is
+  // resolved immediately; the user's is left pending for them to play live (or, if they have no
+  // pairing this phase -- already eliminated, or sitting out Fase 2 as a direct qualifier --
+  // the whole phase is finalized right away with no interstitial).
+  const processCupMilestone = (finishedRound: number) => {
+    const cup = cupStateRef.current;
+    if (!cup || cup.phaseIndex >= PHASES.length) return;
+    const expectedRound = CUP_MILESTONE_ROUNDS[cup.milestonesConsumed];
+    if (expectedRound !== finishedRound) return;
+
+    const phase = PHASES[cup.phaseIndex];
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+
+    // Returning for leg 2 of a two-legged tie the user already played leg 1 of -- move it from
+    // pendingSecondLeg into userTie now, exactly on schedule, so the fixture card only appears
+    // once this round's league match has actually happened (not the instant leg 1 finished).
+    if (cup.pendingSecondLeg) {
+      setCupState({ ...cup, userTie: cup.pendingSecondLeg, pendingSecondLeg: null, milestonesConsumed: cup.milestonesConsumed + 1 });
+      return;
+    }
+
+    const pairs = drawPhaseTies(cup.aliveClubIds);
+    const userPair = pairs.find(p => p.homeId === userClubId || p.awayId === userClubId);
+
+    const working: CupState = {
+      ...cup,
+      history: [...cup.history],
+      scorers: { ...cup.scorers },
+      eliminatedClubIds: [...cup.eliminatedClubIds],
+      milestonesConsumed: cup.milestonesConsumed + 1
+    };
+    pairs.filter(p => p !== userPair).forEach(p => {
+      simulateFullTie(working, phase, p.homeId, p.awayId, clubs);
+    });
+
+    if (userPair) {
+      working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
+      setCupState(working);
+      const opponentId = userPair.homeId === userClubId ? userPair.awayId : userPair.homeId;
+      pushNews({
+        id: `cup_draw_${Date.now()}`,
+        week: currentRound,
+        text: `Copa ${CUP_PHASE_LABEL[phase]}: seu time enfrenta o ${clubs.find(c => c.id === opponentId)?.name ?? '???'}!`,
+        type: 'MATCH'
+      });
+      return;
+    }
+
+    const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
+    setCupState(nextCup);
+    setClubs(nextClubs);
+  };
+
+  // Kicks off the live view for the user's own pending cup tie -- either the first leg/single
+  // match, or leg 2 (home venue flips) if leg 1 is already done. Mirrors nextRoundImpl's kickoff
+  // but reuses the exact same currentMatch/currentMatchResult/MATCH_DAY machinery the league
+  // already has, so the whole live-match experience (ticking, subs, penalties, VAR, sound) works
+  // unchanged for a cup fixture.
+  const startCupMatch = (playerStarters: Player[]) => {
+    const cup = cupStateRef.current;
+    if (!cup || !cup.userTie || !userClub) return;
+    const isSecondLeg = cup.userTie.legs.length === 1;
+    const homeId = isSecondLeg ? cup.userTie.awayId : cup.userTie.homeId;
+    const awayId = isSecondLeg ? cup.userTie.homeId : cup.userTie.awayId;
+    const homeClubObj = clubs.find(c => c.id === homeId);
+    const awayClubObj = clubs.find(c => c.id === awayId);
+    if (!homeClubObj || !awayClubObj) return;
+
+    const isHome = homeId === userClubId;
+    const result = isHome
+      ? simulateMatch(homeClubObj, awayClubObj, playerStarters, getAutoStarters(awayClubObj))
+      : simulateMatch(homeClubObj, awayClubObj, getAutoStarters(homeClubObj), playerStarters);
+
+    setCurrentMatch({ round: currentRound, homeId, awayId, division: 'CUP', simulated: true, result });
+    setCurrentMatchResult(result);
+    pendingGameStateRef.current = 'PLAYING'; // a cup match never itself triggers season-end/sacking
+    setGameState('MATCH_DAY');
+  };
+
+  // Called from clearCurrentMatch once the user's own cup leg finishes playing live.
+  const resolveCupUserLeg = (matchFixture: LeagueMatch, result: MatchResult) => {
+    const cup = cupStateRef.current;
+    if (!cup || !cup.userTie) return;
+    const userTie = cup.userTie;
+    const phase = PHASES[cup.phaseIndex];
+    const leg: CupTieLeg = { ...result, homeId: matchFixture.homeId, awayId: matchFixture.awayId };
+    const legs = [...userTie.legs, leg];
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+
+    if (TWO_LEGGED_PHASES.includes(phase) && legs.length < 2) {
+      // Leg 1 done -- hide the fixture (clear userTie) and hold the result in pendingSecondLeg
+      // until leg 2's own later milestone round actually arrives (see processCupMilestone).
+      setCupState({ ...cup, userTie: null, pendingSecondLeg: { ...userTie, legs } });
+      return;
+    }
+
+    const homeClubObj = clubs.find(c => c.id === userTie.homeId)!;
+    const awayClubObj = clubs.find(c => c.id === userTie.awayId)!;
+    const working: CupState = {
+      ...cup,
+      history: [...cup.history],
+      scorers: { ...cup.scorers },
+      eliminatedClubIds: [...cup.eliminatedClubIds]
+    };
+    const tie = resolveTie(working, phase, userTie.homeId, userTie.awayId, homeClubObj, awayClubObj, legs);
+
+    const userWon = tie.winnerId === userClubId;
+    pushNews({
+      id: `cup_result_${Date.now()}`,
+      week: currentRound,
+      text: userWon
+        ? `Copa ${CUP_PHASE_LABEL[phase]}: vitória! Seu time avança na competição${tie.wentToPenalties ? ' nos pênaltis' : ''}.`
+        : `Copa ${CUP_PHASE_LABEL[phase]}: eliminado! Seu time está fora da Copa${tie.wentToPenalties ? ' nos pênaltis' : ''}.`,
+      type: 'MATCH'
+    });
+
+    const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
+    setCupState(nextCup);
+    setClubs(nextClubs);
   };
 
   // Re-simulates the rest of an in-progress match after the user makes a mid-match
@@ -2139,6 +2363,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory(data.history);
     setStadiumUpgrade(data.stadiumUpgrade);
     setActiveSponsors(data.activeSponsors);
+    setCupState(data.cupState ?? null); // older saves predate the Copa -- just start without one
   };
 
   const cheatFinances = () => {
@@ -2167,6 +2392,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activeSponsors,
       currentMatch,
       currentMatchResult,
+      cupState,
+      startCupMatch,
       currentSlot,
       getFreeSlot,
       startGame,

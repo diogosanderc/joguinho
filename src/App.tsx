@@ -6,6 +6,7 @@ import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
 import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
+import { CUP_PHASE_LABEL, TWO_LEGGED_PHASES, PHASES } from './utils/cupEngine';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -17,7 +18,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
@@ -1208,7 +1209,11 @@ const AppContent: React.FC = () => {
         {/* TOP USER GAME CONTROL BANNER */}
         <div className="match-scoreboard" style={{ padding: '14px 16px', gap: '8px', zIndex: 10, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700 }}>
-            <span>SEU JOGO • SÉRIE {userClub.division} • 🔄 {subsUsed}/{MAX_SUBS}</span>
+            <span>
+              {currentMatch.division === 'CUP' && cupState
+                ? `🏆 COPA • ${CUP_PHASE_LABEL[PHASES[cupState.phaseIndex]]}`
+                : `SEU JOGO • SÉRIE ${userClub.division}`} • 🔄 {subsUsed}/{MAX_SUBS}
+            </span>
             <span style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}>
               {simMinute}' - {simMinute <= 45 ? '1º Tempo' : simMinute < 90 ? '2º Tempo' : 'Fim de Jogo'}
             </span>
@@ -1311,7 +1316,15 @@ const AppContent: React.FC = () => {
 
         </div>
 
-        {/* CLASSIC SIMULTANEOUS DIVISION BOARD */}
+        {/* CLASSIC SIMULTANEOUS DIVISION BOARD -- doesn't apply to a Copa match (no division
+            grouping, and every other tie in the phase was already resolved instantly when it
+            was drawn), so it's swapped for a short cup-context blurb instead. */}
+        {currentMatch.division === 'CUP' ? (
+          <div className="classic-board-container" style={{ scrollBehavior: 'smooth', padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.8rem' }}>
+            🏆 Copa Mata-Mata — {CUP_PHASE_LABEL[PHASES[cupState?.phaseIndex ?? 0]]}<br />
+            Os demais confrontos desta fase já foram decididos.
+          </div>
+        ) : (
         <div className="classic-board-container" style={{ scrollBehavior: 'smooth' }}>
           {(['A', 'B', 'C'] as const).map(div => {
             const divMatches = roundMatches.filter(m => m.division === div);
@@ -1380,6 +1393,7 @@ const AppContent: React.FC = () => {
             );
           })}
         </div>
+        )}
 
         {matchDone && (
           <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', background: '#16181c', flexShrink: 0 }}>
@@ -1387,13 +1401,17 @@ const AppContent: React.FC = () => {
               className="btn btn-primary"
               onClick={() => {
                 clearCurrentMatch();
-                setStandingsTab(userClub.division as 'A' | 'B' | 'C');
-                setStatsView('TABLE');
-                setActiveTab(4);
+                if (currentMatch.division === 'CUP') {
+                  setActiveTab(1);
+                } else {
+                  setStandingsTab(userClub.division as 'A' | 'B' | 'C');
+                  setStatsView('TABLE');
+                  setActiveTab(4);
+                }
               }}
               style={{ height: '44px' }}
             >
-              Fim de Rodada (Ver Classificação)
+              {currentMatch.division === 'CUP' ? 'Fim de Jogo (Continuar)' : 'Fim de Rodada (Ver Classificação)'}
             </button>
           </div>
         )}
@@ -2000,52 +2018,93 @@ const AppContent: React.FC = () => {
         {/* --- TAB 1: ELENCO & TÁTICA --- */}
         {activeTab === 1 && (
           <>
-            {/* Round info + Iniciar Partida */}
-            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(22, 24, 28, 0.9) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid var(--accent-green-glow)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 700, textTransform: 'uppercase' }}>Campeonato Brasileiro</span>
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Rodada {currentRound} de 38</h2>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', textAlign: 'center' }}>
-                  <span style={{ display: 'block', fontSize: '0.6rem', color: '#9ca3af' }}>Confiança</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: userClub.confidence > 50 ? 'var(--accent-green)' : userClub.confidence > 25 ? 'var(--accent-gold)' : 'var(--accent-red)' }}>
-                    {userClub.confidence}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Match preview */}
-              {(() => {
-                const roundMatches = schedule.filter(m => m.round === currentRound);
-                const pMatch = roundMatches.find(m => m.homeId === userClubId || m.awayId === userClubId);
-                if (!pMatch) return <p>Fim da temporada.</p>;
-
-                const isHome = pMatch.homeId === userClubId;
-                const oppId = isHome ? pMatch.awayId : pMatch.homeId;
-                const opponent = clubs.find(c => c.id === oppId)!;
-
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHome ? 'Casa' : 'Fora'})</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
-                      <span>Força: {opponent.reputation}</span>
-                    </div>
+            {/* Round info + Iniciar Partida -- a pending Copa tie gates the league: the extra
+                midweek fixture has to be played before the next Brasileirão round unlocks. */}
+            {cupState && cupState.userTie ? (() => {
+              const phase = PHASES[cupState.phaseIndex];
+              const tie = cupState.userTie;
+              const isSecondLeg = tie.legs.length === 1;
+              const legHomeId = isSecondLeg ? tie.awayId : tie.homeId;
+              const legAwayId = isSecondLeg ? tie.homeId : tie.awayId;
+              const isHomeThisLeg = legHomeId === userClubId;
+              const opponentId = isHomeThisLeg ? legAwayId : legHomeId;
+              const opponent = clubs.find(c => c.id === opponentId);
+              const isTwoLegged = TWO_LEGGED_PHASES.includes(phase);
+              return (
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid rgba(255, 193, 7, 0.4)' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 700, textTransform: 'uppercase' }}>🏆 Copa Mata-Mata</span>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>
+                      {CUP_PHASE_LABEL[phase]}{isTwoLegged ? (isSecondLeg ? ' (Jogo de Volta)' : ' (Jogo de Ida)') : ''}
+                    </h2>
                   </div>
-                );
-              })()}
+                  {opponent && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHomeThisLeg ? 'Casa' : 'Fora'})</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                        <span>Série {opponent.division}</span>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => { unlockAudio(); startCupMatch(starters); }}
+                    style={{ marginTop: '16px', height: '48px', background: 'var(--accent-gold)' }}
+                  >
+                    <Play size={18} fill="#000" /> Iniciar Partida da Copa
+                  </button>
+                </div>
+              );
+            })() : (
+              <div className="card" style={{ background: 'linear-gradient(135deg, rgba(22, 24, 28, 0.9) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid var(--accent-green-glow)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 700, textTransform: 'uppercase' }}>Campeonato Brasileiro</span>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Rodada {currentRound} de 38</h2>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.6rem', color: '#9ca3af' }}>Confiança</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 800, color: userClub.confidence > 50 ? 'var(--accent-green)' : userClub.confidence > 25 ? 'var(--accent-gold)' : 'var(--accent-red)' }}>
+                      {userClub.confidence}%
+                    </span>
+                  </div>
+                </div>
 
-              <button
-                className="btn btn-primary"
-                onClick={() => { unlockAudio(); nextRound(starters); }}
-                style={{ marginTop: '16px', height: '48px' }}
-              >
-                <Play size={18} fill="#000" /> Iniciar Partida
-              </button>
-            </div>
+                {/* Match preview */}
+                {(() => {
+                  const roundMatches = schedule.filter(m => m.round === currentRound);
+                  const pMatch = roundMatches.find(m => m.homeId === userClubId || m.awayId === userClubId);
+                  if (!pMatch) return <p>Fim da temporada.</p>;
+
+                  const isHome = pMatch.homeId === userClubId;
+                  const oppId = isHome ? pMatch.awayId : pMatch.homeId;
+                  const opponent = clubs.find(c => c.id === oppId)!;
+
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHome ? 'Casa' : 'Fora'})</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                        <span>Força: {opponent.reputation}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { unlockAudio(); nextRound(starters); }}
+                  style={{ marginTop: '16px', height: '48px' }}
+                >
+                  <Play size={18} fill="#000" /> Iniciar Partida
+                </button>
+              </div>
+            )}
 
             {/* Tactic dropdown and Force summary */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -3497,6 +3556,47 @@ const AppContent: React.FC = () => {
                             {isHome ? 'vs' : '@'} {opponent?.name ?? '???'}
                           </span>
                           <span style={{ fontWeight: 800 }}>{myScore} - {oppScore}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {statsView === 'GAMES' && cupState && (
+              <div className="card" style={{ marginTop: '10px' }}>
+                <div className="card-title">🏆 Copa Mata-Mata - {cupState.year}</div>
+                <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '10px' }}>
+                  {cupState.championId
+                    ? (cupState.championId === userClubId ? '🏆 Seu time é o CAMPEÃO da Copa!' : `Campeão: ${clubs.find(c => c.id === cupState.championId)?.name ?? '???'}`)
+                    : cupState.aliveClubIds.includes(userClubId) || cupState.userTie
+                    ? `Seu time segue vivo na competição -- fase atual: ${CUP_PHASE_LABEL[PHASES[Math.min(cupState.phaseIndex, PHASES.length - 1)]]}.`
+                    : 'Seu time foi eliminado da Copa nesta temporada.'}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {(() => {
+                    const myTies = cupState.history.filter(t => t.homeId === userClubId || t.awayId === userClubId);
+                    if (myTies.length === 0) {
+                      return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Nenhum confronto de Copa disputado ainda.</p>;
+                    }
+                    return myTies.map(t => {
+                      const won = t.winnerId === userClubId;
+                      const opponentId = t.homeId === userClubId ? t.awayId : t.homeId;
+                      const opponent = clubs.find(c => c.id === opponentId);
+                      const myAgg = t.homeId === userClubId ? t.aggregateHomeGoals : t.aggregateAwayGoals;
+                      const oppAgg = t.homeId === userClubId ? t.aggregateAwayGoals : t.aggregateHomeGoals;
+                      return (
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#121316', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)', fontSize: '0.8rem' }}>
+                          <span style={{ width: '70px', color: '#9ca3af', fontWeight: 700, fontSize: '0.68rem' }}>{CUP_PHASE_LABEL[t.phase]}</span>
+                          <span style={{
+                            width: '22px', height: '22px', borderRadius: '6px', background: won ? 'var(--accent-green)' : 'var(--accent-red)', color: 'black',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem', flexShrink: 0
+                          }}>{won ? 'V' : 'D'}</span>
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            vs {opponent?.name ?? '???'}
+                          </span>
+                          <span style={{ fontWeight: 800 }}>{myAgg} - {oppAgg}{t.wentToPenalties ? ' (pên.)' : ''}</span>
                         </div>
                       );
                     });
