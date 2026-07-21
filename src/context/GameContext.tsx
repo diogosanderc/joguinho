@@ -1859,6 +1859,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearCurrentMatch = () => {
+    // nextRound() commits a match result to `schedule` (for the points table/finances/etc.)
+    // the instant "Iniciar Partida" is clicked, before the user has made any live substitutions.
+    // If a mid-match substitution later changed the outcome, resimulateMidMatch only ever
+    // updated currentMatchResult (the live view) -- schedule kept the stale, pre-substitution
+    // score, so the points table and the "other matches" board (both read from `schedule`)
+    // could visibly disagree with what actually happened live. Sync the final live result back
+    // into schedule here so both agree with what the user actually watched play out.
+    if (currentMatch && currentMatchResult) {
+      setSchedule(prev => prev.map(m =>
+        m.round === currentMatch.round && m.homeId === currentMatch.homeId && m.awayId === currentMatch.awayId
+          ? { ...m, result: currentMatchResult }
+          : m
+      ));
+    }
     setCurrentMatch(null);
     setCurrentMatchResult(null);
     if (gameState === 'MATCH_DAY') {

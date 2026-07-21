@@ -278,23 +278,32 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (userClub) {
       if (startersPerTactic[selectedTactic] && startersPerTactic[selectedTactic].length > 0) {
-        // Saved lineup for this tactic — validate (injures / sold players)
+        // Saved lineup for this tactic — validate (injures / sold players). `usedIds` accumulates
+        // as slots are resolved (seeded with the whole saved lineup so a still-valid teammate
+        // isn't stolen) -- recomputing it fresh from `saved` on every iteration (the previous
+        // bug) never accounted for replacements already chosen earlier in this same pass, so if
+        // two saved players at the same/sibling position both went invalid (injured/sold), they
+        // could both resolve to the SAME single replacement, leaving `validated` with a
+        // duplicate id and one fewer *distinct* player than positions -- exactly what showed up
+        // as an empty "?" slot on the pitch (which correctly refuses to draw the same id twice).
         const saved = startersPerTactic[selectedTactic];
+        const usedIds = new Set(saved.map(x => x.id));
         const validated = saved.map(p => {
           const found = userClub.squad.find(s => s.id === p.id);
           if (!found || !isPlayerAvailable(found)) {
-            const excludeIds = new Set(saved.map(x => x.id));
-            let replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !excludeIds.has(s.id));
+            let replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !usedIds.has(s.id));
             // PON and CA cover for each other, and MEI covers VOL, before resorting to a
             // completely mismatched position
             if (!replacement && (p.position === 'CA' || p.position === 'PON')) {
               const sibling = p.position === 'CA' ? 'PON' : 'CA';
-              replacement = userClub.squad.find(s => s.position === sibling && isPlayerAvailable(s) && !excludeIds.has(s.id));
+              replacement = userClub.squad.find(s => s.position === sibling && isPlayerAvailable(s) && !usedIds.has(s.id));
             }
             if (!replacement && p.position === 'VOL') {
-              replacement = userClub.squad.find(s => s.position === 'MEI' && isPlayerAvailable(s) && !excludeIds.has(s.id));
+              replacement = userClub.squad.find(s => s.position === 'MEI' && isPlayerAvailable(s) && !usedIds.has(s.id));
             }
-            return replacement || userClub.squad.find(s => isPlayerAvailable(s) && !excludeIds.has(s.id)) || p;
+            const resolved = replacement || userClub.squad.find(s => isPlayerAvailable(s) && !usedIds.has(s.id)) || p;
+            usedIds.add(resolved.id);
+            return resolved;
           }
           return found;
         });
@@ -1233,18 +1242,22 @@ const AppContent: React.FC = () => {
                   {divMatches.map(match => {
                     const home = clubs.find(c => c.id === match.homeId)!;
                     const away = clubs.find(c => c.id === match.awayId)!;
-                    
-                    const matchEvents = match.result?.events || [];
+
+                    const isUserMatch = match.homeId === userClubId || match.awayId === userClubId;
+
+                    // schedule's `match.result` is committed the instant "Iniciar Partida" is
+                    // clicked, before any live substitution can change the outcome -- for the
+                    // user's own match, read the live currentMatchResult instead (kept in sync
+                    // by resimulateMidMatch) so this row never contradicts the scoreboard above it.
+                    const matchEvents = (isUserMatch ? currentMatchResult?.events : match.result?.events) || [];
                     const homeScore = matchEvents.filter(e => e.type === 'GOAL' && e.clubId === match.homeId && e.minute <= simMinute).length;
                     const awayScore = matchEvents.filter(e => e.type === 'GOAL' && e.clubId === match.awayId && e.minute <= simMinute).length;
-                    
+
                     const liveGoals = matchEvents.filter(e => e.type === 'GOAL' && e.minute <= simMinute);
                     const scorersText = liveGoals.map(g => {
                       const tempo = g.minute <= 45 ? '1º' : '2º';
                       return `${g.player} ${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''} (${tempo})`;
                     }).join(', ');
-
-                    const isUserMatch = match.homeId === userClubId || match.awayId === userClubId;
 
                     return (
                       <div ref={isUserMatch ? userMatchRef : undefined} key={match.homeId} className={`classic-match-row-wrapper ${isUserMatch ? 'highlighted' : ''}`}>
