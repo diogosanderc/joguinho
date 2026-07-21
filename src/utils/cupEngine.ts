@@ -1,4 +1,4 @@
-import { type Club } from '../data/database';
+import { type Club, type Player } from '../data/database';
 import { simulateMatch, getAutoStarters, resolvePenaltyOutcome, type MatchResult } from './matchEngine';
 
 // Copa Mata-Mata: a 60-team knockout run alongside the league season (one per club in the
@@ -140,16 +140,19 @@ const recordScorers = (state: CupState, result: MatchResult, homeId: string, awa
   });
 };
 
+// Shared by both the instant bot-vs-bot shootout below and the live, kick-by-kick shootout the
+// user watches for their own tie (see GameContext's penaltyShootout state machine).
+export const pickShootoutTakers = (club: Club): Player[] => {
+  const starters = getAutoStarters(club);
+  const outfield = starters.filter(p => p.position !== 'GOL');
+  return outfield.length > 0 ? outfield : starters;
+};
+
 // Best-of-5 penalty shootout, then sudden death -- resolved instantly (not shown kick by kick)
 // using the same per-kick odds as an in-match penalty.
 const runShootout = (homeClub: Club, awayClub: Club): { homeGoals: number; awayGoals: number; homeWins: boolean } => {
-  const pickTakers = (club: Club) => {
-    const starters = getAutoStarters(club);
-    const outfield = starters.filter(p => p.position !== 'GOL');
-    return outfield.length > 0 ? outfield : starters;
-  };
-  const homeTakers = pickTakers(homeClub);
-  const awayTakers = pickTakers(awayClub);
+  const homeTakers = pickShootoutTakers(homeClub);
+  const awayTakers = pickShootoutTakers(awayClub);
 
   let homeGoals = 0;
   let awayGoals = 0;
@@ -176,7 +179,11 @@ export const resolveTie = (
   awayId: string,
   homeClub: Club,
   awayClub: Club,
-  legResults: CupTieLeg[]
+  legResults: CupTieLeg[],
+  // When the tie is the user's own, GameContext runs the shootout live (kick by kick, through
+  // the penaltyShootout modal) instead of letting this function decide it instantly -- passing
+  // the already-decided result here skips the internal runShootout call.
+  forcedShootout?: { homeGoals: number; awayGoals: number; homeWins: boolean }
 ): CupTie => {
   legResults.forEach(leg => recordScorers(state, leg, leg.homeId, leg.awayId));
 
@@ -201,7 +208,7 @@ export const resolveTie = (
     winnerId = aggHome > aggAway ? homeId : awayId;
   } else {
     wentToPenalties = true;
-    const { homeGoals, awayGoals, homeWins } = runShootout(homeClub, awayClub);
+    const { homeGoals, awayGoals, homeWins } = forcedShootout ?? runShootout(homeClub, awayClub);
     penaltyHomeGoals = homeGoals;
     penaltyAwayGoals = awayGoals;
     winnerId = homeWins ? homeId : awayId;

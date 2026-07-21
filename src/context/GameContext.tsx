@@ -8,9 +8,30 @@ import type { Loan } from '../utils/loanEngine';
 import {
   startCup, drawPhaseTies, simulateFullTie, resolveTie, rankFase1WinnersForDirectQualification,
   getCupTopScorers, PHASES, TWO_LEGGED_PHASES, CUP_MILESTONE_ROUNDS, CUP_PHASE_LABEL,
-  CUP_PRIZE_FOR_REACHING, CUP_CHAMPION_PRIZE, CUP_TOP_SCORER_BONUS
+  CUP_PRIZE_FOR_REACHING, CUP_CHAMPION_PRIZE, CUP_TOP_SCORER_BONUS, pickShootoutTakers
 } from '../utils/cupEngine';
 import type { CupState, CupPhase, CupTieLeg } from '../utils/cupEngine';
+
+// Live, kick-by-kick penalty shootout for the user's own Copa do Brasil tie (every other tie in
+// the phase is still resolved instantly). Real shootout rules: alternating single kicks, home
+// first, best of 5 then sudden death, ending the instant the outcome is mathematically decided
+// (e.g. 4-1 after 8 kicks) rather than always playing out all 10.
+export interface PenaltyShootoutState {
+  phase: CupPhase;
+  homeId: string;
+  awayId: string;
+  homeClubName: string;
+  awayClubName: string;
+  homeTakers: Player[];
+  awayTakers: Player[];
+  kicks: { side: 'home' | 'away'; playerName: string; scored: boolean }[];
+  homeGoals: number;
+  awayGoals: number;
+  homeKicksTaken: number;
+  awayKicksTaken: number;
+  decided: boolean;
+  legs: CupTieLeg[]; // stashed so the tie can be finalized once the shootout ends
+}
 
 export type GameState = 'MENU' | 'START' | 'PLAYING' | 'MATCH_DAY' | 'SEASON_END' | 'GAME_OVER';
 
@@ -81,6 +102,9 @@ interface GameContextType {
   startCupMatch: (starters: Player[]) => void;
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
+  penaltyShootout: PenaltyShootoutState | null;
+  takePenaltyShootoutKick: () => void;
+  finalizePenaltyShootout: () => void;
   foreignMarketPlayers: ForeignPlayer[];
   foreignPlayerPool: ForeignPlayer[];
   boughtForeignIds: string[];
@@ -145,6 +169,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // fresh Copa do Brasil phase is drawn and the user gets a new opponent.
   const [cupDrawReveal, setCupDrawReveal] = useState<{ phase: CupPhase; opponentId: string; isHome: boolean } | null>(null);
   const dismissCupDrawReveal = () => setCupDrawReveal(null);
+
+  // Live penalty shootout for the user's own Copa do Brasil tie. Kept in a ref too (same
+  // pattern as cupStateRef) since takePenaltyShootoutKick() is called repeatedly on a timer from
+  // the UI and needs the latest value synchronously, not a stale render closure.
+  const [penaltyShootout, setPenaltyShootoutRaw] = useState<PenaltyShootoutState | null>(null);
+  const penaltyShootoutRef = useRef<PenaltyShootoutState | null>(null);
+  const setPenaltyShootout = (next: PenaltyShootoutState | null) => {
+    penaltyShootoutRef.current = next;
+    setPenaltyShootoutRaw(next);
+  };
 
   // International transfer market (Premier League, Serie A, Bundesliga, La Liga, Ligue 1,
   // Libertadores). foreignPlayerPool is the full static dataset, fetched once and never
@@ -2304,7 +2338,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const phase = PHASES[cup.phaseIndex];
     const leg: CupTieLeg = { ...result, homeId: matchFixture.homeId, awayId: matchFixture.awayId };
     const legs = [...userTie.legs, leg];
-    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
 
     if (TWO_LEGGED_PHASES.includes(phase) && legs.length < 2) {
       // Leg 1 done -- hide the fixture (clear userTie) and hold the result in pendingSecondLeg
@@ -2315,13 +2348,60 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const homeClubObj = clubs.find(c => c.id === userTie.homeId)!;
     const awayClubObj = clubs.find(c => c.id === userTie.awayId)!;
+
+    let aggHome = 0;
+    let aggAway = 0;
+    legs.forEach(l => {
+      if (l.homeId === userTie.homeId) { aggHome += l.homeScore; aggAway += l.awayScore; }
+      else { aggHome += l.awayScore; aggAway += l.homeScore; }
+    });
+
+    if (aggHome === aggAway) {
+      // Tied on aggregate -- hand off to the live, kick-by-kick shootout modal instead of
+      // resolving it instantly. finishCupTieResolution (below) picks up once it's decided.
+      setPenaltyShootout({
+        phase,
+        homeId: userTie.homeId,
+        awayId: userTie.awayId,
+        homeClubName: homeClubObj.name,
+        awayClubName: awayClubObj.name,
+        homeTakers: pickShootoutTakers(homeClubObj),
+        awayTakers: pickShootoutTakers(awayClubObj),
+        kicks: [],
+        homeGoals: 0,
+        awayGoals: 0,
+        homeKicksTaken: 0,
+        awayKicksTaken: 0,
+        decided: false,
+        legs
+      });
+      return;
+    }
+
+    finishCupTieResolution(cup, phase, userTie.homeId, userTie.awayId, homeClubObj, awayClubObj, legs);
+  };
+
+  // Shared tail end of resolving the user's own cup tie -- whether it was decided in normal time
+  // (called directly from resolveCupUserLeg) or via the live shootout (called from
+  // takePenaltyShootoutKick once the shootout is decided).
+  const finishCupTieResolution = (
+    cup: CupState,
+    phase: CupPhase,
+    homeId: string,
+    awayId: string,
+    homeClubObj: Club,
+    awayClubObj: Club,
+    legs: CupTieLeg[],
+    forcedShootout?: { homeGoals: number; awayGoals: number; homeWins: boolean }
+  ) => {
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
     const working: CupState = {
       ...cup,
       history: [...cup.history],
       scorers: { ...cup.scorers },
       eliminatedClubIds: [...cup.eliminatedClubIds]
     };
-    const tie = resolveTie(working, phase, userTie.homeId, userTie.awayId, homeClubObj, awayClubObj, legs);
+    const tie = resolveTie(working, phase, homeId, awayId, homeClubObj, awayClubObj, legs, forcedShootout);
 
     const userWon = tie.winnerId === userClubId;
     pushNews({
@@ -2336,6 +2416,63 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
     setCupState(nextCup);
     setClubs(nextClubs);
+  };
+
+  // Takes exactly one kick of the live shootout and re-checks whether it's now decided, using
+  // the real early-finish rule (stop the instant the trailing side mathematically can't catch
+  // up, e.g. 4-1 after 8 kicks -- not always playing out all 10). The UI calls this on a timer,
+  // one kick at a time, so the manager watches it unfold instead of an instant reveal.
+  const takePenaltyShootoutKick = () => {
+    const shootout = penaltyShootoutRef.current;
+    if (!shootout || shootout.decided) return;
+
+    const side: 'home' | 'away' = shootout.homeKicksTaken === shootout.awayKicksTaken ? 'home' : 'away';
+    const takers = side === 'home' ? shootout.homeTakers : shootout.awayTakers;
+    const kicksTaken = side === 'home' ? shootout.homeKicksTaken : shootout.awayKicksTaken;
+    const taker = takers[kicksTaken % takers.length];
+    const scored = resolvePenaltyOutcome(taker.rating, side === 'home').scored;
+
+    const homeGoals = shootout.homeGoals + (side === 'home' && scored ? 1 : 0);
+    const awayGoals = shootout.awayGoals + (side === 'away' && scored ? 1 : 0);
+    const homeKicksTaken = shootout.homeKicksTaken + (side === 'home' ? 1 : 0);
+    const awayKicksTaken = shootout.awayKicksTaken + (side === 'away' ? 1 : 0);
+
+    // Real shootout rule: decided the instant the trailing side can no longer catch up within
+    // the remaining kicks of the initial best-of-5, OR (past round 5) as soon as scores differ
+    // once both sides have taken the same number of kicks (sudden death, one kick each).
+    const homeRemaining = Math.max(0, 5 - homeKicksTaken);
+    const awayRemaining = Math.max(0, 5 - awayKicksTaken);
+    let decided = false;
+    if (homeGoals > awayGoals + awayRemaining) decided = true;
+    else if (awayGoals > homeGoals + homeRemaining) decided = true;
+    else if (homeKicksTaken >= 5 && homeKicksTaken === awayKicksTaken && homeGoals !== awayGoals) decided = true;
+
+    setPenaltyShootout({
+      ...shootout,
+      kicks: [...shootout.kicks, { side, playerName: taker.name, scored }],
+      homeGoals,
+      awayGoals,
+      homeKicksTaken,
+      awayKicksTaken,
+      decided
+    });
+  };
+
+  // Called once the shootout modal has revealed the decisive kick and the user dismisses it --
+  // applies the real outcome to the cup bracket and clears the shootout state.
+  const finalizePenaltyShootout = () => {
+    const shootout = penaltyShootoutRef.current;
+    const cup = cupStateRef.current;
+    if (!shootout || !cup) return;
+    const homeClubObj = clubs.find(c => c.id === shootout.homeId);
+    const awayClubObj = clubs.find(c => c.id === shootout.awayId);
+    if (!homeClubObj || !awayClubObj) { setPenaltyShootout(null); return; }
+    finishCupTieResolution(cup, shootout.phase, shootout.homeId, shootout.awayId, homeClubObj, awayClubObj, shootout.legs, {
+      homeGoals: shootout.homeGoals,
+      awayGoals: shootout.awayGoals,
+      homeWins: shootout.homeGoals > shootout.awayGoals
+    });
+    setPenaltyShootout(null);
   };
 
   // Re-simulates the rest of an in-progress match after the user makes a mid-match
@@ -2598,6 +2735,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startCupMatch,
       cupDrawReveal,
       dismissCupDrawReveal,
+      penaltyShootout,
+      takePenaltyShootoutKick,
+      finalizePenaltyShootout,
       foreignMarketPlayers,
       foreignPlayerPool,
       boughtForeignIds,

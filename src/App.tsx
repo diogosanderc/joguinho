@@ -23,7 +23,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
@@ -143,6 +143,16 @@ const AppContent: React.FC = () => {
     return () => { clearInterval(interval); clearTimeout(stop); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cupDrawReveal]);
+
+  // Auto-advances the live penalty shootout one kick at a time -- re-fires every time
+  // penaltyShootout changes (a kick just landed), scheduling the next one after a beat so the
+  // manager watches it unfold instead of getting an instant final score.
+  useEffect(() => {
+    if (!penaltyShootout || penaltyShootout.decided) return;
+    const t = setTimeout(() => { takePenaltyShootoutKick(); }, penaltyShootout.kicks.length === 0 ? 900 : 1400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [penaltyShootout]);
 
   // Vibration for the live match -- off by default (no UI to toggle for now), read once from
   // its own localStorage key in case a settings UI opts a user back in later.
@@ -3857,9 +3867,57 @@ const AppContent: React.FC = () => {
         )}
       </div>
 
+      {/* PENALTY SHOOTOUT MODAL -- decides a drawn Copa do Brasil tie. Highest priority of the
+          office-screen modals since the cup bracket can't advance until it's resolved. */}
+      {penaltyShootout && (() => {
+        const lastKick = penaltyShootout.kicks[penaltyShootout.kicks.length - 1];
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1300 }}>
+            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2.5rem' }}>⚽</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Disputa de Pênaltis</h3>
+              <div style={{ fontSize: '1rem', fontWeight: 800, margin: '8px 0' }}>
+                {penaltyShootout.homeClubName} <span style={{ color: 'var(--accent-gold)' }}>{penaltyShootout.homeGoals} - {penaltyShootout.awayGoals}</span> {penaltyShootout.awayClubName}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', margin: '10px 0 16px', flexWrap: 'wrap', maxWidth: '280px' }}>
+                {penaltyShootout.kicks.map((k, i) => (
+                  <span key={i} title={`${k.playerName} (${k.side === 'home' ? penaltyShootout.homeClubName : penaltyShootout.awayClubName})`} style={{
+                    width: '20px', height: '20px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.65rem', fontWeight: 800,
+                    background: k.scored ? 'rgba(0,230,118,0.18)' : 'rgba(255,23,68,0.18)',
+                    color: k.scored ? 'var(--accent-green)' : 'var(--accent-red)',
+                    border: `1px solid ${k.scored ? 'rgba(0,230,118,0.4)' : 'rgba(255,23,68,0.4)'}`
+                  }}>
+                    {k.scored ? '⚽' : '✕'}
+                  </span>
+                ))}
+              </div>
+              {lastKick ? (
+                <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '14px' }}>
+                  <strong style={{ color: 'white' }}>{lastKick.playerName}</strong> ({lastKick.side === 'home' ? penaltyShootout.homeClubName : penaltyShootout.awayClubName}){' '}
+                  {lastKick.scored ? <span style={{ color: 'var(--accent-green)', fontWeight: 800 }}>⚽ GOL!</span> : <span style={{ color: 'var(--accent-red)', fontWeight: 800 }}>❌ PERDEU!</span>}
+                </p>
+              ) : (
+                <div className="match-time-pill" style={{ fontSize: '0.9rem', padding: '8px 18px', margin: '0 auto 14px' }}>Preparando cobranças...</div>
+              )}
+              {penaltyShootout.decided && (
+                <>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 800, color: penaltyShootout.homeGoals > penaltyShootout.awayGoals ? 'var(--accent-green)' : 'var(--accent-red)', marginBottom: '14px' }}>
+                    {penaltyShootout.homeGoals > penaltyShootout.awayGoals ? penaltyShootout.homeClubName : penaltyShootout.awayClubName} venceu a disputa!
+                  </p>
+                  <button className="btn btn-primary" style={{ width: '100%' }} onClick={finalizePenaltyShootout}>
+                    Continuar
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* COPA DO BRASIL DRAW REVEAL MODAL -- gated the same way as the other office-screen
           modals below, so it can never render over a match that's already in progress. */}
-      {cupDrawReveal && gameState !== 'MATCH_DAY' && (() => {
+      {cupDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && (() => {
         const opponentClub = clubs.find(c => c.id === cupDrawReveal.opponentId);
         return (
           <div className="modal-overlay" style={{ zIndex: 1200 }}>
@@ -3897,7 +3955,7 @@ const AppContent: React.FC = () => {
           screen, hiding the whole thing (sim keeps ticking underneath) until dismissed. Also
           deferred behind cupDrawReveal so these auto-popup modals queue one at a time instead
           of stacking when more than one triggers on the same round transition. */}
-      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && (
+      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !penaltyShootout && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>😠</span>
@@ -3932,7 +3990,7 @@ const AppContent: React.FC = () => {
       {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
           above: guard against rendering over a live match that's already in progress, and
           queue behind the other two auto-popup modals instead of stacking on top of them. */}
-      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && (
+      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && !penaltyShootout && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
