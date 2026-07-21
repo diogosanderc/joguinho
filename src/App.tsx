@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, EUR_TO_BRL_RATE } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
@@ -2902,7 +2902,6 @@ const AppContent: React.FC = () => {
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {player.nationality} • {player.originClub} ({player.league})</span>
-                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Valor de Mercado: {formatCurrency(Math.round(player.valueEur * EUR_TO_BRL_RATE))}</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
