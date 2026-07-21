@@ -740,6 +740,53 @@ const RIVALRY_SET = new Set(RIVALRY_PAIRS.map(([a, b]) => [a, b].sort().join('|'
 export const isClassico = (clubIdA: string, clubIdB: string): boolean =>
   RIVALRY_SET.has([clubIdA, clubIdB].sort().join('|'));
 
+// Foreign clubs that can show up as the buyer in an incoming transfer proposal for a standout
+// player -- not simulated clubs (no squad/schedule of their own), just flavor for "big move
+// abroad" offers. Covers the top five European leagues plus non-Brazilian Libertadores sides.
+export interface ForeignClub {
+  id: string;
+  name: string;
+  league: string;
+}
+
+export const FOREIGN_CLUBS: ForeignClub[] = [
+  // Premier League (Inglaterra)
+  { id: 'foreign_man_city', name: 'Manchester City', league: 'Premier League' },
+  { id: 'foreign_man_utd', name: 'Manchester United', league: 'Premier League' },
+  { id: 'foreign_liverpool', name: 'Liverpool', league: 'Premier League' },
+  { id: 'foreign_arsenal', name: 'Arsenal', league: 'Premier League' },
+  { id: 'foreign_chelsea', name: 'Chelsea', league: 'Premier League' },
+  { id: 'foreign_tottenham', name: 'Tottenham', league: 'Premier League' },
+  // Serie A (Itália)
+  { id: 'foreign_juventus', name: 'Juventus', league: 'Serie A' },
+  { id: 'foreign_inter_milao', name: 'Inter de Milão', league: 'Serie A' },
+  { id: 'foreign_ac_milan', name: 'AC Milan', league: 'Serie A' },
+  { id: 'foreign_napoli', name: 'Napoli', league: 'Serie A' },
+  { id: 'foreign_roma', name: 'Roma', league: 'Serie A' },
+  // Bundesliga (Alemanha)
+  { id: 'foreign_bayern', name: 'Bayern de Munique', league: 'Bundesliga' },
+  { id: 'foreign_dortmund', name: 'Borussia Dortmund', league: 'Bundesliga' },
+  { id: 'foreign_leipzig', name: 'RB Leipzig', league: 'Bundesliga' },
+  // La Liga (Espanha)
+  { id: 'foreign_real_madrid', name: 'Real Madrid', league: 'La Liga' },
+  { id: 'foreign_barcelona', name: 'Barcelona', league: 'La Liga' },
+  { id: 'foreign_atletico_madrid', name: 'Atlético de Madrid', league: 'La Liga' },
+  { id: 'foreign_sevilla', name: 'Sevilla', league: 'La Liga' },
+  // Ligue 1 (França)
+  { id: 'foreign_psg', name: 'Paris Saint-Germain', league: 'Ligue 1' },
+  { id: 'foreign_marselha', name: 'Olympique de Marselha', league: 'Ligue 1' },
+  { id: 'foreign_lyon', name: 'Olympique de Lyon', league: 'Ligue 1' },
+  // Libertadores (América do Sul, fora do Brasil)
+  { id: 'foreign_river_plate', name: 'River Plate', league: 'Libertadores' },
+  { id: 'foreign_boca_juniors', name: 'Boca Juniors', league: 'Libertadores' },
+  { id: 'foreign_penarol', name: 'Peñarol', league: 'Libertadores' },
+  { id: 'foreign_nacional_uru', name: 'Nacional', league: 'Libertadores' },
+  { id: 'foreign_colo_colo', name: 'Colo-Colo', league: 'Libertadores' },
+  { id: 'foreign_u_de_chile', name: 'Universidad de Chile', league: 'Libertadores' },
+  { id: 'foreign_liga_quito', name: 'Liga de Quito', league: 'Libertadores' },
+  { id: 'foreign_alianza_lima', name: 'Alianza Lima', league: 'Libertadores' },
+];
+
 export const CLUB_DEFINITIONS: ClubDefinition[] = [
   // --- SERIE A ---
   { id: 'palmeiras', name: 'Palmeiras', division: 'A', primaryColor: '#006437', secondaryColor: '#FFFFFF', textColor: '#FFFFFF', stadiumCapacity: 43000, stadiumName: 'Allianz Parque', reputation: 90, stars: STAR_PLAYERS.palmeiras },

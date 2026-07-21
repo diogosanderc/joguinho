@@ -87,6 +87,7 @@ interface GameContextType {
   nextRound: (starters: Player[]) => void;
   buyPlayer: (player: Player) => void;
   sellPlayer: (player: Player) => void;
+  retirePlayer: (player: Player) => void;
   upgradeStadium: (capacity: number) => void;
   buildVipBoxes: () => void;
   requestLoan: (amount: number, totalRounds: number, purpose: string) => void;
@@ -104,7 +105,7 @@ interface GameContextType {
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
   renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y') => void;
-  acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
+  acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number, buyerClubName: string) => void;
   updateTicketPrice: (delta: number) => void;
   setPenaltyTaker: (playerId: string) => void;
   resolvePlayerDissatisfaction: (playerId: string) => void;
@@ -1479,6 +1480,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
+  // Retires a player from the game entirely -- unlike sellPlayer, no other club acquires them
+  // and no money changes hands; the player simply leaves the squad and is gone for good.
+  const retirePlayer = (player: Player) => {
+    if (!userClub) return;
+
+    if (userClub.squad.length <= MIN_SQUAD_SIZE) {
+      alert(`Elenco muito reduzido! Você precisa manter pelo menos ${MIN_SQUAD_SIZE} jogadores no elenco (11 titulares + 5 reservas).`);
+      return;
+    }
+
+    const squadAfterRetirement = userClub.squad.filter(p => p.id !== player.id);
+    const violation = findDepthViolation(squadAfterRetirement, player.position);
+    if (violation) {
+      alert(`Impossível aposentar! O elenco precisa manter pelo menos ${violation.min} jogador(es) de ${violation.pos}.`);
+      return;
+    }
+
+    const updatedClubs = clubs.map(club =>
+      club.id === userClubId ? { ...club, squad: squadAfterRetirement } : club
+    );
+    setClubs(updatedClubs);
+
+    setNews(prev => [...prev, {
+      id: `retire_${Date.now()}`,
+      week: currentRound,
+      text: `${player.name} anunciou aposentadoria e encerrou a carreira como jogador do ${userClub.name}.`,
+      type: 'BOARD'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
   // Negotiate purchase of a player from another team
   const makeBidForPlayer = (player: Player, _sellerClubId: string, bidAmount: number) => {
     if (bidAmount < player.value) {
@@ -2263,8 +2296,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
-  // Accept an incoming purchase proposal from another club for a user's player
-  const acceptIncomingProposal = (player: Player, buyerClubId: string, amount: number) => {
+  // Accept an incoming purchase proposal from another club for a user's player. buyerClubName
+  // is passed explicitly (rather than looked up from `clubs`) because the buyer may be a
+  // foreign club that isn't part of the simulated league pool at all.
+  const acceptIncomingProposal = (player: Player, buyerClubId: string, amount: number, buyerClubName: string) => {
     if (!userClub) return;
 
     if (userClub.squad.length <= MIN_SQUAD_SIZE) {
@@ -2302,12 +2337,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setClubs(updatedClubs);
 
-    const buyerName = clubs.find(c => c.id === buyerClubId)?.name || 'Outro Clube';
-
     setNews(prev => [...prev, {
       id: `prop_sold_${Date.now()}`,
       week: currentRound,
-      text: `Transferência! O ${buyerName} contratou ${player.name} do ${userClub.name} por ${formatCurrency(amount)} após aceitação da proposta!`,
+      text: `Transferência! O ${buyerClubName} contratou ${player.name} do ${userClub.name} por ${formatCurrency(amount)} após aceitação da proposta!`,
       type: 'TRANSFER'
     }]);
 
@@ -2417,6 +2450,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextRound,
       buyPlayer,
       sellPlayer,
+      retirePlayer,
       upgradeStadium,
       buildVipBoxes,
       requestLoan,

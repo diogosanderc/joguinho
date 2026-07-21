@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
@@ -18,7 +18,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
@@ -218,7 +218,7 @@ const AppContent: React.FC = () => {
   const [unhappyPlayer, setUnhappyPlayer] = useState<Player | null>(null);
 
   // Incoming transfer proposal from other clubs for user's players
-  const [incomingProposal, setIncomingProposal] = useState<{ player: Player; buyerClub: Club; amount: number } | null>(null);
+  const [incomingProposal, setIncomingProposal] = useState<{ player: Player; buyerClub: { id: string; name: string; league?: string }; amount: number } | null>(null);
   const [incomingNegResult, setIncomingNegResult] = useState<string | null>(null);
   const [negOfferAmount, setNegOfferAmount] = useState<number>(0);
 
@@ -788,14 +788,26 @@ const AppContent: React.FC = () => {
         const potentialPlayers = userClub.squad.filter(p => !p.isInjured && !p.contractLocked && (p.isStar || p.rating >= 75 || p.goals >= 3 || isPromisingYoungster(p)));
         if (potentialPlayers.length > 0) {
           const targetPlayer = potentialPlayers[Math.floor(Math.random() * potentialPlayers.length)];
-          const otherClubs = clubs.filter(c => c.id !== userClubId).sort((a, b) => a.name.localeCompare(b.name));
-          if (otherClubs.length > 0) {
-            const buyer = otherClubs[Math.floor(Math.random() * otherClubs.length)];
-            // Offer is around 90% to 125% of market value
-            const amount = Math.round(targetPlayer.value * (0.90 + Math.random() * 0.35));
+          // Only a genuine standout draws interest from abroad -- everyone else's suitors stay
+          // domestic. Foreign clubs pay a lot more (110%-170% of value vs. 90%-125% at home).
+          const isEliteTarget = targetPlayer.isStar || targetPlayer.rating >= 78;
+          const goForeign = isEliteTarget && Math.random() < 0.5;
+          if (goForeign) {
+            const buyer = FOREIGN_CLUBS[Math.floor(Math.random() * FOREIGN_CLUBS.length)];
+            const amount = Math.round(targetPlayer.value * (1.10 + Math.random() * 0.60));
             setIncomingProposal({ player: targetPlayer, buyerClub: buyer, amount });
             setNegOfferAmount(amount);
             setIncomingNegResult(null);
+          } else {
+            const otherClubs = clubs.filter(c => c.id !== userClubId).sort((a, b) => a.name.localeCompare(b.name));
+            if (otherClubs.length > 0) {
+              const buyer = otherClubs[Math.floor(Math.random() * otherClubs.length)];
+              // Offer is around 90% to 125% of market value
+              const amount = Math.round(targetPlayer.value * (0.90 + Math.random() * 0.35));
+              setIncomingProposal({ player: targetPlayer, buyerClub: buyer, amount });
+              setNegOfferAmount(amount);
+              setIncomingNegResult(null);
+            }
           }
         }
       }
@@ -2558,6 +2570,18 @@ const AppContent: React.FC = () => {
                           >
                             {player.contractLocked ? '🔒 Trancado' : `💰 Vender (${formatCurrency(Math.round(player.value * 0.9))})`}
                           </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Aposentar ${player.name}? Ele encerra a carreira e sai do jogo definitivamente -- essa ação não pode ser desfeita.`)) {
+                                retirePlayer(player);
+                                setSelectedManagePlayerId(null);
+                              }
+                            }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', minWidth: '100px' }}
+                          >
+                            🎽 Aposentar
+                          </button>
                         </div>
                       </div>
                     )}
@@ -3730,10 +3754,10 @@ const AppContent: React.FC = () => {
       {incomingProposal && gameState !== 'MATCH_DAY' && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
-            <span style={{ fontSize: '2.5rem' }}>💼</span>
-            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-green)' }}>Proposta Recebida!</h3>
+            <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
+            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-green)' }}>{incomingProposal.buyerClub.league ? 'Proposta do Exterior!' : 'Proposta Recebida!'}</h3>
             <p style={{ fontSize: '0.82rem', color: '#9ca3af', lineHeight: '1.4', margin: '10px 0 16px 0' }}>
-              O **{incomingProposal.buyerClub.name}** enviou uma oferta oficial para comprar seu jogador **{incomingProposal.player.name}** ({incomingProposal.player.position}, Rating {incomingProposal.player.rating})!
+              O **{incomingProposal.buyerClub.name}**{incomingProposal.buyerClub.league ? ` (${incomingProposal.buyerClub.league})` : ''} enviou uma oferta oficial para comprar seu jogador **{incomingProposal.player.name}** ({incomingProposal.player.position}, Rating {incomingProposal.player.rating})!
             </p>
 
             {incomingNegResult ? (
@@ -3753,7 +3777,7 @@ const AppContent: React.FC = () => {
                   <button
                     className="btn btn-primary"
                     onClick={() => {
-                      acceptIncomingProposal(incomingProposal.player, incomingProposal.buyerClub.id, incomingProposal.amount);
+                      acceptIncomingProposal(incomingProposal.player, incomingProposal.buyerClub.id, incomingProposal.amount, incomingProposal.buyerClub.name);
                       setIncomingProposal(null);
                     }}
                   >
@@ -3805,7 +3829,7 @@ const AppContent: React.FC = () => {
                       className="btn btn-primary"
                       style={{ flex: 1 }}
                       onClick={() => {
-                        acceptIncomingProposal(incomingProposal.player, incomingProposal.buyerClub.id, negOfferAmount);
+                        acceptIncomingProposal(incomingProposal.player, incomingProposal.buyerClub.id, negOfferAmount, incomingProposal.buyerClub.name);
                         setIncomingProposal(null);
                       }}
                     >
