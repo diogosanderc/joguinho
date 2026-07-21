@@ -263,21 +263,21 @@ export const simulateMatch = (
 
   // Resolves a penalty kick: the designated taker (if set and available) takes it,
   // otherwise the best available outfield shooter steps up.
-  // Baseline (out of every 5 penalties): ~1 saved by the keeper, ~1 off target, ~3 scored.
-  // Rating nudges the odds a bit either way, and taking it at home makes scoring a bit more likely.
+  // Baseline: 75% scored, 25% missed overall (split between off-target and saved) -- matching
+  // real-world penalty conversion rates. Rating and home advantage nudge it a little either way.
   const takePenalty = (club: Club, starters: Player[], isHome: boolean): { taker: Player; scored: boolean; saved: boolean } => {
     const eligible = starters.filter(p => p.position !== 'GOL' && !redCarded.has(p.id));
     const pool = eligible.length > 0 ? eligible : starters.filter(p => !redCarded.has(p.id));
     const designated = club.penaltyTakerId ? pool.find(p => p.id === club.penaltyTakerId) : undefined;
     const taker = designated || choosePlayer(pool.length > 0 ? pool : starters, ['CA', 'PON', 'MEI', 'VOL']);
 
-    const ratingAdj = (taker.rating - 75) * 0.002;
-    const homeBonus = isHome ? 0.05 : 0;
+    const ratingAdj = (taker.rating - 75) * 0.0015;
+    const homeBonus = isHome ? 0.02 : 0;
 
-    let missChance = 0.20 - ratingAdj * 0.5 - homeBonus * 0.3; // ~1 in 5, off target
-    let savedChance = 0.20 + Math.random() * 0.20 - ratingAdj - homeBonus * 0.5; // 1-2 in 5, keeper saves
-    missChance = Math.max(0.08, missChance);
-    savedChance = Math.max(0.10, savedChance);
+    let missChance = 0.10 - ratingAdj * 0.4 - homeBonus * 0.3; // off-target portion of the 25%
+    let savedChance = 0.15 - ratingAdj * 0.4 - homeBonus * 0.3; // keeper-save portion of the 25%
+    missChance = Math.max(0.04, Math.min(0.15, missChance));
+    savedChance = Math.max(0.06, Math.min(0.20, savedChance));
 
     const roll = Math.random();
     const scored = roll >= missChance + savedChance;
