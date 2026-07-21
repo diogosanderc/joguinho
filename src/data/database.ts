@@ -32,6 +32,8 @@ export interface Player {
   contractLockYears?: number; // Number of years contract is locked
   performanceTrend?: 'UP' | 'DOWN' | 'NEUTRAL'; // Performance trend indicators
   suspendedMatches?: number; // League matches still missed due to a red card or 3rd accumulated yellow
+  seasonStartedRounds?: number; // Rounds started this season, for the end-of-season form bonus
+  seasonGoodRounds?: number; // Of those, rounds where condition was "Bom"/"Otimo" (not "Ruim")
 }
 
 // A player is fit to be selected: not injured, and not serving a card suspension.

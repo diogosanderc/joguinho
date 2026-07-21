@@ -689,6 +689,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           performanceTrend = 'NEUTRAL';
         }
 
+        // Tracks rounds spent in good form ("Bom"/"Otimo" condition badge, i.e. not "Ruim")
+        // while actually starting -- feeds the end-of-season form bonus (see endSeason).
+        let seasonStartedRounds = player.seasonStartedRounds ?? 0;
+        let seasonGoodRounds = player.seasonGoodRounds ?? 0;
+        if (wasStarter) {
+          seasonStartedRounds++;
+          if (performanceTrend !== 'DOWN') seasonGoodRounds++;
+        }
+
         if (club.id === userClubId && performanceTrend !== player.performanceTrend && (player.isStar || player.rating >= 75)) {
           if (performanceTrend === 'UP') {
             pushNews({
@@ -775,7 +784,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           suspendedMatches -= 1;
         }
 
-        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches };
+        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches, seasonStartedRounds, seasonGoodRounds };
       });
 
       return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft, financialScore, lateStrikes, loans, seasonRevenueAccum };
@@ -1098,10 +1107,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           rating = Math.min(99, Math.round(p.rating * 1.10));
         }
 
+        // Consistently good form this season earns an extra 8% growth bump for next year:
+        // needs a real sample of starts (10+) and to have spent most of them (75%+) rated
+        // "Bom"/"Otimo" rather than "Ruim" -- rewards reliable performers, not just anyone
+        // who avoided a bad-luck dip while barely playing.
+        const startedRounds = p.seasonStartedRounds ?? 0;
+        const goodRounds = p.seasonGoodRounds ?? 0;
+        if (startedRounds >= 10 && goodRounds / startedRounds >= 0.75) {
+          rating = Math.min(99, Math.round(rating * 1.08));
+        }
+
+        // Age up a year, and let a real career progression/decline curve play out: young
+        // players (<=23) keep developing, players past 31 decline faster and more often as
+        // they age further past that (matching real careers winding down), in between is
+        // a stable prime. This is on top of the fine-grained weekly wear/training drift
+        // that already happens round to round (see the isYoung/isOld block above).
+        const age = p.age + 1;
+        if (age <= 23) {
+          if (Math.random() < 0.35) rating = Math.min(99, rating + 1);
+        } else if (age >= 32) {
+          const declineChance = 0.35 + (age - 32) * 0.05;
+          if (Math.random() < Math.min(0.85, declineChance)) rating = Math.max(40, rating - (age >= 36 ? 2 : 1));
+        }
+
         let value = p.value;
         let salary = p.salary;
         if (rating !== p.rating) {
-          const ageFactor = p.age < 24 ? 1.3 : p.age > 30 ? 0.7 : 1.0;
+          const ageFactor = age < 24 ? 1.3 : age > 30 ? 0.7 : 1.0;
           const posFactor = posGroup === 'FW' ? 1.2 : posGroup === 'GK' ? 0.9 : 1.0;
           const valBase = Math.pow(rating - 30, 2.5) * 800;
           value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
@@ -1110,6 +1142,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return {
           ...p,
+          age,
           isStar,
           rating,
           value,
@@ -1118,7 +1151,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           goals: 0,
           yellowCards: 0,
           redCards: 0,
-          energy: 100
+          energy: 100,
+          seasonStartedRounds: 0,
+          seasonGoodRounds: 0
         };
       });
 

@@ -46,7 +46,7 @@ const AppContent: React.FC = () => {
 
   // Standings filter states
   const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C'>('C');
-  const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'HISTORY'>('TABLE');
+  const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'GAMES' | 'HISTORY'>('TABLE');
 
   // Whenever the user's club actually changes division (promotion/relegation at season
   // rollover, or picking a new club), snap the Classificação tab to that division -- otherwise
@@ -3260,7 +3260,14 @@ const AppContent: React.FC = () => {
               >
                 Artilharia
               </button>
-              <button 
+              <button
+                onClick={() => setStatsView('GAMES')}
+                className={`sub-tab-btn ${statsView === 'GAMES' ? 'active' : ''}`}
+                style={{ flex: 1 }}
+              >
+                Meus Jogos
+              </button>
+              <button
                 onClick={() => setStatsView('HISTORY')}
                 className={`sub-tab-btn ${statsView === 'HISTORY' ? 'active' : ''}`}
                 style={{ flex: 1 }}
@@ -3367,6 +3374,47 @@ const AppContent: React.FC = () => {
                   </div>
                 </div>
               </>
+            )}
+
+            {statsView === 'GAMES' && (
+              <div className="card">
+                <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Meus Jogos - Temporada {currentYear}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {(() => {
+                    const myGames = schedule
+                      .filter(m => m.simulated && m.result && (m.homeId === userClubId || m.awayId === userClubId))
+                      .sort((a, b) => a.round - b.round);
+                    if (myGames.length === 0) {
+                      return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Nenhuma partida disputada ainda nesta temporada.</p>;
+                    }
+                    return myGames.map(m => {
+                      const isHome = m.homeId === userClubId;
+                      const oppId = isHome ? m.awayId : m.homeId;
+                      const opponent = clubs.find(c => c.id === oppId);
+                      const myScore = isHome ? m.result!.homeScore : m.result!.awayScore;
+                      const oppScore = isHome ? m.result!.awayScore : m.result!.homeScore;
+                      const outcome = myScore > oppScore ? 'V' : myScore < oppScore ? 'D' : 'E';
+                      const outcomeColor = outcome === 'V' ? 'var(--accent-green)' : outcome === 'D' ? 'var(--accent-red)' : 'var(--accent-gold)';
+                      return (
+                        <div
+                          key={`${m.round}-${m.homeId}-${m.awayId}`}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#121316', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)', fontSize: '0.8rem' }}
+                        >
+                          <span style={{ width: '28px', color: '#9ca3af', fontWeight: 700 }}>{m.round}ª</span>
+                          <span style={{
+                            width: '22px', height: '22px', borderRadius: '6px', background: outcomeColor, color: 'black',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem', flexShrink: 0
+                          }}>{outcome}</span>
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {isHome ? 'vs' : '@'} {opponent?.name ?? '???'}
+                          </span>
+                          <span style={{ fontWeight: 800 }}>{myScore} - {oppScore}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             )}
 
             {statsView === 'HISTORY' && (
