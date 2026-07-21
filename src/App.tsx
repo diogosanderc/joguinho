@@ -128,10 +128,31 @@ const AppContent: React.FC = () => {
 
   const apitoAudioRef = useRef<HTMLAudioElement | null>(null);
   const golAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
   useEffect(() => {
     apitoAudioRef.current = new Audio('/audio/apito.mp3');
     golAudioRef.current = new Audio('/audio/gol.mp3');
   }, []);
+
+  // Mobile browsers only allow audio.play() to succeed when it's called directly inside a real
+  // user gesture (tap/click) -- a goal or the kickoff whistle firing later from a background
+  // effect doesn't count, so without this the very first play() after page load is silently
+  // rejected. Playing (and instantly muting+pausing) each clip once inside an actual tap unlocks
+  // them for every later programmatic play() in the same page session.
+  const unlockAudio = () => {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    [apitoAudioRef.current, golAudioRef.current].forEach(a => {
+      if (!a) return;
+      const prevVolume = a.volume;
+      a.volume = 0;
+      a.play().then(() => {
+        a.pause();
+        a.currentTime = 0;
+        a.volume = prevVolume;
+      }).catch(() => { a.volume = prevVolume; });
+    });
+  };
 
   const playWhistle = () => {
     if (soundEnabled && apitoAudioRef.current) {
@@ -150,6 +171,15 @@ const AppContent: React.FC = () => {
       navigator.vibrate([200, 100, 200]);
     }
   };
+
+  // Unlock audio on the very first tap anywhere in the app, so the user doesn't have to touch
+  // the sound toggle specifically for the kickoff whistle/goal sound to work later.
+  useEffect(() => {
+    const handler = () => { unlockAudio(); window.removeEventListener('pointerdown', handler); };
+    window.addEventListener('pointerdown', handler);
+    return () => window.removeEventListener('pointerdown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sponsors list generator (deterministic based on club reputation)
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
@@ -1943,7 +1973,16 @@ const AppContent: React.FC = () => {
               <div className="card-title">🔊 Jogo ao Vivo</div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
-                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  onClick={() => {
+                    const next = !soundEnabled;
+                    setSoundEnabled(next);
+                    unlockAudio();
+                    // Immediate test sound so the toggle itself proves whether sound works here.
+                    if (next && golAudioRef.current) {
+                      golAudioRef.current.currentTime = 0;
+                      golAudioRef.current.play().catch(() => {});
+                    }
+                  }}
                   className="btn btn-secondary"
                   style={{
                     flex: 1, padding: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -1955,7 +1994,17 @@ const AppContent: React.FC = () => {
                   {soundEnabled ? '🔊' : '🔇'} Som: {soundEnabled ? 'Ligado' : 'Desligado'}
                 </button>
                 <button
-                  onClick={() => setVibrationEnabled(!vibrationEnabled)}
+                  onClick={() => {
+                    const next = !vibrationEnabled;
+                    setVibrationEnabled(next);
+                    // Immediate test buzz so the toggle itself proves whether vibration works
+                    // here -- note the Vibration API isn't supported on iPhone/Safari at all
+                    // (an Apple/WebKit limitation, not something a website can work around), so
+                    // on iOS this button won't ever buzz even though the setting still saves.
+                    if (next && typeof navigator !== 'undefined' && navigator.vibrate) {
+                      navigator.vibrate([200, 100, 200]);
+                    }
+                  }}
                   className="btn btn-secondary"
                   style={{
                     flex: 1, padding: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -1967,6 +2016,11 @@ const AppContent: React.FC = () => {
                   📳 Vibração: {vibrationEnabled ? 'Ligada' : 'Desligada'}
                 </button>
               </div>
+              {typeof navigator !== 'undefined' && !navigator.vibrate && (
+                <p style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: '8px' }}>
+                  ⚠️ Este navegador/aparelho não suporta vibração (comum no iPhone/Safari) — o som deve funcionar normalmente.
+                </p>
+              )}
             </div>
 
             {/* News feed */}
@@ -2038,7 +2092,7 @@ const AppContent: React.FC = () => {
 
               <button
                 className="btn btn-primary"
-                onClick={() => nextRound(starters)}
+                onClick={() => { unlockAudio(); nextRound(starters); }}
                 style={{ marginTop: '16px', height: '48px' }}
               >
                 <Play size={18} fill="#000" /> Iniciar Partida
