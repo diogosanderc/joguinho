@@ -646,10 +646,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } else {
+          // Veterans (33+) tire out faster on the pitch and recover a bit slower at rest --
+          // the older legs don't bounce back like a young player's.
+          const isVeteran = player.age >= 33;
           if (wasStarter) {
-            energy = Math.max(30, energy - Math.floor(Math.random() * 6) - 4); // lose 4-9 energy (softened)
+            const veteranPenalty = isVeteran ? Math.floor(Math.random() * 4) + 3 : 0; // extra 3-6 energy lost
+            energy = Math.max(30, energy - Math.floor(Math.random() * 6) - 4 - veteranPenalty);
           } else {
-            energy = Math.min(100, energy + 20); // recover energy faster on bench/rest (was 15)
+            energy = Math.min(100, energy + (isVeteran ? 14 : 20)); // recover energy faster on bench/rest (was 15)
           }
         }
 

@@ -3245,34 +3245,34 @@ const AppContent: React.FC = () => {
         {activeTab === 4 && (
           <>
             {/* View selectors */}
-            <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px 0' }}>
-              <button 
+            <div style={{ display: 'flex', gap: '4px', padding: '0 0 12px 0' }}>
+              <button
                 onClick={() => setStatsView('TABLE')}
                 className={`sub-tab-btn ${statsView === 'TABLE' ? 'active' : ''}`}
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: '6px 4px', fontSize: '0.68rem' }}
               >
                 Tabela
               </button>
-              <button 
+              <button
                 onClick={() => setStatsView('STATS')}
                 className={`sub-tab-btn ${statsView === 'STATS' ? 'active' : ''}`}
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: '6px 4px', fontSize: '0.68rem' }}
               >
                 Artilharia
               </button>
               <button
                 onClick={() => setStatsView('GAMES')}
                 className={`sub-tab-btn ${statsView === 'GAMES' ? 'active' : ''}`}
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: '6px 4px', fontSize: '0.68rem' }}
               >
-                Meus Jogos
+                Histórico
               </button>
               <button
                 onClick={() => setStatsView('HISTORY')}
                 className={`sub-tab-btn ${statsView === 'HISTORY' ? 'active' : ''}`}
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: '6px 4px', fontSize: '0.68rem' }}
               >
-                Histórico
+                Carreira
               </button>
             </div>
 
@@ -3378,7 +3378,7 @@ const AppContent: React.FC = () => {
 
             {statsView === 'GAMES' && (
               <div className="card">
-                <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Meus Jogos - Temporada {currentYear}</div>
+                <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Histórico - Temporada {currentYear}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {(() => {
                     const myGames = schedule
