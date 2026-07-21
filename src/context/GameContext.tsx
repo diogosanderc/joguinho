@@ -92,7 +92,7 @@ interface GameContextType {
   makeBidForPlayer: (player: Player, _sellerClubId: string, bidAmount: number) => { status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number };
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
-  renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y' | 'LOCK_6M' | 'LOCK_1Y') => void;
+  renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y') => void;
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number) => void;
   updateTicketPrice: (delta: number) => void;
   setPenaltyTaker: (playerId: string) => void;
@@ -1096,7 +1096,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           rating,
           value,
           salary,
-          contractLocked: false, // Unlock for next season
+          contractLocked: (p.contractLockYears ?? 0) > 0, // multi-year locks persist across the season boundary
           goals: 0,
           yellowCards: 0,
           redCards: 0,
@@ -1891,20 +1891,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Renew player contract. Renewing always makes the player happier (clears dissatisfaction,
-  // small rating bump). Locking is one-shot: once a player has been locked, they can't be locked
-  // again until a fresh renewal happens (locking itself counts as one, resetting the cooldown).
-  const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y' | 'LOCK_6M' | 'LOCK_1Y') => {
+  // small rating bump) and always locks the player for the renewed term -- while locked, they
+  // cannot be sold, cannot request to leave, and no other club can make an offer for them.
+  const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y') => {
     if (!userClubId) return;
-    const addedWeeks = (duration === '6M' || duration === 'LOCK_6M') ? 19 : (duration === '1Y' || duration === 'LOCK_1Y') ? 38 : 76;
-    const lockContract = duration === '2Y' || duration === 'LOCK_6M' || duration === 'LOCK_1Y';
-    const lockYears = duration === '2Y' ? 2 : (duration === 'LOCK_1Y' ? 1 : duration === 'LOCK_6M' ? 0.5 : undefined);
+    const addedWeeks = duration === '6M' ? 19 : duration === '1Y' ? 38 : 76;
+    const lockYears = duration === '2Y' ? 2 : duration === '1Y' ? 1 : 0.5;
     setClubs(prev => prev.map(c => {
       if (c.id !== userClubId) return c;
       const updatedSquad = c.squad.map(p => {
         if (p.id !== playerId) return p;
-        if (lockContract && (p.contractLocked || p.lockCooldown)) return p; // blocked -- must renew first
         const currentW = p.contractWeeks ?? 38;
-        const rating = Math.min(99, p.rating + (lockContract ? 2 : 1));
+        const rating = Math.min(99, p.rating + 2);
         const group = getPositionGroup(p.position);
         const ageFactor = p.age < 24 ? 1.3 : p.age > 30 ? 0.7 : 1.0;
         const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
@@ -1914,9 +1912,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...p,
           contractWeeks: currentW + addedWeeks,
-          contractLocked: lockContract ? true : p.contractLocked,
-          contractLockYears: lockYears ? lockYears : p.contractLockYears,
-          lockCooldown: lockContract,
+          contractLocked: true,
+          contractLockYears: lockYears,
           rating, value, salary,
           benchRounds: 0
         };

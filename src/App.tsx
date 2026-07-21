@@ -2279,58 +2279,26 @@ const AppContent: React.FC = () => {
                             onClick={() => { renewContract(player.id, '6M'); setSelectedManagePlayerId(null); }}
                             className="btn btn-secondary"
                             style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            title="Renova o contrato por 6 meses e tranca o jogador (não pode sair nem ser comprado)"
                           >
-                            📝 Renovar 6M (+19s)
+                            🔒 Renovar 6M (+19s)
                           </button>
                           <button
                             onClick={() => { renewContract(player.id, '1Y'); setSelectedManagePlayerId(null); }}
                             className="btn btn-secondary"
                             style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            title="Renova o contrato por 1 ano e tranca o jogador (não pode sair nem ser comprado)"
                           >
-                            📝 Renovar 1 Ano (+38s)
+                            🔒 Renovar 1 Ano (+38s)
                           </button>
-                          {(() => {
-                            const lockBlocked = player.contractLocked || player.lockCooldown;
-                            const lockBtnStyle = (opacity: number) => ({
-                              flex: 1, padding: '6px', fontSize: '0.72rem',
-                              background: lockBlocked ? 'rgba(255,255,255,0.03)' : `rgba(255, 193, 7, ${opacity})`,
-                              border: lockBlocked ? '1px solid rgba(255,255,255,0.06)' : `1px solid rgba(255, 193, 7, ${opacity + 0.23})`,
-                              color: lockBlocked ? '#6b7280' : 'var(--accent-gold)',
-                              minWidth: '100px',
-                              cursor: lockBlocked ? 'not-allowed' : 'pointer'
-                            });
-                            return (
-                              <>
-                                <button
-                                  onClick={() => { if (!lockBlocked) { renewContract(player.id, 'LOCK_6M'); setSelectedManagePlayerId(null); } }}
-                                  disabled={lockBlocked}
-                                  className="btn btn-secondary"
-                                  style={lockBtnStyle(0.12)}
-                                  title={lockBlocked ? 'Só é possível trancar novamente após renovar o contrato' : 'Renova o contrato por 6 meses e tranca o jogador'}
-                                >
-                                  🔒 Trancar 6 Meses
-                                </button>
-                                <button
-                                  onClick={() => { if (!lockBlocked) { renewContract(player.id, 'LOCK_1Y'); setSelectedManagePlayerId(null); } }}
-                                  disabled={lockBlocked}
-                                  className="btn btn-secondary"
-                                  style={lockBtnStyle(0.12)}
-                                  title={lockBlocked ? 'Só é possível trancar novamente após renovar o contrato' : 'Renova o contrato por 1 ano e tranca o jogador'}
-                                >
-                                  🔒 Trancar 1 Ano
-                                </button>
-                                <button
-                                  onClick={() => { if (!lockBlocked) { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); } }}
-                                  disabled={lockBlocked}
-                                  className="btn btn-secondary"
-                                  style={lockBtnStyle(0.15)}
-                                  title={lockBlocked ? 'Só é possível trancar novamente após renovar o contrato' : 'Renova o contrato por 2 anos e tranca o jogador'}
-                                >
-                                  🔒 Trancar 2 Anos
-                                </button>
-                              </>
-                            );
-                          })()}
+                          <button
+                            onClick={() => { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.15)', border: '1px solid rgba(255, 193, 7, 0.38)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            title="Renova o contrato por 2 anos e tranca o jogador (não pode sair nem ser comprado)"
+                          >
+                            🔒 Renovar 2 Anos (+76s)
+                          </button>
                           <button
                             onClick={() => { if (!player.contractLocked) { sellPlayer(player); setSelectedManagePlayerId(null); } }}
                             disabled={player.contractLocked}
