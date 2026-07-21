@@ -29,6 +29,21 @@ export interface MatchResult {
   attendance?: number;
 }
 
+// Lets a match be resumed partway through with an updated lineup (e.g. after a mid-match
+// substitution) instead of always simulating fresh from kickoff. Events/score/stats up to
+// startMinute are carried over as-is; only the remaining minutes are (re)simulated, so a
+// substituted-out player genuinely can't score/get carded/etc. afterward -- the original
+// one-shot simulation had no way to know about a substitution decided live in the UI.
+export interface SimulateMatchOptions {
+  startMinute?: number;
+  initialHomeScore?: number;
+  initialAwayScore?: number;
+  initialHomeStats?: MatchStats;
+  initialAwayStats?: MatchStats;
+  priorEvents?: MatchEvent[];
+  priorYellowCardCounts?: Record<string, number>;
+}
+
 // Auto-selects 11 starters for non-player clubs (default 4-4-2: 2 ZAG, 1 LD, 1 LE, 2 VOL, 2 MEI, 2 CA)
 export const getAutoStarters = (club: Club): Player[] => {
   const usedIds = new Set<string>();
@@ -117,12 +132,13 @@ export const calculateTeamForces = (starters: Player[]) => {
   return { defense, midfield, attack, overall };
 };
 
-// Simulates a full 90-minute match
+// Simulates a full 90-minute match (or the remainder of one -- see SimulateMatchOptions)
 export const simulateMatch = (
   homeClub: Club,
   awayClub: Club,
   homeStartersInput?: Player[],
-  awayStartersInput?: Player[]
+  awayStartersInput?: Player[],
+  options: SimulateMatchOptions = {}
 ): MatchResult => {
   const homeStarters = homeStartersInput || getAutoStarters(homeClub);
   const awayStarters = awayStartersInput || getAutoStarters(awayClub);
@@ -187,15 +203,15 @@ export const simulateMatch = (
   homeAtt *= (1.0 + homeStarBoost * 0.06);
   awayAtt *= (1.0 + awayStarBoost * 0.06);
 
-  let homeScore = 0;
-  let awayScore = 0;
-  const events: MatchEvent[] = [];
+  let homeScore = options.initialHomeScore ?? 0;
+  let awayScore = options.initialAwayScore ?? 0;
+  const events: MatchEvent[] = [...(options.priorEvents ?? [])];
 
-  const homeStats: MatchStats = { shots: 0, possession: 50, fouls: 0, corners: 0 };
-  const awayStats: MatchStats = { shots: 0, possession: 50, fouls: 0, corners: 0 };
+  const homeStats: MatchStats = options.initialHomeStats ? { ...options.initialHomeStats } : { shots: 0, possession: 50, fouls: 0, corners: 0 };
+  const awayStats: MatchStats = options.initialAwayStats ? { ...options.initialAwayStats } : { shots: 0, possession: 50, fouls: 0, corners: 0 };
 
-  // Track cards and injuries
-  const yellowCards: Record<string, number> = {};
+  // Track cards and injuries -- seeded from before startMinute when resuming a match in progress
+  const yellowCards: Record<string, number> = { ...(options.priorYellowCardCounts ?? {}) };
   const redCarded = new Set<string>();
 
   // Helper to choose a player for an event (weighted by rating and star status)
@@ -306,10 +322,12 @@ export const simulateMatch = (
   }
 
   // Blowout / Goleada chance check (5% chance to trigger extra attack strength if one team takes a 2-goal lead)
-  let blowoutTriggered = false;
+  // Already-decisive gaps carried over from a resumed match shouldn't be able to re-trigger this.
+  let blowoutTriggered = Math.abs(homeScore - awayScore) >= 2;
 
-  // Match Simulation Loop (90 minutes)
-  for (let min = 1; min <= 90; min++) {
+  // Match Simulation Loop (resumes from startMinute when continuing an in-progress match)
+  const startMinute = options.startMinute ?? 1;
+  for (let min = startMinute; min <= 90; min++) {
     // Stat adjustments (possession flutters)
     const midSum = homeMid + awayMid;
     const currentPossession = Math.round((homeMid / midSum) * 100 + (Math.random() * 10 - 5));

@@ -88,6 +88,7 @@ interface GameContextType {
   resetGame: () => void;
   setGameState: (state: GameState) => void;
   clearCurrentMatch: () => void;
+  resimulateMidMatch: (updatedUserStarters: Player[], fromMinute: number) => void;
   makeBidForPlayer: (player: Player, _sellerClubId: string, bidAmount: number) => { status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number };
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
@@ -1847,6 +1848,48 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Re-simulates the rest of an in-progress match after the user makes a mid-match
+  // substitution. The original single-shot simulation has no idea a substitution happened --
+  // it already generated all 90 minutes of events upfront from the starting XI -- so without
+  // this, a "substituted out" player could still show up scoring or picking up cards later in
+  // the same match. Events/score/stats up to fromMinute are frozen exactly as already shown;
+  // only the remaining minutes are (re)computed with the updated lineup.
+  const resimulateMidMatch = (updatedUserStarters: Player[], fromMinute: number) => {
+    if (!currentMatch || !currentMatchResult || !userClubId) return;
+    const isHome = currentMatch.homeId === userClubId;
+    const homeClubObj = clubs.find(c => c.id === currentMatch.homeId);
+    const awayClubObj = clubs.find(c => c.id === currentMatch.awayId);
+    if (!homeClubObj || !awayClubObj) return;
+    const opponent = isHome ? awayClubObj : homeClubObj;
+
+    const priorEvents = currentMatchResult.events.filter(e => e.minute <= fromMinute);
+    const priorRedCardedNames = new Set(priorEvents.filter(e => e.type === 'RED').map(e => e.player));
+    const priorYellowNames = new Set(priorEvents.filter(e => e.type === 'YELLOW').map(e => e.player));
+
+    const userStarters = updatedUserStarters.filter(p => !priorRedCardedNames.has(p.name));
+    const opponentStarters = getAutoStarters(opponent).filter(p => !priorRedCardedNames.has(p.name));
+
+    const priorYellowCardCounts: Record<string, number> = {};
+    [...userStarters, ...opponentStarters].forEach(p => {
+      if (priorYellowNames.has(p.name)) priorYellowCardCounts[p.id] = 1;
+    });
+
+    const homeStarters = isHome ? userStarters : opponentStarters;
+    const awayStarters = isHome ? opponentStarters : userStarters;
+
+    const result = simulateMatch(homeClubObj, awayClubObj, homeStarters, awayStarters, {
+      startMinute: fromMinute + 1,
+      initialHomeScore: currentMatchResult.homeScore,
+      initialAwayScore: currentMatchResult.awayScore,
+      initialHomeStats: currentMatchResult.homeStats,
+      initialAwayStats: currentMatchResult.awayStats,
+      priorEvents,
+      priorYellowCardCounts
+    });
+
+    setCurrentMatchResult(result);
+  };
+
   // Renew player contract. Renewing always makes the player happier (clears dissatisfaction,
   // small rating bump). Locking is one-shot: once a player has been locked, they can't be locked
   // again until a fresh renewal happens (locking itself counts as one, resetting the cooldown).
@@ -2034,6 +2077,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetGame,
       setGameState,
       clearCurrentMatch,
+      resimulateMidMatch,
       makeBidForPlayer,
       buyPlayerFromClub,
       manualSave,

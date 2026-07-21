@@ -17,7 +17,7 @@ const AppContent: React.FC = () => {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
-    upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch,
+    upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
 
@@ -600,6 +600,11 @@ const AppContent: React.FC = () => {
     const nextStarters = midMatchStarters.map(p => p.id === outPlayer.id ? inPlayer : p);
     setMidMatchStarters(nextStarters);
     setSubsUsed(prev => prev + 1);
+
+    // Re-simulate the rest of the match with the updated lineup -- the original one-shot
+    // simulation had no way to know this substitution would happen, so without this the
+    // substituted-out player could still show up scoring or getting cards later on.
+    resimulateMidMatch(nextStarters, simMinute);
 
     // Append sub news/event
     const subEvent = {
