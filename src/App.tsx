@@ -144,65 +144,15 @@ const AppContent: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cupDrawReveal]);
 
-  // Sound effects + vibration for the live match -- off by default (no UI to toggle for now),
-  // read once from their own localStorage keys in case a settings UI opts a user back in later.
-  const soundEnabled = localStorage.getItem('elifoot_2026_sound_enabled') === 'true';
+  // Vibration for the live match -- off by default (no UI to toggle for now), read once from
+  // its own localStorage key in case a settings UI opts a user back in later.
   const vibrationEnabled = localStorage.getItem('elifoot_2026_vibration_enabled') === 'true';
 
-  const apitoAudioRef = useRef<HTMLAudioElement | null>(null);
-  const golAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUnlockedRef = useRef(false);
-  useEffect(() => {
-    apitoAudioRef.current = new Audio('/audio/apito.mp3');
-    golAudioRef.current = new Audio('/audio/gol.mp3');
-  }, []);
-
-  // Mobile browsers only allow audio.play() to succeed when it's called directly inside a real
-  // user gesture (tap/click) -- a goal or the kickoff whistle firing later from a background
-  // effect doesn't count, so without this the very first play() after page load is silently
-  // rejected. Playing (and instantly muting+pausing) each clip once inside an actual tap unlocks
-  // them for every later programmatic play() in the same page session.
-  const unlockAudio = () => {
-    if (audioUnlockedRef.current) return;
-    audioUnlockedRef.current = true;
-    [apitoAudioRef.current, golAudioRef.current].forEach(a => {
-      if (!a) return;
-      const prevVolume = a.volume;
-      a.volume = 0;
-      a.play().then(() => {
-        a.pause();
-        a.currentTime = 0;
-        a.volume = prevVolume;
-      }).catch(() => { a.volume = prevVolume; });
-    });
-  };
-
-  const playWhistle = () => {
-    if (soundEnabled && apitoAudioRef.current) {
-      apitoAudioRef.current.currentTime = 0;
-      apitoAudioRef.current.play().catch(() => {});
-    }
-  };
-  const playGoalSound = () => {
-    if (soundEnabled && golAudioRef.current) {
-      golAudioRef.current.currentTime = 0;
-      golAudioRef.current.play().catch(() => {});
-    }
-  };
   const vibrateGoal = () => {
     if (vibrationEnabled && typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate([200, 100, 200]);
     }
   };
-
-  // Unlock audio on the very first tap anywhere in the app, so the user doesn't have to touch
-  // the sound toggle specifically for the kickoff whistle/goal sound to work later.
-  useEffect(() => {
-    const handler = () => { unlockAudio(); window.removeEventListener('pointerdown', handler); };
-    window.addEventListener('pointerdown', handler);
-    return () => window.removeEventListener('pointerdown', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Sponsors list generator (deterministic based on club reputation)
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
@@ -573,26 +523,18 @@ const AppContent: React.FC = () => {
       // unseen underneath), which looks exactly like "the round played but no live match showed".
       setIncomingProposal(null);
       setUnhappyPlayer(null);
-      playWhistle();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, currentMatch]);
 
-  // Full-time whistle, once per match.
-  useEffect(() => {
-    if (matchDone) playWhistle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchDone]);
-
-  // Goal sound + vibration, on either team's goal, in the user's live match. Watching the
-  // combined goal total (rather than hooking into every individual place a goal gets committed
-  // -- normal ticking, penalty reveal, VAR-confirmed reveal) catches all of them from one spot.
-  // Only fires on an increase, so a new match resetting the score back to 0 never triggers it.
+  // Goal vibration, on either team's goal, in the user's live match. Watching the combined goal
+  // total (rather than hooking into every individual place a goal gets committed -- normal
+  // ticking, penalty reveal, VAR-confirmed reveal) catches all of them from one spot. Only fires
+  // on an increase, so a new match resetting the score back to 0 never triggers it.
   const prevTotalGoalsRef = useRef(0);
   useEffect(() => {
     const total = simScoreHome + simScoreAway;
     if (total > prevTotalGoalsRef.current) {
-      playGoalSound();
       vibrateGoal();
     }
     prevTotalGoalsRef.current = total;
@@ -2205,7 +2147,7 @@ const AppContent: React.FC = () => {
                   )}
                   <button
                     className="btn btn-primary"
-                    onClick={() => { unlockAudio(); beginMatchKickoff(); startCupMatch(starters); }}
+                    onClick={() => { beginMatchKickoff(); startCupMatch(starters); }}
                     style={{ marginTop: '16px', height: '48px', background: 'var(--accent-gold)' }}
                   >
                     <Play size={18} fill="#000" /> Iniciar Partida da Copa
@@ -2252,7 +2194,7 @@ const AppContent: React.FC = () => {
 
                 <button
                   className="btn btn-primary"
-                  onClick={() => { unlockAudio(); beginMatchKickoff(); nextRound(starters); }}
+                  onClick={() => { beginMatchKickoff(); nextRound(starters); }}
                   style={{ marginTop: '16px', height: '48px' }}
                 >
                   <Play size={18} fill="#000" /> Iniciar Partida
