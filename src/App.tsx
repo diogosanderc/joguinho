@@ -993,6 +993,53 @@ const AppContent: React.FC = () => {
   const topScorers = getTopScorers();
 
   // Reads a save slot's headline info for display (Menu load screen, overwrite picker)
+  // Export/import a save as a downloadable .json file -- since the game isn't installed (just a
+  // page using the browser's localStorage), clearing browsing data / cache wipes every save.
+  // Exporting lets the user keep a backup anywhere (Drive, email, WhatsApp to self) and restore
+  // it later on any browser/device by importing the file back into a slot.
+  const exportSave = (slot: number) => {
+    const raw = localStorage.getItem(`elifoot_2026_save_slot_${slot}`);
+    if (!raw) return;
+    const tacticsRaw = localStorage.getItem(`elifoot_2026_tactics_slot_${slot}`);
+    const bundle = { save: JSON.parse(raw), tactics: tacticsRaw ? JSON.parse(tacticsRaw) : null };
+    const data = JSON.parse(raw);
+    const club = data.clubs?.find((c: any) => c.isPlayerClub);
+    const fileName = `elifoot2026_${(data.managerName || 'save').replace(/[^a-zA-Z0-9]+/g, '_')}_${club?.name?.replace(/[^a-zA-Z0-9]+/g, '_') || ''}_r${data.currentRound}.json`;
+    const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const [importTargetSlot, setImportTargetSlot] = useState<number | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = async (file: File, slot: number) => {
+    try {
+      const text = await file.text();
+      const bundle = JSON.parse(text);
+      const saveData = bundle.save ?? bundle; // tolerate importing a raw save export too
+      localStorage.setItem(`elifoot_2026_save_slot_${slot}`, JSON.stringify(saveData));
+      if (bundle.tactics) {
+        localStorage.setItem(`elifoot_2026_tactics_slot_${slot}`, JSON.stringify(bundle.tactics));
+      }
+      setSlotRefreshTick(t => t + 1);
+      // If we just overwrote the slot currently being played, refresh the live state too --
+      // otherwise the import sits in localStorage unseen until the user switches away and back.
+      if (slot === currentSlot) {
+        loadGame(saveData, slot);
+      }
+      alert(`Save importado com sucesso para o Slot 0${slot}!`);
+    } catch (e) {
+      alert('Não foi possível importar esse arquivo. Verifique se é um arquivo de save válido do Elifoot 2026.');
+    }
+  };
+
   const getSaveLabel = (key: string): string | null => {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
@@ -1076,11 +1123,49 @@ const AppContent: React.FC = () => {
                         🗑️
                       </button>
                     )}
+                    <button
+                      onClick={() => {
+                        if (label && !confirm(`O Slot 0${slot} já tem uma campanha (${label}). Importar um arquivo vai SUBSTITUIR esse save. Continuar?`)) return;
+                        setImportTargetSlot(slot);
+                        importFileInputRef.current?.click();
+                      }}
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        color: 'white',
+                        borderRadius: '8px',
+                        padding: '8px 10px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer'
+                      }}
+                      title="Importar um save de um arquivo exportado anteriormente"
+                    >
+                      ⬆️
+                    </button>
                   </div>
                 );
               })}
             </div>
           </div>
+
+          <p style={{ fontSize: '0.7rem', color: '#9ca3af', margin: '12px 0 0', lineHeight: '1.4', textAlign: 'center' }}>
+            💡 Perdeu um save porque limpou o cache do navegador? Toque no ⬆️ ao lado do slot pra importar um backup exportado antes.
+          </p>
+
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept="application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && importTargetSlot !== null) {
+                handleImportFile(file, importTargetSlot);
+              }
+              e.target.value = '';
+              setImportTargetSlot(null);
+            }}
+          />
 
           <button
             className="btn btn-secondary"
@@ -4075,13 +4160,55 @@ const AppContent: React.FC = () => {
                         </button>
                       </div>
                     )}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        onClick={() => exportSave(slot)}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, fontSize: '0.68rem', padding: '5px 0', borderRadius: '6px', background: label ? 'rgba(255,255,255,0.04)' : '#1e2126', border: '1px solid rgba(255,255,255,0.06)', color: label ? 'white' : '#6b7280', cursor: label ? 'pointer' : 'not-allowed' }}
+                        disabled={!label}
+                        title="Baixar este save como arquivo, pra guardar como backup fora do navegador"
+                      >
+                        ⬇️ Exportar
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (label && !confirm(`O Slot 0${slot} já tem uma campanha (${label}). Importar um arquivo vai SUBSTITUIR esse save. Continuar?`)) return;
+                          setImportTargetSlot(slot);
+                          importFileInputRef.current?.click();
+                        }}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, fontSize: '0.68rem', padding: '5px 0', borderRadius: '6px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }}
+                        title="Restaurar um save de um arquivo exportado anteriormente"
+                      >
+                        ⬆️ Importar
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            <button 
-              className="btn btn-secondary" 
+            <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '12px', lineHeight: '1.4' }}>
+              💡 Como o jogo roda direto no navegador (ainda não é um app instalado), limpar o cache/dados do navegador apaga os saves. Exporte de vez em quando pra ter um backup guardado (Drive, e-mail, WhatsApp pra si mesmo) e importe de volta quando precisar.
+            </p>
+
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept="application/json"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && importTargetSlot !== null) {
+                  handleImportFile(file, importTargetSlot);
+                }
+                e.target.value = '';
+                setImportTargetSlot(null);
+              }}
+            />
+
+            <button
+              className="btn btn-secondary"
               onClick={() => setSavesModalOpen(false)}
               style={{ width: '100%', height: '40px', fontSize: '0.8rem', fontWeight: 700 }}
             >
