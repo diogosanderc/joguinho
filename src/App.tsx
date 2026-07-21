@@ -465,6 +465,12 @@ const AppContent: React.FC = () => {
       setChosenPenaltyTakerId(null);
       setVarModalOpen(false);
       setVarEvent(null);
+      // Defensive: neither of these ever pauses the sim, and both render as a full-screen
+      // modal regardless of gameState -- if one were ever still open when a match starts, it
+      // would silently sit on top of the live match for its whole duration (ticking away
+      // unseen underneath), which looks exactly like "the round played but no live match showed".
+      setIncomingProposal(null);
+      setUnhappyPlayer(null);
     }
   }, [gameState, currentMatch]);
 
@@ -653,7 +659,12 @@ const AppContent: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRound, gameState]);
 
-  // Roll for incoming purchase proposal from other clubs for user's players after rounds
+  // Roll for incoming purchase proposal from other clubs for user's players after rounds.
+  // Depends on gameState too (not just currentRound): currentRound is only ever bumped inside
+  // nextRound() in the very same synchronous update that also flips gameState to 'MATCH_DAY',
+  // so with currentRound as the sole dependency this guard could basically never see 'PLAYING'
+  // at the moment it re-evaluates -- the roll needs to happen once we're actually back on the
+  // office screen, which is exactly when gameState (not currentRound) changes to 'PLAYING'.
   useEffect(() => {
     if (userClub && gameState === 'PLAYING' && currentRound > 1) {
       // 22% chance of receiving an offer for a player in the squad
@@ -677,7 +688,7 @@ const AppContent: React.FC = () => {
         }
       }
     }
-  }, [currentRound]);
+  }, [currentRound, gameState]);
 
   const handleSkipMatch = () => {
     if (!currentMatchResult) return;
