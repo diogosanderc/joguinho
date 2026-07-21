@@ -3716,8 +3716,10 @@ const AppContent: React.FC = () => {
       {/* UNHAPPY PLAYER DISSATISFACTION MODAL -- gated to gameState !== 'MATCH_DAY' because
           its trigger effect can still land its state update after the user has already
           tapped into a new match: without this guard it renders on top of the live match
-          screen, hiding the whole thing (sim keeps ticking underneath) until dismissed. */}
-      {unhappyPlayer && gameState !== 'MATCH_DAY' && (
+          screen, hiding the whole thing (sim keeps ticking underneath) until dismissed. Also
+          deferred behind cupDrawReveal so these auto-popup modals queue one at a time instead
+          of stacking when more than one triggers on the same round transition. */}
+      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>😠</span>
@@ -3750,8 +3752,9 @@ const AppContent: React.FC = () => {
       )}
 
       {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
-          above: guard against rendering over a live match that's already in progress. */}
-      {incomingProposal && gameState !== 'MATCH_DAY' && (
+          above: guard against rendering over a live match that's already in progress, and
+          queue behind the other two auto-popup modals instead of stacking on top of them. */}
+      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
