@@ -119,12 +119,10 @@ const AppContent: React.FC = () => {
   const [varPhase, setVarPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
   const [varEvent, setVarEvent] = useState<MatchEvent | null>(null);
 
-  // Sound effects + vibration for the live match -- a device-wide preference, not tied to any
-  // particular save slot, so it's read straight from its own localStorage key.
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('elifoot_2026_sound_enabled') !== 'false');
-  const [vibrationEnabled, setVibrationEnabled] = useState<boolean>(() => localStorage.getItem('elifoot_2026_vibration_enabled') !== 'false');
-  useEffect(() => { localStorage.setItem('elifoot_2026_sound_enabled', String(soundEnabled)); }, [soundEnabled]);
-  useEffect(() => { localStorage.setItem('elifoot_2026_vibration_enabled', String(vibrationEnabled)); }, [vibrationEnabled]);
+  // Sound effects + vibration for the live match -- on by default, no UI to toggle for now (see
+  // note below), read once from their own localStorage keys in case that UI comes back later.
+  const soundEnabled = localStorage.getItem('elifoot_2026_sound_enabled') !== 'false';
+  const vibrationEnabled = localStorage.getItem('elifoot_2026_vibration_enabled') !== 'false';
 
   const apitoAudioRef = useRef<HTMLAudioElement | null>(null);
   const golAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -1968,60 +1966,10 @@ const AppContent: React.FC = () => {
               </button>
             </div>
 
-            {/* Sound/vibration settings for the live match */}
-            <div className="card" style={{ marginBottom: '14px' }}>
-              <div className="card-title">🔊 Jogo ao Vivo</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => {
-                    const next = !soundEnabled;
-                    setSoundEnabled(next);
-                    unlockAudio();
-                    // Immediate test sound so the toggle itself proves whether sound works here.
-                    if (next && golAudioRef.current) {
-                      golAudioRef.current.currentTime = 0;
-                      golAudioRef.current.play().catch(() => {});
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  style={{
-                    flex: 1, padding: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    background: soundEnabled ? 'rgba(0, 230, 118, 0.1)' : 'rgba(255,255,255,0.03)',
-                    border: soundEnabled ? '1px solid rgba(0, 230, 118, 0.3)' : '1px solid rgba(255,255,255,0.08)',
-                    color: soundEnabled ? 'var(--accent-green)' : '#9ca3af'
-                  }}
-                >
-                  {soundEnabled ? '🔊' : '🔇'} Som: {soundEnabled ? 'Ligado' : 'Desligado'}
-                </button>
-                <button
-                  onClick={() => {
-                    const next = !vibrationEnabled;
-                    setVibrationEnabled(next);
-                    // Immediate test buzz so the toggle itself proves whether vibration works
-                    // here -- note the Vibration API isn't supported on iPhone/Safari at all
-                    // (an Apple/WebKit limitation, not something a website can work around), so
-                    // on iOS this button won't ever buzz even though the setting still saves.
-                    if (next && typeof navigator !== 'undefined' && navigator.vibrate) {
-                      navigator.vibrate([200, 100, 200]);
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  style={{
-                    flex: 1, padding: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    background: vibrationEnabled ? 'rgba(0, 230, 118, 0.1)' : 'rgba(255,255,255,0.03)',
-                    border: vibrationEnabled ? '1px solid rgba(0, 230, 118, 0.3)' : '1px solid rgba(255,255,255,0.08)',
-                    color: vibrationEnabled ? 'var(--accent-green)' : '#9ca3af'
-                  }}
-                >
-                  📳 Vibração: {vibrationEnabled ? 'Ligada' : 'Desligada'}
-                </button>
-              </div>
-              {typeof navigator !== 'undefined' && !navigator.vibrate && (
-                <p style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: '8px' }}>
-                  ⚠️ Este navegador/aparelho não suporta vibração (comum no iPhone/Safari) — o som deve funcionar normalmente.
-                </p>
-              )}
-            </div>
+            {/* Sound/vibration toggle UI intentionally hidden for now (too prominent for a
+                plain web page that isn't installed as a real app yet) -- the feature itself
+                still works at its default (both on); revisit with a small, unobtrusive icon
+                once this ships as an actual app. */}
 
             {/* News feed */}
             <div className="card-title"><Activity size={18} color="var(--accent-green)" /> Feed de Notícias</div>
