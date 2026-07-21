@@ -1193,14 +1193,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           rating = Math.min(99, Math.round(p.rating * 1.10));
         }
 
-        // Consistently good form this season earns an extra 8% growth bump for next year:
+        // Consistently good form this season earns an extra 5% growth bump for next year:
         // needs a real sample of starts (10+) and to have spent most of them (75%+) rated
         // "Bom"/"Otimo" rather than "Ruim" -- rewards reliable performers, not just anyone
         // who avoided a bad-luck dip while barely playing.
         const startedRounds = p.seasonStartedRounds ?? 0;
         const goodRounds = p.seasonGoodRounds ?? 0;
         if (startedRounds >= 10 && goodRounds / startedRounds >= 0.75) {
-          rating = Math.min(99, Math.round(rating * 1.08));
+          rating = Math.min(99, Math.round(rating * 1.05));
         }
 
         // Age up a year, and let a real career progression/decline curve play out: young
