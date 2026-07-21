@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useRef } from 'react';
 import { initializeClubs, formatCurrency, getPositionGroup } from '../data/database';
 import type { Player, Club, PlayerPosition } from '../data/database';
-import { simulateMatch, generateLeagueSchedule, getAutoStarters } from '../utils/matchEngine';
-import type { MatchResult } from '../utils/matchEngine';
+import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
+import type { MatchResult, MatchEvent } from '../utils/matchEngine';
 import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
 import type { Loan } from '../utils/loanEngine';
 
@@ -89,6 +89,7 @@ interface GameContextType {
   setGameState: (state: GameState) => void;
   clearCurrentMatch: () => void;
   resimulateMidMatch: (updatedUserStarters: Player[], fromMinute: number) => void;
+  resolveMidMatchPenalty: (takerId: string, minute: number, currentUserStarters: Player[]) => MatchEvent | null;
   makeBidForPlayer: (player: Player, _sellerClubId: string, bidAmount: number) => { status: 'ACCEPTED' | 'REJECTED' | 'COUNTER'; counterAmount?: number };
   buyPlayerFromClub: (player: Player, sellerClubId: string, pricePaid: number) => void;
   manualSave: () => void;
@@ -138,6 +139,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ('MATCH_DAY') at the end of nextRound clobbers whatever real transition (SEASON_END from
   // a completed season, or from getting sacked mid-season) was supposed to happen.
   const pendingGameStateRef = useRef<GameState>('PLAYING');
+  // Guards against nextRound() running twice for the same tap -- a fast double-tap (common on
+  // mobile) fires the click handler twice within the same synchronous event, before React has
+  // re-rendered to hide/disable the "Iniciar Partida" button, so a state-based guard wouldn't
+  // see the change in time. The second call would silently simulate and advance an extra round
+  // (using the same stale currentRound) while its own live match view got overwritten before
+  // ever being seen -- exactly the "round advanced but no live match showed" symptom.
+  const isProcessingRoundRef = useRef(false);
   const setActiveSlot = (slot: number | null) => {
     currentSlotRef.current = slot;
     setCurrentSlotState(slot);
@@ -294,6 +302,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Play the current round (simulates all matches including player's)
   const nextRound = (playerStarters: Player[]) => {
+    if (!userClub || isProcessingRoundRef.current) return;
+    isProcessingRoundRef.current = true;
+    try {
+      nextRoundImpl(playerStarters);
+    } finally {
+      isProcessingRoundRef.current = false;
+    }
+  };
+
+  const nextRoundImpl = (playerStarters: Player[]) => {
     if (!userClub) return;
 
     // Accumulates every news item pushed during this round so saveGame() below
@@ -1854,7 +1872,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // this, a "substituted out" player could still show up scoring or picking up cards later in
   // the same match. Events/score/stats up to fromMinute are frozen exactly as already shown;
   // only the remaining minutes are (re)computed with the updated lineup.
-  const resimulateMidMatch = (updatedUserStarters: Player[], fromMinute: number) => {
+  const resimulateMidMatch = (updatedUserStarters: Player[], fromMinute: number, priorEventsOverride?: MatchEvent[]) => {
     if (!currentMatch || !currentMatchResult || !userClubId) return;
     const isHome = currentMatch.homeId === userClubId;
     const homeClubObj = clubs.find(c => c.id === currentMatch.homeId);
@@ -1862,7 +1880,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!homeClubObj || !awayClubObj) return;
     const opponent = isHome ? awayClubObj : homeClubObj;
 
-    const priorEvents = currentMatchResult.events.filter(e => e.minute <= fromMinute);
+    const priorEvents = priorEventsOverride ?? currentMatchResult.events.filter(e => e.minute <= fromMinute);
     const priorRedCardedNames = new Set(priorEvents.filter(e => e.type === 'RED').map(e => e.player));
     const priorYellowNames = new Set(priorEvents.filter(e => e.type === 'YELLOW').map(e => e.player));
 
@@ -1877,10 +1895,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const homeStarters = isHome ? userStarters : opponentStarters;
     const awayStarters = isHome ? opponentStarters : userStarters;
 
+    // Score to resume from is counted directly off the events that actually happened up to
+    // fromMinute -- currentMatchResult.homeScore/awayScore is the FINAL tally of the original,
+    // now-discarded full-match simulation, which already includes goals scored after fromMinute
+    // that never happened live, so using it here would double count them.
+    const homeScoreSoFar = priorEvents.filter(e => e.type === 'GOAL' && e.clubId === homeClubObj.id).length;
+    const awayScoreSoFar = priorEvents.filter(e => e.type === 'GOAL' && e.clubId === awayClubObj.id).length;
+
     const result = simulateMatch(homeClubObj, awayClubObj, homeStarters, awayStarters, {
       startMinute: fromMinute + 1,
-      initialHomeScore: currentMatchResult.homeScore,
-      initialAwayScore: currentMatchResult.awayScore,
+      initialHomeScore: homeScoreSoFar,
+      initialAwayScore: awayScoreSoFar,
       initialHomeStats: currentMatchResult.homeStats,
       initialAwayStats: currentMatchResult.awayStats,
       priorEvents,
@@ -1888,6 +1913,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     setCurrentMatchResult(result);
+  };
+
+  // Resolve a penalty for the user's team once the manager has picked who takes it live (the
+  // "escolher batedor" modal), overriding whatever taker/outcome the original one-shot
+  // simulation had pre-baked for that minute, then re-simulates the rest of the match so the
+  // corrected outcome carries forward consistently (score, and any knock-on event odds).
+  const resolveMidMatchPenalty = (takerId: string, minute: number, currentUserStarters: Player[]): MatchEvent | null => {
+    if (!currentMatch || !currentMatchResult || !userClubId) return null;
+    const isHome = currentMatch.homeId === userClubId;
+    const userClubObj = clubs.find(c => c.id === userClubId);
+    const taker = userClubObj?.squad.find(p => p.id === takerId);
+    if (!taker) return null;
+
+    const { scored, saved } = resolvePenaltyOutcome(taker.rating, isHome);
+    const type: MatchEvent['type'] = scored ? 'GOAL' : saved ? 'SHOT_SAVED' : 'MISS';
+    const description = scored
+      ? `Pênalti! ${taker.name} cobra e converte em gol!`
+      : saved
+      ? `Pênalti! ${taker.name} cobra, mas o goleiro defende!`
+      : `Pênalti! ${taker.name} cobra e manda a bola para fora!`;
+    const newEvent: MatchEvent = { minute, type, player: taker.name, clubId: userClubId, description, isPenalty: true };
+
+    const originalSpecial = currentMatchResult.events.find(e => e.minute === minute && e.isPenalty);
+    const priorEvents = currentMatchResult.events
+      .filter(e => e.minute <= minute && e !== originalSpecial)
+      .concat(newEvent);
+
+    resimulateMidMatch(currentUserStarters, minute, priorEvents);
+    return newEvent;
   };
 
   // Renew player contract. Renewing always makes the player happier (clears dissatisfaction,
@@ -2075,6 +2129,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setGameState,
       clearCurrentMatch,
       resimulateMidMatch,
+      resolveMidMatchPenalty,
       makeBidForPlayer,
       buyPlayerFromClub,
       manualSave,

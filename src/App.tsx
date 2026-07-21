@@ -18,7 +18,7 @@ const AppContent: React.FC = () => {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer,
-    upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch,
+    upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
 
@@ -107,12 +107,14 @@ const AppContent: React.FC = () => {
   const [injuryPlayer, setInjuryPlayer] = useState<Player | null>(null);
   const [savesModalOpen, setSavesModalOpen] = useState(false);
 
-  // Penalty and VAR suspense modals -- 'WAITING' shows the setup/analysis beat, then after a
-  // few seconds flips to 'RESULT' (which is also when the event actually gets committed to the
-  // feed/score), then auto-closes.
+  // Penalty and VAR suspense modals. For the user's own penalties, 'CHOOSE' comes first so the
+  // manager picks who takes it live; then (for both sides) 'WAITING' shows the setup/analysis
+  // beat, and after a few seconds flips to 'RESULT' (which is also when the event actually gets
+  // committed to the feed/score), then auto-closes.
   const [penaltyModalOpen, setPenaltyModalOpen] = useState(false);
-  const [penaltyPhase, setPenaltyPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
+  const [penaltyPhase, setPenaltyPhase] = useState<'CHOOSE' | 'WAITING' | 'RESULT'>('WAITING');
   const [penaltyEvent, setPenaltyEvent] = useState<MatchEvent | null>(null);
+  const [chosenPenaltyTakerId, setChosenPenaltyTakerId] = useState<string | null>(null);
   const [varModalOpen, setVarModalOpen] = useState(false);
   const [varPhase, setVarPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
   const [varEvent, setVarEvent] = useState<MatchEvent | null>(null);
@@ -460,6 +462,7 @@ const AppContent: React.FC = () => {
       setSubsUsed(0);
       setPenaltyModalOpen(false);
       setPenaltyEvent(null);
+      setChosenPenaltyTakerId(null);
       setVarModalOpen(false);
       setVarEvent(null);
     }
@@ -550,8 +553,15 @@ const AppContent: React.FC = () => {
 
         if (specialEvent) {
           if (specialEvent.isPenalty) {
+            // The user's own penalty gives the manager a "escolher batedor" modal to pick who
+            // takes it live, overriding whoever the pre-simulation baked in; opponent penalties
+            // (or the rare case with no eligible outfield player left on the pitch) keep the
+            // automatic reveal flow.
+            const eligibleTakers = midMatchStarters.filter(p => p.position !== 'GOL');
+            const canChoose = specialEvent.clubId === userClubId && eligibleTakers.length > 0;
             setPenaltyEvent(specialEvent);
-            setPenaltyPhase('WAITING');
+            setChosenPenaltyTakerId(null);
+            setPenaltyPhase(canChoose ? 'CHOOSE' : 'WAITING');
             setPenaltyModalOpen(true);
           } else {
             setVarEvent(specialEvent);
@@ -702,6 +712,18 @@ const AppContent: React.FC = () => {
       description: `Substituição no ${userClub?.name}: sai ${outPlayer.name}, entra ${inPlayer.name}.`
     };
     setSimEvents(prev => [...prev, subEvent]);
+  };
+
+  // User confirmed who takes their team's live penalty -- resolve the outcome for that specific
+  // player (overriding whatever the pre-simulation had baked in) and hand off to the existing
+  // WAITING -> RESULT suspense reveal, unchanged.
+  const handleConfirmPenaltyTaker = () => {
+    if (!penaltyEvent || !chosenPenaltyTakerId) return;
+    const resolvedEvent = resolveMidMatchPenalty(chosenPenaltyTakerId, penaltyEvent.minute, midMatchStarters);
+    if (resolvedEvent) {
+      setPenaltyEvent(resolvedEvent);
+    }
+    setPenaltyPhase('WAITING');
   };
 
   const getStandingsData = () => {
@@ -1167,7 +1189,7 @@ const AppContent: React.FC = () => {
             </button>
             {!matchDone && (
               <button
-                onClick={() => setMidMatchSubModal(true)}
+                onClick={() => { setMidMatchSubModal(true); setIsSimPaused(true); }}
                 disabled={subsUsed >= MAX_SUBS}
                 className="btn btn-secondary"
                 style={{
@@ -1269,30 +1291,69 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
-        {/* PENALTY MODAL (auto-opens when a penalty is awarded, with a suspenseful reveal) */}
+        {/* PENALTY MODAL. For the user's own penalty, opens on 'CHOOSE' first so the manager
+            picks the taker live; then (both sides) the usual suspenseful reveal plays out. */}
         {penaltyModalOpen && penaltyEvent && (() => {
           const isUserClub = penaltyEvent.clubId === userClubId;
           const takerClubName = isUserClub ? userClub.name : opponent.name;
           const scored = penaltyEvent.type === 'GOAL';
+          const eligibleTakers = midMatchStarters.filter(p => p.position !== 'GOL');
           return (
             <div className="modal-overlay">
               <div className="modal-content" style={{ padding: '24px', maxWidth: '340px', textAlign: 'center' }}>
                 <span style={{ fontSize: '2.6rem' }}>⚽</span>
                 <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>PÊNALTI!</h3>
                 <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginTop: '4px' }}>{takerClubName} tem a chance na marca da cal.</p>
-                <div style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: '8px', padding: '10px', margin: '14px 0' }}>
-                  <span style={{ fontWeight: 700 }}>🎯 Batedor: {penaltyEvent.player}</span>
-                </div>
-                {penaltyPhase === 'WAITING' ? (
-                  <div className="match-time-pill" style={{ fontSize: '0.9rem', padding: '8px 18px' }}>Cobrando...</div>
+
+                {penaltyPhase === 'CHOOSE' ? (
+                  <>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--accent-gold)', fontWeight: 700, margin: '12px 0 6px' }}>Escolha quem vai bater:</p>
+                    <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
+                      {eligibleTakers.map(p => (
+                        <div
+                          key={p.id}
+                          onClick={() => setChosenPenaltyTakerId(p.id)}
+                          style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
+                            padding: '8px 10px', borderRadius: '8px', cursor: 'pointer',
+                            background: chosenPenaltyTakerId === p.id ? 'rgba(255, 193, 7, 0.15)' : 'rgba(255,255,255,0.03)',
+                            border: chosenPenaltyTakerId === p.id ? '1px solid var(--accent-gold)' : '1px solid rgba(255,255,255,0.06)'
+                          }}
+                        >
+                          <span style={{ fontSize: '0.82rem', fontWeight: chosenPenaltyTakerId === p.id ? 700 : 500 }}>
+                            {userClub.penaltyTakerId === p.id ? '🎯 ' : ''}{p.name}{' '}
+                            <span style={{ color: '#9ca3af', fontWeight: 400 }}>({p.position})</span>
+                          </span>
+                          <span className={`rating-badge ${p.rating >= 80 ? 'gold' : p.rating >= 70 ? 'silver' : ''}`}>{p.rating}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      disabled={!chosenPenaltyTakerId}
+                      onClick={handleConfirmPenaltyTaker}
+                      style={{ marginTop: '14px', width: '100%', opacity: chosenPenaltyTakerId ? 1 : 0.5, cursor: chosenPenaltyTakerId ? 'pointer' : 'not-allowed' }}
+                    >
+                      ⚽ Confirmar Cobrança
+                    </button>
+                  </>
                 ) : (
-                  <div style={{ margin: '10px 0' }}>
-                    {scored ? (
-                      <span style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent-green)' }}>⚽ GOL!</span>
+                  <>
+                    <div style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: '8px', padding: '10px', margin: '14px 0' }}>
+                      <span style={{ fontWeight: 700 }}>🎯 Batedor: {penaltyEvent.player}</span>
+                    </div>
+                    {penaltyPhase === 'WAITING' ? (
+                      <div className="match-time-pill" style={{ fontSize: '0.9rem', padding: '8px 18px' }}>Cobrando...</div>
                     ) : (
-                      <span style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent-red)' }}>❌ PERDEU!</span>
+                      <div style={{ margin: '10px 0' }}>
+                        {scored ? (
+                          <span style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent-green)' }}>⚽ GOL!</span>
+                        ) : (
+                          <span style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent-red)' }}>❌ PERDEU!</span>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             </div>

@@ -133,6 +133,27 @@ export const calculateTeamForces = (starters: Player[]) => {
   return { defense, midfield, attack, overall };
 };
 
+// Resolves the outcome of a penalty kick for a given taker's rating.
+// Baseline: 75% scored, 25% missed overall (split between off-target and saved) -- matching
+// real-world penalty conversion rates. Rating and home advantage nudge it a little either way.
+// Exported standalone so a live, user-chosen taker (picked from the in-match "escolher batedor"
+// modal) can be resolved the same way as the auto-picked taker inside simulateMatch.
+export const resolvePenaltyOutcome = (takerRating: number, isHome: boolean): { scored: boolean; saved: boolean } => {
+  const ratingAdj = (takerRating - 75) * 0.0015;
+  const homeBonus = isHome ? 0.02 : 0;
+
+  let missChance = 0.10 - ratingAdj * 0.4 - homeBonus * 0.3; // off-target portion of the 25%
+  let savedChance = 0.15 - ratingAdj * 0.4 - homeBonus * 0.3; // keeper-save portion of the 25%
+  missChance = Math.max(0.04, Math.min(0.15, missChance));
+  savedChance = Math.max(0.06, Math.min(0.20, savedChance));
+
+  const roll = Math.random();
+  const scored = roll >= missChance + savedChance;
+  const saved = !scored && roll < savedChance;
+
+  return { scored, saved };
+};
+
 // Simulates a full 90-minute match (or the remainder of one -- see SimulateMatchOptions)
 export const simulateMatch = (
   homeClub: Club,
@@ -262,27 +283,17 @@ export const simulateMatch = (
   };
 
   // Resolves a penalty kick: the designated taker (if set and available) takes it,
-  // otherwise the best available outfield shooter steps up.
-  // Baseline: 75% scored, 25% missed overall (split between off-target and saved) -- matching
-  // real-world penalty conversion rates. Rating and home advantage nudge it a little either way.
+  // otherwise the best available outfield shooter steps up. When it's the user's team, the
+  // live "escolher batedor" modal overrides this auto-pick before the outcome is revealed (see
+  // resolveMidMatchPenalty in GameContext.tsx) -- this auto-taker is only what plays out for
+  // AI-controlled clubs, or as the pre-baked default before the user gets a chance to override it.
   const takePenalty = (club: Club, starters: Player[], isHome: boolean): { taker: Player; scored: boolean; saved: boolean } => {
     const eligible = starters.filter(p => p.position !== 'GOL' && !redCarded.has(p.id));
     const pool = eligible.length > 0 ? eligible : starters.filter(p => !redCarded.has(p.id));
     const designated = club.penaltyTakerId ? pool.find(p => p.id === club.penaltyTakerId) : undefined;
     const taker = designated || choosePlayer(pool.length > 0 ? pool : starters, ['CA', 'PON', 'MEI', 'VOL']);
 
-    const ratingAdj = (taker.rating - 75) * 0.0015;
-    const homeBonus = isHome ? 0.02 : 0;
-
-    let missChance = 0.10 - ratingAdj * 0.4 - homeBonus * 0.3; // off-target portion of the 25%
-    let savedChance = 0.15 - ratingAdj * 0.4 - homeBonus * 0.3; // keeper-save portion of the 25%
-    missChance = Math.max(0.04, Math.min(0.15, missChance));
-    savedChance = Math.max(0.06, Math.min(0.20, savedChance));
-
-    const roll = Math.random();
-    const scored = roll >= missChance + savedChance;
-    const saved = !scored && roll < savedChance;
-
+    const { scored, saved } = resolvePenaltyOutcome(taker.rating, isHome);
     return { taker, scored, saved };
   };
 
