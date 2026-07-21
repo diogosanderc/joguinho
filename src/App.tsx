@@ -120,10 +120,10 @@ const AppContent: React.FC = () => {
   const [varPhase, setVarPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
   const [varEvent, setVarEvent] = useState<MatchEvent | null>(null);
 
-  // Sound effects + vibration for the live match -- on by default, no UI to toggle for now (see
-  // note below), read once from their own localStorage keys in case that UI comes back later.
-  const soundEnabled = localStorage.getItem('elifoot_2026_sound_enabled') !== 'false';
-  const vibrationEnabled = localStorage.getItem('elifoot_2026_vibration_enabled') !== 'false';
+  // Sound effects + vibration for the live match -- off by default (no UI to toggle for now),
+  // read once from their own localStorage keys in case a settings UI opts a user back in later.
+  const soundEnabled = localStorage.getItem('elifoot_2026_sound_enabled') === 'true';
+  const vibrationEnabled = localStorage.getItem('elifoot_2026_vibration_enabled') === 'true';
 
   const apitoAudioRef = useRef<HTMLAudioElement | null>(null);
   const golAudioRef = useRef<HTMLAudioElement | null>(null);
