@@ -837,6 +837,30 @@ const AppContent: React.FC = () => {
     setMatchDone(true);
   };
 
+  // Reset the live-match clock/score/flags SYNCHRONOUSLY at the moment the user starts a match,
+  // batched in the same click as nextRound()/startCupMatch(). The [gameState, currentMatch]
+  // effect below also resets these, but that runs across two commits -- there's a first commit
+  // where the overlay can briefly mount still carrying the *previous* match's matchDone=true /
+  // simMinute=90, which reads as "the round played but the live match was skipped straight to
+  // the result." Doing it here guarantees the overlay always mounts at kickoff (0', not done),
+  // independent of effect timing. Also clears any pending office-screen modal so it can never
+  // sit on top of the live match.
+  const beginMatchKickoff = () => {
+    setSimMinute(0);
+    setSimScoreHome(0);
+    setSimScoreAway(0);
+    setSimEvents([]);
+    setMatchDone(false);
+    setIsSimPaused(false);
+    setSubsUsed(0);
+    setHalftimeShown(false);
+    setHalftimeModalOpen(false);
+    setPenaltyModalOpen(false);
+    setVarModalOpen(false);
+    setIncomingProposal(null);
+    setUnhappyPlayer(null);
+  };
+
   // Helper to make substitution in current match
   const handleMidMatchSub = (inPlayer: Player, outPlayer: Player) => {
     if (!currentMatch || !currentMatchResult) return;
@@ -2096,7 +2120,7 @@ const AppContent: React.FC = () => {
                   )}
                   <button
                     className="btn btn-primary"
-                    onClick={() => { unlockAudio(); startCupMatch(starters); }}
+                    onClick={() => { unlockAudio(); beginMatchKickoff(); startCupMatch(starters); }}
                     style={{ marginTop: '16px', height: '48px', background: 'var(--accent-gold)' }}
                   >
                     <Play size={18} fill="#000" /> Iniciar Partida da Copa
@@ -2143,7 +2167,7 @@ const AppContent: React.FC = () => {
 
                 <button
                   className="btn btn-primary"
-                  onClick={() => { unlockAudio(); nextRound(starters); }}
+                  onClick={() => { unlockAudio(); beginMatchKickoff(); nextRound(starters); }}
                   style={{ marginTop: '16px', height: '48px' }}
                 >
                   <Play size={18} fill="#000" /> Iniciar Partida
