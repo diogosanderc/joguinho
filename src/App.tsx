@@ -595,11 +595,11 @@ const AppContent: React.FC = () => {
     if (!currentMatch || !currentMatchResult) return;
     if (subsUsed >= MAX_SUBS) return;
 
-    // Replace in starters
+    // Replace in starters. The modal stays open afterward -- the user can queue up to
+    // MAX_SUBS swaps in one sitting instead of reopening it one substitution at a time.
     const nextStarters = midMatchStarters.map(p => p.id === outPlayer.id ? inPlayer : p);
     setMidMatchStarters(nextStarters);
     setSubsUsed(prev => prev + 1);
-    setMidMatchSubModal(false);
 
     // Append sub news/event
     const subEvent = {
@@ -1330,7 +1330,7 @@ const AppContent: React.FC = () => {
                   {subsUsed >= MAX_SUBS && <span style={{ fontSize: '0.72rem', color: 'var(--accent-red)' }}>Limite atingido</span>}
                 </div>
 
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '12px' }}>Ajuste seus titulares. Substitua jogadores cansados ou taticamente inviáveis.</p>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '12px' }}>Ajuste seus titulares. Você pode fazer várias trocas nesta mesma janela — uma, duas, três, até {MAX_SUBS} — sem precisar reabrir a cada substituição.</p>
 
                 <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo ({midMatchStarters.length}):</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', marginBottom: '14px' }}>
@@ -1397,12 +1397,11 @@ const AppContent: React.FC = () => {
                                 <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>({bench.rating})</span>
                                 <ConditionBadge trend={bench.performanceTrend} />
                               </div>
-                              <button 
+                              <button
                                 onClick={() => {
                                   const outP = midMatchStarters[subslotIndex];
                                   handleMidMatchSub(bench, outP);
                                   setSubslotIndex(null);
-                                  setIsSimPaused(false);
                                 }}
                                 style={{ background: 'var(--accent-green)', color: 'black', border: 'none', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
                               >
@@ -1415,6 +1414,14 @@ const AppContent: React.FC = () => {
                   </>
                   );
                 })()}
+
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', marginTop: '14px' }}
+                  onClick={() => { setMidMatchSubModal(false); setSubslotIndex(null); setIsSimPaused(false); }}
+                >
+                  ▶️ Concluir e Voltar ao Jogo
+                </button>
               </div>
             </div>
           </div>
