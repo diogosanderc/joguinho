@@ -532,6 +532,10 @@ const AppContent: React.FC = () => {
   // Live match simulator runner
   const feedEndRef = useRef<HTMLDivElement>(null);
   const userMatchRef = useRef<HTMLDivElement>(null);
+  // Cooldown so incoming transfer offers can't fire on back-to-back rounds -- a stacked squad
+  // of stars was triggering one nearly every round late in the season, making it feel like the
+  // office screen never let the user get back to actually playing.
+  const lastOfferRoundRef = useRef(0);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll to the top whenever the visible tab changes or a match just ended
@@ -787,9 +791,10 @@ const AppContent: React.FC = () => {
   // at the moment it re-evaluates -- the roll needs to happen once we're actually back on the
   // office screen, which is exactly when gameState (not currentRound) changes to 'PLAYING'.
   useEffect(() => {
-    if (userClub && gameState === 'PLAYING' && currentRound > 1) {
-      // 22% chance of receiving an offer for a player in the squad
-      if (Math.random() < 0.22) {
+    if (userClub && gameState === 'PLAYING' && currentRound > 1 && currentRound - lastOfferRoundRef.current >= 4) {
+      // 15% chance of receiving an offer for a player in the squad, at most once every 4 rounds
+      if (Math.random() < 0.15) {
+        lastOfferRoundRef.current = currentRound;
         // Only target players who are not locked and are either a clear standout (star profile,
         // highly rated, or top scorer) OR a promising young talent on the rise (system-identified:
         // 23 or younger, decent rating, and trending up in form).
