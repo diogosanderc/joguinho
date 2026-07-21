@@ -4,6 +4,7 @@ import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 import { calculateTeamForces } from './utils/matchEngine';
+import type { MatchEvent } from './utils/matchEngine';
 import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
@@ -105,6 +106,16 @@ const AppContent: React.FC = () => {
   const [lastInjuryMinute, setLastInjuryMinute] = useState(-1);
   const [injuryPlayer, setInjuryPlayer] = useState<Player | null>(null);
   const [savesModalOpen, setSavesModalOpen] = useState(false);
+
+  // Penalty and VAR suspense modals -- 'WAITING' shows the setup/analysis beat, then after a
+  // few seconds flips to 'RESULT' (which is also when the event actually gets committed to the
+  // feed/score), then auto-closes.
+  const [penaltyModalOpen, setPenaltyModalOpen] = useState(false);
+  const [penaltyPhase, setPenaltyPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
+  const [penaltyEvent, setPenaltyEvent] = useState<MatchEvent | null>(null);
+  const [varModalOpen, setVarModalOpen] = useState(false);
+  const [varPhase, setVarPhase] = useState<'WAITING' | 'RESULT'>('WAITING');
+  const [varEvent, setVarEvent] = useState<MatchEvent | null>(null);
 
   // Sponsors list generator (deterministic based on club reputation)
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
@@ -429,8 +440,11 @@ const AppContent: React.FC = () => {
     scrollableRef.current?.scrollTo(0, 0);
   }, [activeTab, gameState]);
 
+  // Keyed on `currentMatch` (the fixture itself), not `currentMatchResult` -- the latter also
+  // gets replaced in place when a mid-match substitution re-simulates the rest of an ongoing
+  // match, and that must NOT reset the clock/score/feed back to kickoff.
   useEffect(() => {
-    if (gameState === 'MATCH_DAY' && currentMatchResult) {
+    if (gameState === 'MATCH_DAY' && currentMatch) {
       setSimMinute(0);
       setSimScoreHome(0);
       setSimScoreAway(0);
@@ -444,8 +458,12 @@ const AppContent: React.FC = () => {
       setInjuryModalOpen(false);
       setLastInjuryMinute(-1);
       setSubsUsed(0);
+      setPenaltyModalOpen(false);
+      setPenaltyEvent(null);
+      setVarModalOpen(false);
+      setVarEvent(null);
     }
-  }, [gameState, currentMatchResult]);
+  }, [gameState, currentMatch]);
 
   // Auto-open half-time substitution modal at minute 45
   useEffect(() => {
@@ -506,13 +524,19 @@ const AppContent: React.FC = () => {
         const nextMin = simMinute + 1;
         setSimMinute(nextMin);
 
-        // Find events that happened in this minute
+        // Find events that happened in this minute. A penalty or VAR-reviewed goal gets held
+        // back for the suspense modal instead of landing on the feed/scoreboard immediately --
+        // only one such "special" event is handled per minute, which is already extremely rare
+        // to double up on.
         const eventsInMin = currentMatchResult.events.filter(e => e.minute === nextMin);
-        if (eventsInMin.length > 0) {
-          setSimEvents(prev => [...prev, ...eventsInMin]);
-          
+        const specialEvent = eventsInMin.find(e => e.isPenalty || e.varChecked);
+        const normalEvents = specialEvent ? eventsInMin.filter(e => e !== specialEvent) : eventsInMin;
+
+        if (normalEvents.length > 0) {
+          setSimEvents(prev => [...prev, ...normalEvents]);
+
           // Update score in real time
-          eventsInMin.forEach(ev => {
+          normalEvents.forEach(ev => {
             if (ev.type === 'GOAL') {
               const isHomeGoal = ev.clubId === currentMatch?.homeId;
               if (isHomeGoal) {
@@ -524,6 +548,19 @@ const AppContent: React.FC = () => {
           });
         }
 
+        if (specialEvent) {
+          if (specialEvent.isPenalty) {
+            setPenaltyEvent(specialEvent);
+            setPenaltyPhase('WAITING');
+            setPenaltyModalOpen(true);
+          } else {
+            setVarEvent(specialEvent);
+            setVarPhase('WAITING');
+            setVarModalOpen(true);
+          }
+          setIsSimPaused(true);
+        }
+
         // Scroll to bottom of events feed
         feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       } else {
@@ -533,6 +570,57 @@ const AppContent: React.FC = () => {
 
     return () => clearTimeout(timer);
   }, [simMinute, isSimPaused, matchDone, gameState, currentMatchResult, simSpeed]);
+
+  // Penalty suspense: hold on "cobrando..." for a beat, then reveal the outcome (committing it
+  // to the feed/scoreboard only at that point), then auto-close and resume play.
+  useEffect(() => {
+    if (!penaltyModalOpen || penaltyPhase !== 'WAITING' || !penaltyEvent) return;
+    const t = setTimeout(() => {
+      const ev = penaltyEvent;
+      setSimEvents(prev => [...prev, ev]);
+      if (ev.type === 'GOAL') {
+        const isHomeGoal = ev.clubId === currentMatch?.homeId;
+        if (isHomeGoal) setSimScoreHome(prev => prev + 1); else setSimScoreAway(prev => prev + 1);
+      }
+      setPenaltyPhase('RESULT');
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [penaltyModalOpen, penaltyPhase, penaltyEvent, currentMatch]);
+
+  useEffect(() => {
+    if (!penaltyModalOpen || penaltyPhase !== 'RESULT') return;
+    const t = setTimeout(() => {
+      setPenaltyModalOpen(false);
+      setPenaltyEvent(null);
+      setIsSimPaused(false);
+    }, 1800);
+    return () => clearTimeout(t);
+  }, [penaltyModalOpen, penaltyPhase]);
+
+  // VAR suspense: same beat structure -- "analisando..." then the confirmed/overturned result.
+  useEffect(() => {
+    if (!varModalOpen || varPhase !== 'WAITING' || !varEvent) return;
+    const t = setTimeout(() => {
+      const ev = varEvent;
+      setSimEvents(prev => [...prev, ev]);
+      if (ev.type === 'GOAL') {
+        const isHomeGoal = ev.clubId === currentMatch?.homeId;
+        if (isHomeGoal) setSimScoreHome(prev => prev + 1); else setSimScoreAway(prev => prev + 1);
+      }
+      setVarPhase('RESULT');
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [varModalOpen, varPhase, varEvent, currentMatch]);
+
+  useEffect(() => {
+    if (!varModalOpen || varPhase !== 'RESULT') return;
+    const t = setTimeout(() => {
+      setVarModalOpen(false);
+      setVarEvent(null);
+      setIsSimPaused(false);
+    }, 1800);
+    return () => clearTimeout(t);
+  }, [varModalOpen, varPhase]);
 
   // Auto-scroll to user's match row at minute 1 (start of match)
   useEffect(() => {
@@ -1180,6 +1268,61 @@ const AppContent: React.FC = () => {
             </button>
           </div>
         )}
+
+        {/* PENALTY MODAL (auto-opens when a penalty is awarded, with a suspenseful reveal) */}
+        {penaltyModalOpen && penaltyEvent && (() => {
+          const isUserClub = penaltyEvent.clubId === userClubId;
+          const takerClubName = isUserClub ? userClub.name : opponent.name;
+          const scored = penaltyEvent.type === 'GOAL';
+          return (
+            <div className="modal-overlay">
+              <div className="modal-content" style={{ padding: '24px', maxWidth: '340px', textAlign: 'center' }}>
+                <span style={{ fontSize: '2.6rem' }}>⚽</span>
+                <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>PÊNALTI!</h3>
+                <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginTop: '4px' }}>{takerClubName} tem a chance na marca da cal.</p>
+                <div style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: '8px', padding: '10px', margin: '14px 0' }}>
+                  <span style={{ fontWeight: 700 }}>🎯 Batedor: {penaltyEvent.player}</span>
+                </div>
+                {penaltyPhase === 'WAITING' ? (
+                  <div className="match-time-pill" style={{ fontSize: '0.9rem', padding: '8px 18px' }}>Cobrando...</div>
+                ) : (
+                  <div style={{ margin: '10px 0' }}>
+                    {scored ? (
+                      <span style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent-green)' }}>⚽ GOL!</span>
+                    ) : (
+                      <span style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent-red)' }}>❌ PERDEU!</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* VAR MODAL (auto-opens on a VAR-reviewed goal, with a suspenseful reveal) */}
+        {varModalOpen && varEvent && (() => {
+          const confirmed = varEvent.type === 'GOAL';
+          return (
+            <div className="modal-overlay">
+              <div className="modal-content" style={{ padding: '24px', maxWidth: '340px', textAlign: 'center' }}>
+                <span style={{ fontSize: '2.6rem' }}>📺</span>
+                <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>VAR</h3>
+                <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginTop: '4px' }}>Possível impedimento no lance de {varEvent.player}.</p>
+                {varPhase === 'WAITING' ? (
+                  <div className="match-time-pill" style={{ fontSize: '0.9rem', padding: '8px 18px', marginTop: '14px' }}>🔎 Analisando...</div>
+                ) : (
+                  <div style={{ margin: '14px 0' }}>
+                    {confirmed ? (
+                      <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-green)' }}>⚽ GOL CONFIRMADO!</span>
+                    ) : (
+                      <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-red)' }}>🚫 IMPEDIMENTO! Sem gol.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* HALF-TIME MODAL (auto-opens at 45') */}
         {halftimeModalOpen && (

@@ -11,6 +11,7 @@ export interface MatchEvent {
   description: string;
   isPenalty?: boolean;
   isHeader?: boolean;
+  varChecked?: boolean; // this goal (allowed or disallowed) went through a VAR offside review
 }
 
 export interface MatchStats {
@@ -385,6 +386,7 @@ export const simulateMatch = (
                 type: 'MISS',
                 player: scorer.name,
                 clubId: homeClub.id,
+                varChecked: true,
                 description: `Gol anulado! O VAR foi acionado e confirmou impedimento na jogada de ${scorer.name}.`
               });
             } else {
@@ -395,6 +397,7 @@ export const simulateMatch = (
                 player: scorer.name,
                 clubId: homeClub.id,
                 isHeader,
+                varChecked: reviewed,
                 description: reviewed
                   ? `Gol! Após revisão do VAR, a arbitragem confirma o lance: ${scorer.name} balança as redes para o ${homeClub.name}!`
                   : isHeader
@@ -455,6 +458,7 @@ export const simulateMatch = (
                 type: 'MISS',
                 player: scorer.name,
                 clubId: awayClub.id,
+                varChecked: true,
                 description: `Gol anulado! O VAR foi acionado e confirmou impedimento na jogada de ${scorer.name}.`
               });
             } else {
@@ -465,6 +469,7 @@ export const simulateMatch = (
                 player: scorer.name,
                 clubId: awayClub.id,
                 isHeader,
+                varChecked: reviewed,
                 description: reviewed
                   ? `Gol! Após revisão do VAR, a arbitragem confirma o lance: ${scorer.name} balança as redes para o ${awayClub.name}!`
                   : isHeader
