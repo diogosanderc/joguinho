@@ -367,8 +367,11 @@ export const simulateMatch = (
         // Home attacks! Compare Home Attack vs Away Defense
         homeStats.shots++;
 
-        // A fraction of attacking sequences end in a penalty instead of a normal shot
-        if (Math.random() < 0.06) {
+        // A fraction of attacking sequences end in a penalty instead of a normal shot.
+        // Lowered from 0.06 -- that averaged ~0.6 penalties per match (both teams combined),
+        // noticeably more than real-world frequency and one interactive "escolher batedor"
+        // interruption too many for the user's taste. 0.03 lands closer to ~0.3/match.
+        if (Math.random() < 0.03) {
           const { taker, scored, saved } = takePenalty(homeClub, homeStarters, true);
           if (scored) {
             homeScore++;
@@ -442,7 +445,7 @@ export const simulateMatch = (
         // Away attacks! Compare Away Attack vs Home Defense
         awayStats.shots++;
 
-        if (Math.random() < 0.06) {
+        if (Math.random() < 0.03) {
           const { taker, scored, saved } = takePenalty(awayClub, awayStarters, false);
           if (scored) {
             awayScore++;
