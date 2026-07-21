@@ -228,6 +228,32 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Auto-save state on changes — always writes to the campaign's own slot
+  // Old rounds' full event feeds (goal-by-goal, cards, stats) are never read by anything once
+  // that round is over -- the "other matches" board only shows the round that just finished,
+  // and the season history tab only needs the final score. Keeping every match's full event
+  // list forever was the single biggest driver of save-size growth (the save was already ~0.8MB
+  // at round 1 and heading past 3MB by round 38), which is how a save can quietly cross a
+  // browser's localStorage quota deep into a season. Stripping events/stats from anything older
+  // than the last 2 rounds keeps the save flat for the rest of the season instead of growing
+  // every single round.
+  const slimOldMatchEvents = (schedule: LeagueMatch[], currentRoundNum: number): LeagueMatch[] =>
+    schedule.map(m => {
+      if (!m.result || !m.simulated || m.round >= currentRoundNum - 1) return m;
+      if (m.result.events.length === 0 && m.result.homeStats.shots === 0 && m.result.attendance === undefined) return m;
+      return {
+        ...m,
+        result: {
+          homeScore: m.result.homeScore,
+          awayScore: m.result.awayScore,
+          events: [],
+          homeStats: { shots: 0, possession: 0, fouls: 0, corners: 0 },
+          awayStats: { shots: 0, possession: 0, fouls: 0, corners: 0 }
+        }
+      };
+    });
+
+  const saveFailureWarnedRef = useRef(false);
+
   const saveGame = (
     state: GameState,
     name: string,
@@ -243,7 +269,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     upgrade: StadiumUpgrade | null,
     sponsorsList: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>
   ) => {
-    const data = {
+    if (!currentSlotRef.current) return;
+    const slot = currentSlotRef.current;
+
+    const buildData = (schedule: LeagueMatch[], newsFeed: NewsItem[]) => ({
       dbVersion: 3, // Identificador da versão atualizada dos elencos de 2026
       gameState: state,
       managerName: name,
@@ -251,19 +280,40 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentRound: round,
       clubs: currentClubs,
       userClubId: clubId,
-      schedule: currentSchedule,
+      schedule,
       marketPlayers: market,
       offers: jobOffers,
-      news: feed,
+      news: newsFeed,
       history: past,
       stadiumUpgrade: upgrade,
       activeSponsors: sponsorsList,
       cupState: cupStateRef.current,
       foreignMarketPlayers: foreignMarketRef.current,
       boughtForeignIds: boughtForeignIdsRef.current
-    };
-    if (currentSlotRef.current) {
-      localStorage.setItem(`elifoot_2026_save_slot_${currentSlotRef.current}`, JSON.stringify(data));
+    });
+
+    const slimSchedule = slimOldMatchEvents(currentSchedule, round);
+
+    // Never let a failed write here take down the caller -- nextRoundImpl (and everything else
+    // that calls saveGame) has essential state transitions (like opening the live match view)
+    // AFTER this call, and those must still happen even if persisting to disk didn't work out.
+    try {
+      localStorage.setItem(`elifoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, feed)));
+    } catch (e) {
+      // Quota exceeded (or similar) even after slimming match events -- try once more with only
+      // the most recent news items kept, since that list only ever grows.
+      try {
+        const trimmedNews = feed.length > 150 ? feed.slice(feed.length - 150) : feed;
+        localStorage.setItem(`elifoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, trimmedNews)));
+      } catch (e2) {
+        // Still failing -- surface it once per session instead of silently losing progress
+        // every round from here on with no way for the player to know.
+        if (!saveFailureWarnedRef.current) {
+          saveFailureWarnedRef.current = true;
+          console.error('saveGame failed even after trimming:', e2);
+          alert('Não foi possível salvar o jogo -- o armazenamento do navegador está cheio. Exporte seu save (Slots > Exportar) e libere espaço (limpando outras campanhas antigas) o quanto antes para não perder seu progresso.');
+        }
+      }
     }
   };
 
