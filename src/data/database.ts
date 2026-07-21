@@ -49,7 +49,12 @@ export interface ForeignPlayer extends Player {
   nationality: string;
   originClub: string;
   league: string;
+  valueEur: number; // real-world market value in EUR, for the "Valor de Mercado" flavor display
 }
+
+// Rough, fixed EUR->BRL rate used only to show the real-world market value in R$ as flavor text
+// (the actual purchase price is `value`, on the game's own rating-based economy -- unrelated).
+export const EUR_TO_BRL_RATE = 6.2;
 
 export interface Club {
   id: string;

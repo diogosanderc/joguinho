@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, EUR_TO_BRL_RATE } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
+
+// GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
+// listings throughout the app.
+const POSITION_ORDER: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
+const byPosition = <T extends { position: PlayerPosition }>(a: T, b: T) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position];
 import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
 import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
@@ -2662,14 +2667,14 @@ const AppContent: React.FC = () => {
                 style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
                 onClick={() => setMarketViewMode('CLUBS')}
               >
-                Comprar de Clubes
+                Jogadores BR
               </button>
               <button
                 className={`btn ${marketViewMode === 'FOREIGN' ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
                 onClick={() => setMarketViewMode('FOREIGN')}
               >
-                🌍 Exterior
+                Outras ligas
               </button>
             </div>
 
@@ -2696,6 +2701,7 @@ const AppContent: React.FC = () => {
                     .filter(p => {
                       return marketPosFilter === 'ALL' || p.position === marketPosFilter;
                     })
+                    .sort(byPosition)
                     .map(player => (
                       <div key={player.id} className="player-row">
                         <span className={`pos-badge ${player.position}`}>{player.position}</span>
@@ -2768,9 +2774,9 @@ const AppContent: React.FC = () => {
                   const searchedClub = clubs.find(c => c.id === selectedSearchClubId);
                   if (!searchedClub) return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Selecione um clube para visualizar o elenco.</p>;
                   
-                  const filteredSquad = searchedClub.squad.filter(p => {
-                    return marketPosFilter === 'ALL' || p.position === marketPosFilter;
-                  });
+                  const filteredSquad = searchedClub.squad
+                    .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
+                    .sort(byPosition);
 
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
@@ -2889,12 +2895,14 @@ const AppContent: React.FC = () => {
                     : foreignPlayerPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
                   )
                     .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
+                    .sort(byPosition)
                     .map(player => (
                       <div key={player.id} className="player-row">
                         <span className={`pos-badge ${player.position}`}>{player.position}</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {player.nationality} • {player.originClub} ({player.league})</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Valor de Mercado: {formatCurrency(Math.round(player.valueEur * EUR_TO_BRL_RATE))}</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
