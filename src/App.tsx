@@ -18,7 +18,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, foreignMarketPlayers, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction
   } = useGame();
@@ -203,7 +203,7 @@ const AppContent: React.FC = () => {
   const [sponsorProposals, setSponsorProposals] = useState<Sponsor[]>([]);
 
   // Market Search & Negotiation states
-  const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS'>('FREE_AGENTS');
+  const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS' | 'FOREIGN'>('FREE_AGENTS');
   const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('A');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
@@ -2660,6 +2660,13 @@ const AppContent: React.FC = () => {
               >
                 Comprar de Clubes
               </button>
+              <button
+                className={`btn ${marketViewMode === 'FOREIGN' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                onClick={() => setMarketViewMode('FOREIGN')}
+              >
+                🌍 Exterior
+              </button>
             </div>
 
             {/* General Position filter buttons (used by both Free Agents and Club Squad view) */}
@@ -2714,7 +2721,7 @@ const AppContent: React.FC = () => {
                     ))}
                 </div>
               </>
-            ) : (
+            ) : marketViewMode === 'CLUBS' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {(['A', 'B', 'C'] as const).map(div => (
@@ -2803,6 +2810,52 @@ const AppContent: React.FC = () => {
                   );
                 })()}
               </div>
+            ) : (
+              <>
+                {/* INTERNATIONAL MARKET -- Premier League, Serie A, Bundesliga, La Liga,
+                    Ligue 1 and Libertadores clubs. Foreign signings cost far more than
+                    domestic ones (same rating->value curve as everyone else, just with
+                    ratings that go well past the domestic ~84 ceiling), so this is really
+                    only realistic for a well-established, wealthy club. */}
+                <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Mercado Internacional</div>
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '-8px 0 12px' }}>
+                  Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Libertadores). Custam bem mais caro que o mercado nacional.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+                  {foreignMarketPlayers.length === 0 && (
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Carregando mercado internacional...</p>
+                  )}
+                  {foreignMarketPlayers
+                    .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
+                    .map(player => (
+                      <div key={player.id} className="player-row">
+                        <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {player.nationality} • {player.originClub} ({player.league})</span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="rating-badge">{player.rating}</span>
+                          <button
+                            onClick={() => {
+                              setPurchaseConfirmData({
+                                player,
+                                clubName: `${player.originClub} (${player.league})`,
+                                price: player.value,
+                                onConfirm: () => buyForeignPlayer(player)
+                              });
+                            }}
+                            className="btn btn-primary"
+                            style={{ padding: '6px 12px', width: 'auto', borderRadius: '8px', fontSize: '0.8rem' }}
+                          >
+                            {formatCurrency(player.value)}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
             )}
 
             {/* NEGOTIATION MODAL */}

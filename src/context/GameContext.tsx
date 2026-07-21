@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { initializeClubs, formatCurrency, getPositionGroup, isClassico } from '../data/database';
-import type { Player, Club, PlayerPosition } from '../data/database';
+import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
 import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
@@ -81,6 +81,8 @@ interface GameContextType {
   startCupMatch: (starters: Player[]) => void;
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
+  foreignMarketPlayers: ForeignPlayer[];
+  buyForeignPlayer: (player: ForeignPlayer) => void;
   currentSlot: number | null;
   getFreeSlot: () => number | null;
   startGame: (name: string, chosenClubId: string, slot?: number) => void;
@@ -141,6 +143,49 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // fresh Copa do Brasil phase is drawn and the user gets a new opponent.
   const [cupDrawReveal, setCupDrawReveal] = useState<{ phase: CupPhase; opponentId: string; isHome: boolean } | null>(null);
   const dismissCupDrawReveal = () => setCupDrawReveal(null);
+
+  // International transfer market (Premier League, Serie A, Bundesliga, La Liga, Ligue 1,
+  // Libertadores). foreignPlayerPool is the full static dataset, fetched once and never
+  // persisted (it's a fixed reference list, not user state); foreignMarketPlayers is the current
+  // random sample actually shown for sale, refreshed the same way the domestic market is.
+  // boughtForeignIds is the only piece that's actually persisted -- it's what keeps a player you
+  // already signed from ever reappearing in the pool. Kept in a ref too, same reasoning as
+  // cupStateRef: saveGame() needs the value it was just set to within the same synchronous call.
+  const [foreignPlayerPool, setForeignPlayerPool] = useState<ForeignPlayer[]>([]);
+  const [foreignMarketPlayers, setForeignMarketPlayersRaw] = useState<ForeignPlayer[]>([]);
+  const foreignMarketRef = useRef<ForeignPlayer[]>([]);
+  const setForeignMarketPlayers = (next: ForeignPlayer[]) => {
+    foreignMarketRef.current = next;
+    setForeignMarketPlayersRaw(next);
+  };
+  const [boughtForeignIds, setBoughtForeignIdsRaw] = useState<string[]>([]);
+  const boughtForeignIdsRef = useRef<string[]>([]);
+  const setBoughtForeignIds = (next: string[]) => {
+    boughtForeignIdsRef.current = next;
+    setBoughtForeignIdsRaw(next);
+  };
+
+  useEffect(() => {
+    fetch('/data/foreign_players.json')
+      .then(r => r.json())
+      .then((data: ForeignPlayer[]) => setForeignPlayerPool(data))
+      .catch(() => {});
+  }, []);
+
+  const sampleForeignPlayers = (pool: ForeignPlayer[], excludeIds: string[], count: number): ForeignPlayer[] => {
+    const available = pool.filter(p => !excludeIds.includes(p.id));
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  };
+
+  // Populate the initial sample as soon as the pool finishes loading (covers both a fresh
+  // career and a just-loaded save, since boughtForeignIds is restored by loadGame first).
+  useEffect(() => {
+    if (foreignPlayerPool.length > 0 && foreignMarketRef.current.length === 0) {
+      setForeignMarketPlayers(sampleForeignPlayers(foreignPlayerPool, boughtForeignIdsRef.current, 18));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foreignPlayerPool]);
   const [activeSponsors, setActiveSponsors] = useState<Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>>({
     MASTER: null,
     COSTAS: null,
@@ -211,7 +256,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       history: past,
       stadiumUpgrade: upgrade,
       activeSponsors: sponsorsList,
-      cupState: cupStateRef.current
+      cupState: cupStateRef.current,
+      foreignMarketPlayers: foreignMarketRef.current,
+      boughtForeignIds: boughtForeignIdsRef.current
     };
     if (currentSlotRef.current) {
       localStorage.setItem(`elifoot_2026_save_slot_${currentSlotRef.current}`, JSON.stringify(data));
@@ -265,7 +312,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCupState(startCup(updatedClubs.map(c => c.id), 2026));
-    
+    setBoughtForeignIds([]);
+    setForeignMarketPlayers(foreignPlayerPool.length > 0 ? sampleForeignPlayers(foreignPlayerPool, [], 18) : []);
+
     const initialNews: NewsItem[] = [
       { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${updatedClubs.find(c => c.id === chosenClubId)?.name}. Boa sorte na Série C!`, type: 'BOARD' }
     ];
@@ -950,6 +999,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (Math.random() < 0.25) {
       nextMarket = generateMarketPlayers(userClub.division as 'A' | 'B' | 'C');
     }
+    if (Math.random() < 0.25 && foreignPlayerPool.length > 0) {
+      setForeignMarketPlayers(sampleForeignPlayers(foreignPlayerPool, boughtForeignIds, 18));
+    }
 
     // Set states
     setClubs(finalClubs);
@@ -1433,6 +1485,52 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }]);
 
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, nextMarket, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Sign a player straight out of the international market (foreignMarketPlayers). Unlike
+  // buyPlayer, there's no seller club to remove them from -- they simply weren't part of the
+  // simulated league pool. Once bought they're recorded in boughtForeignIds so this exact
+  // player never resurfaces in the market again for the rest of the career.
+  const buyForeignPlayer = (player: ForeignPlayer) => {
+    if (!userClub) return;
+
+    if (userClub.finances < player.value) {
+      alert('Finanças insuficientes para contratar este jogador.');
+      return;
+    }
+
+    const sortSquad = (squad: Player[]) => {
+      const order: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
+      return [...squad].sort((a, b) => order[a.position] - order[b.position]);
+    };
+
+    const { nationality, originClub, league, ...basePlayer } = player;
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return {
+          ...club,
+          finances: club.finances - player.value,
+          squad: sortSquad([...club.squad, basePlayer])
+        };
+      }
+      return club;
+    });
+
+    const nextForeignMarket = foreignMarketPlayers.filter(p => p.id !== player.id);
+    const nextBoughtIds = [...boughtForeignIds, player.id];
+
+    setClubs(updatedClubs);
+    setForeignMarketPlayers(nextForeignMarket);
+    setBoughtForeignIds(nextBoughtIds);
+
+    setNews(prev => [...prev, {
+      id: `buy_foreign_${Date.now()}`,
+      week: currentRound,
+      text: `Contratação internacional! O ${userClub.name} anunciou a contratação de ${player.name} (${originClub} - ${league}) por ${formatCurrency(player.value)}.`,
+      type: 'TRANSFER'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
   // Sell player to market (returns 90% of value instantly)
@@ -1958,6 +2056,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentMatch(null);
     setCurrentMatchResult(null);
     setCupState(null);
+    setForeignMarketPlayers([]);
+    setBoughtForeignIds([]);
   };
 
   const clearCurrentMatch = () => {
@@ -2412,6 +2512,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const alreadyPassed = CUP_MILESTONE_ROUNDS.filter(r => r < data.currentRound).length;
       setCupState({ ...freshCup, milestonesConsumed: alreadyPassed });
     }
+    setForeignMarketPlayers(data.foreignMarketPlayers ?? []);
+    setBoughtForeignIds(data.boughtForeignIds ?? []);
   };
 
   const cheatFinances = () => {
@@ -2444,6 +2546,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startCupMatch,
       cupDrawReveal,
       dismissCupDrawReveal,
+      foreignMarketPlayers,
+      buyForeignPlayer,
       currentSlot,
       getFreeSlot,
       startGame,

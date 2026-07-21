@@ -40,6 +40,17 @@ export interface Player {
 export const isPlayerAvailable = (p: Player): boolean =>
   !p.isInjured && !(p.suspendedMatches && p.suspendedMatches > 0);
 
+// A player listed in the international transfer market (Premier League, Serie A, Bundesliga,
+// La Liga, Ligue 1, and Libertadores clubs). Backed by a static dataset at
+// public/data/foreign_players.json -- rating/value/salary are precomputed there using the same
+// rating->value curve as domestic players, so prices stay consistent with the rest of the game's
+// economy; nationality/originClub/league are flavor-only, not used by the match engine.
+export interface ForeignPlayer extends Player {
+  nationality: string;
+  originClub: string;
+  league: string;
+}
+
 export interface Club {
   id: string;
   name: string;
