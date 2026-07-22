@@ -1433,9 +1433,9 @@ const AppContent: React.FC = () => {
             marginBottom: '4px'
           }}>
             {simEvents
-              .filter(e => e.type === 'GOAL' || e.type === 'RED' || e.type === 'YELLOW')
+              .filter(e => e.type === 'GOAL')
               .map(e => {
-                const icon = e.type === 'RED' ? '🟥' : e.type === 'YELLOW' ? '🟨' : '⚽';
+                const icon = '⚽';
                 const suffix = e.isPenalty ? ' (P)' : e.isHeader ? ' (C)' : '';
                 return `${icon} ${e.player} ${e.minute}'${suffix}`;
               })
@@ -1871,6 +1871,8 @@ const AppContent: React.FC = () => {
                           <span className={`pos-badge ${star.position}`} style={{ padding: '2px 4px', fontSize: '0.65rem' }}>{star.position}</span>
                           <span style={{ fontWeight: 700 }}>{star.isStar ? '⭐ ' : ''}{star.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>({star.rating})</span>
+                          {star.yellowCards > 0 && <span style={{ fontSize: '0.72rem' }}>🟨{star.yellowCards > 1 ? ` x${star.yellowCards}` : ''}</span>}
+                          {star.redCards > 0 && <span style={{ fontSize: '0.72rem' }}>🟥{star.redCards > 1 ? ` x${star.redCards}` : ''}</span>}
                           <ConditionBadge trend={star.performanceTrend} />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2684,6 +2686,8 @@ const AppContent: React.FC = () => {
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          {player.yellowCards > 0 && <span title={`${player.yellowCards} cartão(ões) amarelo(s) na temporada`} style={{ fontSize: '0.72rem' }}>🟨{player.yellowCards > 1 ? ` x${player.yellowCards}` : ''}</span>}
+                          {player.redCards > 0 && <span title={`${player.redCards} cartão(ões) vermelho(s) na temporada`} style={{ fontSize: '0.72rem' }}>🟥{player.redCards > 1 ? ` x${player.redCards}` : ''}</span>}
                           <ConditionBadge trend={player.performanceTrend} />
                           {userClub.penaltyTakerId === player.id && <span style={{ fontSize: '0.75rem' }} title="Cobrador de Pênalti">🎯</span>}
                           {player.contractLocked && <span style={{ fontSize: '0.75rem' }} title="Contrato Trancado">🔒</span>}
