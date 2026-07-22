@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
@@ -51,7 +51,12 @@ export interface Sponsor {
   signingBonus: number;
   weeklyPayment: number;
   contractWeeks: number;
+  signedDivision?: 'A' | 'B' | 'C'; // division the club was in when this deal was signed -- used to rescale weeklyPayment up on promotion
 }
+
+// Division multiplier sponsors use when pricing a deal -- exported so the same scale can bump
+// an already-signed contract's payment when the club gets promoted mid-contract.
+export const SPONSOR_DIVISION_MULTIPLIER: Record<'A' | 'B' | 'C', number> = { A: 5.0, B: 2.0, C: 0.8 };
 
 export interface StadiumUpgrade {
   capacityAdded: number;
@@ -140,6 +145,7 @@ interface GameContextType {
   renewContract: (playerId: string, duration: '6M' | '1Y' | '2Y') => void;
   acceptIncomingProposal: (player: Player, buyerClubId: string, amount: number, buyerClubName: string) => void;
   updateTicketPrice: (delta: number) => void;
+  updateVipPrice: (delta: number) => void;
   setPenaltyTaker: (playerId: string) => void;
   resolvePlayerDissatisfaction: (playerId: string) => void;
   loadGame: (saveData: any, slot: number) => void;
@@ -638,11 +644,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           finances += ticketIncome;
           roundRevenue += ticketIncome;
 
-          // VIP boxes: flat premium revenue per home match, independent of attendance
+          // VIP boxes: premium revenue per home match, price-adjustable like the regular ticket
+          // (too far above the baseline price and occupancy falls off, same formula as tickets).
           const effectiveHasVip = club.id === userClubId ? hasVipBoxes : club.hasVipBoxes;
           if (effectiveHasVip) {
-            const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
-            const vipIncome = vipIncomeByDiv[club.division] ?? 20000;
+            const baseVipPrice = VIP_BASE_PRICE_BY_DIV[club.division] ?? 200;
+            const vipPrice = club.vipTicketPrice ?? baseVipPrice;
+            const baseVipIncome = VIP_BASE_INCOME_BY_DIV[club.division] ?? 20000;
+            let vipPriceFactor = 1.0;
+            if (club.confidence < 95) {
+              const ratio = vipPrice / baseVipPrice;
+              vipPriceFactor = Math.max(0, Math.min(1, 1 - (ratio - 1) / 2));
+            }
+            const vipIncome = Math.round(baseVipIncome * (vipPrice / baseVipPrice) * vipPriceFactor);
             finances += vipIncome;
             roundRevenue += vipIncome;
           }
@@ -849,15 +863,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (Math.random() < 0.02) rating = Math.max(40, rating - 1);
           }
         } else {
-          // Reserve - training!
+          // Reserve - training! (rates halved from the original 0.15/0.06/0.08 -- ratings were
+          // compounding too fast season over season when combined with the end-of-season bumps)
           if (isYoung) {
-            if (Math.random() < 0.15) rating = Math.min(99, rating + 1);
+            if (Math.random() < 0.08) rating = Math.min(99, rating + 1);
           } else if (isOld) {
             const roll = Math.random();
             if (roll < 0.04) rating = Math.max(40, rating - 1);
-            else if (roll < 0.06) rating = Math.min(99, rating + 1);
+            else if (roll < 0.05) rating = Math.min(99, rating + 1);
           } else {
-            if (Math.random() < 0.08) rating = Math.min(99, rating + 1);
+            if (Math.random() < 0.04) rating = Math.min(99, rating + 1);
           }
         }
 
@@ -966,7 +981,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           suspendedMatches -= 1;
         }
 
-        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches, seasonStartedRounds, seasonGoodRounds };
+        // --- Post-renewal morale boost countdown -- only ticks down on matches he actually started ---
+        let renewalBoostMatchesLeft = player.renewalBoostMatchesLeft ?? 0;
+        const renewalBoostPercent = player.renewalBoostPercent;
+        if (wasStarter && renewalBoostMatchesLeft > 0) {
+          renewalBoostMatchesLeft -= 1;
+        }
+
+        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches, seasonStartedRounds, seasonGoodRounds, renewalBoostMatchesLeft, renewalBoostPercent };
       });
 
       return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft, financialScore, lateStrikes, loans, seasonRevenueAccum };
@@ -1231,6 +1253,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (lastSeasonRevenue > 0 && wageBill / lastSeasonRevenue > 0.9) financialScore = Math.max(0, financialScore - 2);
       if (lastSeasonRevenue > 0 && totalDebt / lastSeasonRevenue > 0.8) financialScore = Math.max(0, financialScore - 2);
 
+      // A club sitting on a healthy cash cushion is a going concern regardless of what dragged
+      // the score down in the past -- without this, a club with tens of millions in the bank
+      // could still be stuck reading "Endividado" from an old bad season, which doesn't reflect
+      // its actual standing at all. Scaled against revenue so this means the same thing whether
+      // it's a Série A giant or a small Série C club with a fat reserve.
+      const cashRatio = lastSeasonRevenue > 0 ? finances / lastSeasonRevenue : 0;
+      if (cashRatio >= 0.5) financialScore = Math.min(100, financialScore + 5);
+      else if (cashRatio >= 0.2) financialScore = Math.min(100, financialScore + 2);
+
       if (div === 'A' && relegations.A.includes(club.id)) div = 'B';
       else if (div === 'B') {
         if (promotions.B.includes(club.id)) div = 'A';
@@ -1284,12 +1315,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // Any player who scored 10+ goals this season earns a star and a 10% rating
-        // bump for next year, on top of whatever the checks above already decided.
+        // Any player who scored 10+ goals this season earns a star and a rating bump for
+        // next year, on top of whatever the checks above already decided. (Reduced from 10%
+        // -- compounding year over year on top of the other bumps below was inflating ratings
+        // too fast for a prolific scorer over a few seasons.)
         let rating = p.rating;
         if (p.goals >= 10) {
           isStar = true;
-          rating = Math.min(99, Math.round(p.rating * 1.10));
+          rating = Math.min(99, Math.round(p.rating * 1.06));
         }
 
         // Consistently good form this season earns an extra 5% growth bump for next year:
@@ -1309,7 +1342,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // that already happens round to round (see the isYoung/isOld block above).
         const age = p.age + 1;
         if (age <= 23) {
-          if (Math.random() < 0.35) rating = Math.min(99, rating + 1);
+          if (Math.random() < 0.22) rating = Math.min(99, rating + 1);
         } else if (age >= 32) {
           const declineChance = 0.35 + (age - 32) * 0.05;
           if (Math.random() < Math.min(0.85, declineChance)) rating = Math.max(40, rating - (age >= 36 ? 2 : 1));
@@ -1784,7 +1817,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!userClub) return;
 
     const nextSponsors = { ...activeSponsors };
-    nextSponsors[sponsor.type] = sponsor;
+    nextSponsors[sponsor.type] = { ...sponsor, signedDivision: userClub.division };
 
     // Apply signing bonus
     const updatedClubs = clubs.map(club => {
@@ -2129,10 +2162,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (bankEvent.label) {
       nextNews.push({ id: `bank_event_${currentYear + 1}`, week: 0, text: bankEvent.label, type: 'INFO' });
     }
+
+    // Promotion mid-contract earns the club a considerably richer sponsorship -- the deal
+    // was priced for the old, lower division and a real sponsor would renegotiate up rather
+    // than keep paying Série C rates once the club is playing (and being watched) in Série A.
+    const nextSponsors = { ...activeSponsors };
+    (Object.keys(nextSponsors) as Array<'MASTER' | 'COSTAS' | 'MANGAS'>).forEach(key => {
+      const sp = nextSponsors[key];
+      if (!sp || !sp.signedDivision || sp.signedDivision === userClubInstance.division) return;
+      const oldMult = SPONSOR_DIVISION_MULTIPLIER[sp.signedDivision];
+      const newMult = SPONSOR_DIVISION_MULTIPLIER[userClubInstance.division];
+      if (newMult <= oldMult) return; // only bump on promotion, never cut an existing deal on relegation
+      const scaledPayment = Math.round(sp.weeklyPayment * (newMult / oldMult));
+      nextSponsors[key] = { ...sp, weeklyPayment: scaledPayment, signedDivision: userClubInstance.division };
+      nextNews.push({ id: `sponsor_boost_${key}_${Date.now()}`, week: 0, text: `Acesso de Série! O patrocinador ${sp.name} renegociou o contrato após o acesso -- pagamento semanal subiu para ${formatCurrency(scaledPayment)}.`, type: 'INFO' });
+    });
+
+    setActiveSponsors(nextSponsors);
     setNews(nextNews);
     setGameState('PLAYING');
 
-    saveGame('PLAYING', managerName, currentYear + 1, 1, updatedClubs, userClubId, newSchedule, marketPlayers, [], nextNews, history, stadiumUpgrade, activeSponsors);
+    saveGame('PLAYING', managerName, currentYear + 1, 1, updatedClubs, userClubId, newSchedule, marketPlayers, [], nextNews, history, stadiumUpgrade, nextSponsors);
   };
 
   // Manager voluntarily leaves the current club mid-season, becoming a free agent until a
@@ -2655,14 +2705,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Renew player contract. Renewing always makes the player happier (clears dissatisfaction,
   // small rating bump) and always locks the player for the renewed term -- while locked, they
   // cannot be sold, cannot request to leave, and no other club can make an offer for them.
+  // A player already locked can't be renewed again until the current lock runs out (see the
+  // contractLocked check below and the disabled renew buttons in App.tsx) -- otherwise the +2
+  // rating bump could be farmed indefinitely by spam-clicking renew on the same player.
   const renewContract = (playerId: string, duration: '6M' | '1Y' | '2Y') => {
     if (!userClubId) return;
     const addedWeeks = duration === '6M' ? 19 : duration === '1Y' ? 38 : 76;
     const lockYears = duration === '2Y' ? 2 : duration === '1Y' ? 1 : 0.5;
-    setClubs(prev => prev.map(c => {
+    const updatedClubs = clubs.map(c => {
       if (c.id !== userClubId) return c;
       const updatedSquad = c.squad.map(p => {
-        if (p.id !== playerId) return p;
+        if (p.id !== playerId || p.contractLocked) return p;
         const currentW = p.contractWeeks ?? 38;
         const rating = Math.min(99, p.rating + 2);
         const group = getPositionGroup(p.position);
@@ -2677,11 +2730,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           contractLocked: true,
           contractLockYears: lockYears,
           rating, value, salary,
-          benchRounds: 0
+          benchRounds: 0,
+          // Renewing lifts morale -- a temporary effective-rating boost for his next 2 matches
+          // (5-10%), on top of the permanent +2 above.
+          renewalBoostMatchesLeft: 2,
+          renewalBoostPercent: 0.05 + Math.random() * 0.05
         };
       });
       return { ...c, squad: updatedSquad };
-    }));
+    });
+    setClubs(updatedClubs);
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
   // Accept an incoming purchase proposal from another club for a user's player. buyerClubName
@@ -2743,20 +2802,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Update the user club's ticket price by delta (min R$5, max R$500)
   const updateTicketPrice = (delta: number) => {
     if (!userClubId) return;
-    setClubs(prev => prev.map(c => {
+    const updatedClubs = clubs.map(c => {
       if (c.id !== userClubId) return c;
       const newPrice = Math.max(5, Math.min(500, c.ticketPrice + delta));
       return { ...c, ticketPrice: newPrice };
-    }));
+    });
+    setClubs(updatedClubs);
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Update the user club's VIP box price by delta (min R$20, max 4x the division baseline)
+  const updateVipPrice = (delta: number) => {
+    if (!userClubId || !userClub) return;
+    const basePrice = VIP_BASE_PRICE_BY_DIV[userClub.division] ?? 200;
+    const updatedClubs = clubs.map(c => {
+      if (c.id !== userClubId) return c;
+      const current = c.vipTicketPrice ?? basePrice;
+      const newPrice = Math.max(20, Math.min(basePrice * 4, current + delta));
+      return { ...c, vipTicketPrice: newPrice };
+    });
+    setClubs(updatedClubs);
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
   // Toggle the user club's designated penalty taker (click again to unset)
   const setPenaltyTaker = (playerId: string) => {
     if (!userClubId) return;
-    setClubs(prev => prev.map(c => {
+    const updatedClubs = clubs.map(c => {
       if (c.id !== userClubId) return c;
       return { ...c, penaltyTakerId: c.penaltyTakerId === playerId ? undefined : playerId };
-    }));
+    });
+    setClubs(updatedClubs);
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
   // Clears the dissatisfaction flag once the user has resolved it (kept or sold the player) --
@@ -2764,10 +2841,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // any unrelated club update (ticket price, penalty taker, etc).
   const resolvePlayerDissatisfaction = (playerId: string) => {
     if (!userClubId) return;
-    setClubs(prev => prev.map(c => {
+    const updatedClubs = clubs.map(c => {
       if (c.id !== userClubId) return c;
       return { ...c, squad: c.squad.map(p => p.id === playerId ? { ...p, benchRounds: 0 } : p) };
-    }));
+    });
+    setClubs(updatedClubs);
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
   const loadGame = (data: any, slot: number) => {
@@ -2872,6 +2951,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyPlayerFromClub,
       manualSave,
       updateTicketPrice,
+      updateVipPrice,
       setPenaltyTaker,
       resolvePlayerDissatisfaction,
       renewContract,

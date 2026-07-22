@@ -91,6 +91,19 @@ export const getAutoStarters = (club: Club): Player[] => {
 // - VOL: the best volante anchors the defense; any extra volante feeds midfield instead.
 // - MEI: mostly an attacking contributor (80%), with a smaller defensive role (20%).
 // - PON, CA: fully attacking.
+// A player's rating on the pitch right now, factoring in things that only matter for THIS
+// match: low energy (tired legs, whether from a packed fixture list or wearing down as a
+// season goes) drags performance down, while a player enjoying his post-renewal morale boost
+// (see renewContract in GameContext) plays a little above his nominal rating for a couple of
+// games. This is what actually feeds calculateTeamForces — swapping a gassed starter for a
+// fresh substitute immediately reads as a real strength change, not just a rating number.
+export const getEffectiveRating = (p: Player): number => {
+  const energy = p.energy ?? 100;
+  const energyFactor = 0.75 + 0.25 * Math.max(0, Math.min(100, energy)) / 100; // 0.75x at 0 energy to 1.0x at full
+  const boostFactor = (p.renewalBoostMatchesLeft ?? 0) > 0 ? (1 + (p.renewalBoostPercent ?? 0)) : 1;
+  return p.rating * energyFactor * boostFactor;
+};
+
 export const calculateTeamForces = (starters: Player[]) => {
   let defSum = 0, defWeight = 0;
   let midSum = 0, midWeight = 0;
@@ -101,28 +114,30 @@ export const calculateTeamForces = (starters: Player[]) => {
   const addAtk = (rating: number, weight: number) => { atkSum += rating * weight; atkWeight += weight; };
 
   starters.forEach(p => {
+    const rating = getEffectiveRating(p);
     if (p.position === 'GOL' || p.position === 'ZAG') {
-      addDef(p.rating, 1);
+      addDef(rating, 1);
     } else if (p.position === 'LD' || p.position === 'LE') {
-      addDef(p.rating, 0.5);
-      addAtk(p.rating, 0.5);
+      addDef(rating, 0.5);
+      addAtk(rating, 0.5);
     } else if (p.position === 'MEI') {
-      addDef(p.rating, 0.2);
-      addAtk(p.rating, 0.8);
+      addDef(rating, 0.2);
+      addAtk(rating, 0.8);
       // Meias are the backbone of "midfield" (possession/initiative) even though their
       // defense/attack split above stays untouched — without this, teams playing with a
       // single Volante would have midfield default to a flat 40 regardless of their Meias.
-      addMid(p.rating, 1);
+      addMid(rating, 1);
     } else if (p.position === 'PON' || p.position === 'CA') {
-      addAtk(p.rating, 1);
+      addAtk(rating, 1);
     }
   });
 
   // Volantes: the best one anchors the defense, extra volantes reinforce midfield
   const vols = starters.filter(p => p.position === 'VOL').sort((a, b) => b.rating - a.rating);
   vols.forEach((v, idx) => {
-    if (idx === 0) addDef(v.rating, 1);
-    else addMid(v.rating, 1);
+    const rating = getEffectiveRating(v);
+    if (idx === 0) addDef(rating, 1);
+    else addMid(rating, 1);
   });
 
   const defense = defWeight > 0 ? Math.round(defSum / defWeight) : 40;
@@ -226,6 +241,18 @@ export const simulateMatch = (
   const awayStarBoost = awayStarters.filter(p => p.isStar && [...ATTACK_POSITIONS, ...MIDFIELD_POSITIONS].includes(p.position)).length;
   homeAtt *= (1.0 + homeStarBoost * 0.06);
   awayAtt *= (1.0 + awayStarBoost * 0.06);
+
+  // In-match fatigue: legs tire progressively as the minutes pass, on top of the pre-match
+  // energy weighting already baked into homeForces/awayForces above. A squad that's already
+  // worn down (low average energy coming in -- too many matches without rotation) tires faster
+  // during THIS match too. A mid-match substitution restarts this from a fresh simulateMatch
+  // call with the new (rested) starters, which is exactly how "sub in fresh legs, team perks
+  // back up" should feel -- both through the new average energy AND the reset decay rate.
+  const avgEnergy = (starters: Player[]) => starters.length > 0 ? starters.reduce((sum, p) => sum + (p.energy ?? 100), 0) / starters.length : 100;
+  const homeFatigueSeverity = 1 + Math.max(0, (100 - avgEnergy(homeStarters)) / 100) * 1.6;
+  const awayFatigueSeverity = 1 + Math.max(0, (100 - avgEnergy(awayStarters)) / 100) * 1.6;
+  const homeFatigueDecay = 0.00035 * homeFatigueSeverity;
+  const awayFatigueDecay = 0.00035 * awayFatigueSeverity;
 
   let homeScore = options.initialHomeScore ?? 0;
   let awayScore = options.initialAwayScore ?? 0;
@@ -342,6 +369,11 @@ export const simulateMatch = (
   // Match Simulation Loop (resumes from startMinute when continuing an in-progress match)
   const startMinute = options.startMinute ?? 1;
   for (let min = startMinute; min <= 90; min++) {
+    // In-match fatigue: a small, monotonic per-minute strength decay for both sides -- see the
+    // fatigueDecay setup above.
+    homeAtt *= (1 - homeFatigueDecay); homeMid *= (1 - homeFatigueDecay); homeDef *= (1 - homeFatigueDecay);
+    awayAtt *= (1 - awayFatigueDecay); awayMid *= (1 - awayFatigueDecay); awayDef *= (1 - awayFatigueDecay);
+
     // Stat adjustments (possession flutters)
     const midSum = homeMid + awayMid;
     const currentPossession = Math.round((homeMid / midSum) * 100 + (Math.random() * 10 - 5));
@@ -518,8 +550,9 @@ export const simulateMatch = (
       }
     }
 
-    // Fouls and Cards (approx 3.5% chance per minute)
-    if (Math.random() < 0.035) {
+    // Fouls and Cards (approx 5% chance per minute -- bumped up from 3.5%/25% since the old
+    // rate averaged under 1 yellow card per match, well below a real game's pace)
+    if (Math.random() < 0.05) {
       const isHomeFoul = Math.random() > 0.5;
       const offendingClub = isHomeFoul ? homeClub : awayClub;
       const offendingStarters = isHomeFoul ? homeStarters : awayStarters;
@@ -528,8 +561,8 @@ export const simulateMatch = (
       else awayStats.fouls++;
 
       const cardRoll = Math.random();
-      
-      if (cardRoll < 0.25) { // Yellow Card
+
+      if (cardRoll < 0.40) { // Yellow Card
         const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA']);
         const cards = (yellowCards[player.id] || 0) + 1;
         yellowCards[player.id] = cards;
@@ -553,7 +586,7 @@ export const simulateMatch = (
             description: `Cartão amarelo para ${player.name} por entrada dura.`
           });
         }
-      } else if (cardRoll < 0.28) { // Direct Red Card (very rare)
+      } else if (cardRoll < 0.43) { // Direct Red Card (very rare)
         const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA']);
         redCarded.add(player.id);
         events.push({

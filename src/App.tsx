@@ -1,13 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
 // listings throughout the app.
 const POSITION_ORDER: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
 const byPosition = <T extends { position: PlayerPosition }>(a: T, b: T) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position];
+
+// Projected VIP box income for one home match at the club's current price -- mirrors the
+// formula GameContext actually applies round to round (price above the division baseline
+// trims occupancy, same as the regular ticket price).
+const estimateVipIncome = (club: Club): number => {
+  const basePrice = VIP_BASE_PRICE_BY_DIV[club.division] ?? 200;
+  const price = club.vipTicketPrice ?? basePrice;
+  const baseIncome = VIP_BASE_INCOME_BY_DIV[club.division] ?? 20000;
+  let priceFactor = 1.0;
+  if (club.confidence < 95) {
+    const ratio = price / basePrice;
+    priceFactor = Math.max(0, Math.min(1, 1 - (ratio - 1) / 2));
+  }
+  return Math.round(baseIncome * (price / basePrice) * priceFactor);
+};
 import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
 import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
@@ -25,7 +40,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction,
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
 
@@ -1414,9 +1429,9 @@ const AppContent: React.FC = () => {
             marginBottom: '4px'
           }}>
             {simEvents
-              .filter(e => e.type === 'GOAL' || e.type === 'RED')
+              .filter(e => e.type === 'GOAL' || e.type === 'RED' || e.type === 'YELLOW')
               .map(e => {
-                const icon = e.type === 'RED' ? '🟥' : '⚽';
+                const icon = e.type === 'RED' ? '🟥' : e.type === 'YELLOW' ? '🟨' : '⚽';
                 const suffix = e.isPenalty ? ' (P)' : e.isHeader ? ' (C)' : '';
                 return `${icon} ${e.player} ${e.minute}'${suffix}`;
               })
@@ -2689,27 +2704,35 @@ const AppContent: React.FC = () => {
                             🎯 {userClub.penaltyTakerId === player.id ? 'Cobrador de Pênalti (atual)' : 'Definir como Cobrador de Pênalti'}
                           </button>
                         )}
+                        {player.contractLocked && (
+                          <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '0 0 4px' }}>
+                            🔒 Contrato já renovado e trancado -- só é possível renovar de novo depois que este vencer.
+                          </p>
+                        )}
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => { renewContract(player.id, '6M'); setSelectedManagePlayerId(null); }}
+                            disabled={player.contractLocked}
                             className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: player.contractLocked ? '#2a2d33' : 'rgba(255, 193, 7, 0.05)', border: player.contractLocked ? '1px solid #3a3d43' : '1px solid rgba(255, 193, 7, 0.2)', color: player.contractLocked ? '#6b7280' : 'var(--accent-gold)', minWidth: '100px', cursor: player.contractLocked ? 'not-allowed' : 'pointer' }}
                             title="Renova o contrato por 6 meses e tranca o jogador (não pode sair nem ser comprado)"
                           >
                             🔒 Renovar 6M (+19s)
                           </button>
                           <button
                             onClick={() => { renewContract(player.id, '1Y'); setSelectedManagePlayerId(null); }}
+                            disabled={player.contractLocked}
                             className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: player.contractLocked ? '#2a2d33' : 'rgba(255, 193, 7, 0.1)', border: player.contractLocked ? '1px solid #3a3d43' : '1px solid rgba(255, 193, 7, 0.3)', color: player.contractLocked ? '#6b7280' : 'var(--accent-gold)', minWidth: '100px', cursor: player.contractLocked ? 'not-allowed' : 'pointer' }}
                             title="Renova o contrato por 1 ano e tranca o jogador (não pode sair nem ser comprado)"
                           >
                             🔒 Renovar 1 Ano (+38s)
                           </button>
                           <button
                             onClick={() => { renewContract(player.id, '2Y'); setSelectedManagePlayerId(null); }}
+                            disabled={player.contractLocked}
                             className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255, 193, 7, 0.15)', border: '1px solid rgba(255, 193, 7, 0.38)', color: 'var(--accent-gold)', minWidth: '100px' }}
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: player.contractLocked ? '#2a2d33' : 'rgba(255, 193, 7, 0.15)', border: player.contractLocked ? '1px solid #3a3d43' : '1px solid rgba(255, 193, 7, 0.38)', color: player.contractLocked ? '#6b7280' : 'var(--accent-gold)', minWidth: '100px', cursor: player.contractLocked ? 'not-allowed' : 'pointer' }}
                             title="Renova o contrato por 2 anos e tranca o jogador (não pode sair nem ser comprado)"
                           >
                             🔒 Renovar 2 Anos (+76s)
@@ -3334,8 +3357,7 @@ const AppContent: React.FC = () => {
                   );
                 })()}
                 {userClub.hasVipBoxes && (() => {
-                  const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
-                  const vipIncome = vipIncomeByDiv[userClub.division] ?? 20000;
+                  const vipIncome = estimateVipIncome(userClub);
                   return (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#9ca3af' }}>Camarotes VIP:</span>
@@ -3364,8 +3386,7 @@ const AppContent: React.FC = () => {
                     const confidenceFactor = 0.6 + (userClub.confidence / 100) * 0.6;
                     const starMultiplier = 1 + Math.min(starCount, 5) * 0.08;
                     const merchIncome = Math.round(merchBase * confidenceFactor * starMultiplier);
-                    const vipIncomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
-                    const vipIncome = userClub.hasVipBoxes ? (vipIncomeByDiv[userClub.division] ?? 20000) : 0;
+                    const vipIncome = userClub.hasVipBoxes ? estimateVipIncome(userClub) : 0;
                     const loanInstallments = (userClub.loans ?? []).reduce((sum, l) => sum + l.installment, 0);
                     const balance = Object.values(activeSponsors).reduce((sum, sp) => sum + (sp?.weeklyPayment || 0), 0) +
                                     Math.round(userClub.stadiumCapacity * 0.7 * userClub.ticketPrice) +
@@ -3441,14 +3462,33 @@ const AppContent: React.FC = () => {
               {(() => {
                 const costByDiv: Record<string, number> = { A: 4000000, B: 2000000, C: 1000000 };
                 const cost = costByDiv[userClub.division] ?? 1000000;
-                const incomeByDiv: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
-                const income = incomeByDiv[userClub.division] ?? 20000;
+                const basePrice = VIP_BASE_PRICE_BY_DIV[userClub.division] ?? 200;
+                const income = estimateVipIncome(userClub);
 
                 if (userClub.hasVipBoxes) {
                   return (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)' }}>
-                      ✅ Camarotes VIP concluídos! Gerando +{formatCurrency(income)} extras a cada jogo em casa.
-                    </div>
+                    <>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)', marginBottom: '10px' }}>
+                        ✅ Camarotes VIP concluídos! Gerando +{formatCurrency(income)} projetados a cada jogo em casa.
+                      </div>
+                      <div className="stat-box" style={{ marginBottom: '8px' }}>
+                        <span className="stat-label">Preço do Camarote</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <button
+                            onClick={() => updateVipPrice(-basePrice * 0.1)}
+                            style={{ background: 'rgba(255,23,68,0.15)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >-</button>
+                          <span className="stat-value" style={{ minWidth: '70px', textAlign: 'center' }}>{formatCurrency(userClub.vipTicketPrice ?? basePrice)}</span>
+                          <button
+                            onClick={() => updateVipPrice(basePrice * 0.1)}
+                            style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.3)', color: 'var(--accent-green)', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >+</button>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                        💡 Preço alto demais afasta a clientela VIP e a ocupação cai -- assim como o ingresso comum.
+                      </div>
+                    </>
                   );
                 }
                 if (userClub.vipBoxesWeeksLeft && userClub.vipBoxesWeeksLeft > 0) {
@@ -3461,7 +3501,7 @@ const AppContent: React.FC = () => {
                 return (
                   <>
                     <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: '10px' }}>
-                      Construa camarotes VIP para gerar +{formatCurrency(income)} extras a cada jogo em casa, independente do público.
+                      Construa camarotes VIP para gerar até +{formatCurrency(income)} extras a cada jogo em casa, dependendo do preço cobrado.
                     </div>
                     <button
                       onClick={() => buildVipBoxes()}

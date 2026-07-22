@@ -34,6 +34,8 @@ export interface Player {
   suspendedMatches?: number; // League matches still missed due to a red card or 3rd accumulated yellow
   seasonStartedRounds?: number; // Rounds started this season, for the end-of-season form bonus
   seasonGoodRounds?: number; // Of those, rounds where condition was "Bom"/"Otimo" (not "Ruim")
+  renewalBoostMatchesLeft?: number; // Matches still carrying the post-renewal morale boost (counts down as he starts)
+  renewalBoostPercent?: number; // Size of that temporary effective-rating boost, e.g. 0.08 for +8%
 }
 
 // A player is fit to be selected: not injured, and not serving a card suspension.
@@ -56,6 +58,12 @@ export interface ForeignPlayer extends Player {
 // (the actual purchase price is `value`, on the game's own rating-based economy -- unrelated).
 export const EUR_TO_BRL_RATE = 6.2;
 
+// VIP box baseline price and income per division (income at this exact price and full VIP
+// occupancy) -- price is user-adjustable via updateVipPrice, income scales with the price the
+// same way regular ticket income does (too far above baseline drives occupancy down).
+export const VIP_BASE_PRICE_BY_DIV: Record<string, number> = { A: 800, B: 400, C: 200 };
+export const VIP_BASE_INCOME_BY_DIV: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
+
 export interface Club {
   id: string;
   name: string;
@@ -74,6 +82,7 @@ export interface Club {
   penaltyTakerId?: string; // Player designated to take penalty kicks
   hasVipBoxes?: boolean; // Premium seating built -- adds a flat revenue bonus per home match
   vipBoxesWeeksLeft?: number; // Weeks remaining while VIP boxes are under construction
+  vipTicketPrice?: number; // Premium seating price per home match -- defaults to the division baseline when unset
   financialScore?: number; // 0-100 "Score Financeiro" driving bank loan terms
   loans?: Loan[]; // Active bank loans
   lateStrikes?: number; // Cumulative missed installments -- 3+ blocks new loans
