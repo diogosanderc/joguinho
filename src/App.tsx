@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, findFallbackReplacement } from './data/database';
 import type { Player, Club, PlayerPosition } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
 // listings throughout the app.
 const POSITION_ORDER: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
 const byPosition = <T extends { position: PlayerPosition }>(a: T, b: T) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position];
+
+// Force box color tier: gray (weak) -> yellow -> blue -> green (elite), used for the
+// defesa/ataque force boxes so the color itself signals how strong the number actually is.
+const getForceColor = (value: number): string => {
+  if (value >= 90) return '#66BB6A'; // green
+  if (value >= 71) return '#29B6F6'; // blue
+  if (value >= 51) return '#FFC107'; // yellow
+  return '#9CA3AF'; // gray
+};
 
 // Projected VIP box income for one home match at the club's current price -- mirrors the
 // formula GameContext actually applies round to round (price above the division baseline
@@ -38,7 +47,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -356,17 +365,11 @@ const AppContent: React.FC = () => {
         const validated = saved.map(p => {
           const found = userClub.squad.find(s => s.id === p.id);
           if (!found || !isPlayerAvailable(found)) {
-            let replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !usedIds.has(s.id));
-            // PON and CA cover for each other, and MEI covers VOL, before resorting to a
-            // completely mismatched position
-            if (!replacement && (p.position === 'CA' || p.position === 'PON')) {
-              const sibling = p.position === 'CA' ? 'PON' : 'CA';
-              replacement = userClub.squad.find(s => s.position === sibling && isPlayerAvailable(s) && !usedIds.has(s.id));
-            }
-            if (!replacement && p.position === 'VOL') {
-              replacement = userClub.squad.find(s => s.position === 'MEI' && isPlayerAvailable(s) && !usedIds.has(s.id));
-            }
-            const resolved = replacement || userClub.squad.find(s => isPlayerAvailable(s) && !usedIds.has(s.id)) || p;
+            const replacement = findFallbackReplacement(userClub.squad, p.position, usedIds);
+            const resolved = replacement
+              || userClub.squad.find(s => isPlayerAvailable(s) && !usedIds.has(s.id) && s.position !== 'GOL')
+              || userClub.squad.find(s => isPlayerAvailable(s) && !usedIds.has(s.id))
+              || p;
             usedIds.add(resolved.id);
             return resolved;
           }
@@ -417,7 +420,8 @@ const AppContent: React.FC = () => {
 
         if (selected.length < 11) {
           const ids = new Set(selected.map(p => p.id));
-          const rest = userClub.squad.filter(p => isPlayerAvailable(p) && !ids.has(p.id)).sort((a, b) => b.rating - a.rating);
+          const hasGoalkeeper = selected.some(p => p.position === 'GOL');
+          const rest = userClub.squad.filter(p => isPlayerAvailable(p) && !ids.has(p.id) && (!hasGoalkeeper || p.position !== 'GOL')).sort((a, b) => b.rating - a.rating);
           for (let i = 0; i < Math.min(11 - selected.length, rest.length); i++) selected.push(rest[i]);
         }
         setStarters(selected);
@@ -1532,10 +1536,17 @@ const AppContent: React.FC = () => {
                     const awayScore = matchEvents.filter(e => e.type === 'GOAL' && e.clubId === match.awayId && e.minute <= simMinute).length;
 
                     const liveGoals = matchEvents.filter(e => e.type === 'GOAL' && e.minute <= simMinute);
-                    const scorersText = liveGoals.map(g => {
-                      const tempo = g.minute <= 45 ? '1º' : '2º';
-                      return `${g.player} ${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''} (${tempo})`;
-                    }).join(', ');
+                    // A player who scores more than once lists his name a single time followed by
+                    // every minute ("Jogador 12', 45', 78'") instead of repeating the name per goal.
+                    const goalsByScorer = new Map<string, typeof liveGoals>();
+                    liveGoals.forEach(g => {
+                      const key = g.player ?? '';
+                      goalsByScorer.set(key, [...(goalsByScorer.get(key) ?? []), g]);
+                    });
+                    const scorersText = Array.from(goalsByScorer.entries()).map(([name, goals]) => {
+                      const minutesText = goals.map(g => `${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''}`).join(', ');
+                      return `${name} ${minutesText}`;
+                    }).join(' • ');
 
                     return (
                       <div ref={isUserMatch ? userMatchRef : undefined} key={match.homeId} className={`classic-match-row-wrapper ${isUserMatch ? 'highlighted' : ''}`}>
@@ -1888,7 +1899,13 @@ const AppContent: React.FC = () => {
                   const outgoing = midMatchStarters[subslotIndex];
                   const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && isPlayerAvailable(p));
                   const samePositionBench = healthyBench.filter(p => p.position === outgoing?.position);
-                  const benchPool = samePositionBench.length > 0 ? samePositionBench : healthyBench;
+                  const usedIds = new Set(midMatchStarters.map(s => s.id));
+                  const fallbackReplacement = samePositionBench.length === 0 && outgoing ? findFallbackReplacement(userClub.squad, outgoing.position, usedIds) : undefined;
+                  const fallbackBench = fallbackReplacement ? healthyBench.filter(p => p.position === fallbackReplacement.position) : [];
+                  // A goalkeeper never fills in outfield -- only offer the rest of the bench
+                  // regardless of position as the very last resort for an outfield player.
+                  const anyBench = outgoing?.position !== 'GOL' ? healthyBench.filter(p => p.position !== 'GOL') : healthyBench;
+                  const benchPool = samePositionBench.length > 0 ? samePositionBench : fallbackBench.length > 0 ? fallbackBench : anyBench;
                   return (
                   <>
                     <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-green)', fontWeight: 700 }}>
@@ -1896,7 +1913,9 @@ const AppContent: React.FC = () => {
                     </h4>
                     {samePositionBench.length === 0 && outgoing && (
                       <p style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', marginBottom: '6px' }}>
-                        Nenhum jogador de {outgoing.position} disponível no banco — mostrando todo o banco.
+                        {fallbackBench.length > 0
+                          ? `Nenhum jogador de ${outgoing.position} disponível — mostrando opções de ${fallbackReplacement!.position}.`
+                          : `Nenhum jogador de ${outgoing.position} disponível no banco — mostrando todo o banco.`}
                       </p>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
@@ -2071,6 +2090,30 @@ const AppContent: React.FC = () => {
         {/* --- TAB 0: ESCRITÓRIO --- */}
         {activeTab === 0 && (
           <>
+            {/* News feed */}
+            <div className="card-title"><Activity size={18} color="var(--accent-green)" /> Feed de Notícias</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+              {news.slice().reverse().map((n) => (
+                <div
+                  key={n.id}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    background: '#121316',
+                    borderLeft: `3px solid ${n.type === 'BOARD' ? 'var(--accent-red)' : n.type === 'TRANSFER' ? 'var(--accent-blue)' : n.type === 'OFFER' ? 'var(--accent-gold)' : 'var(--accent-gray)'}`,
+                    fontSize: '0.8rem',
+                    lineHeight: '1.4'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#6b7280', marginBottom: '2px', fontWeight: 700 }}>
+                    <span>{n.type.toUpperCase()}</span>
+                    <span>RODADA {n.week}</span>
+                  </div>
+                  <span style={{ color: '#d1d5db' }}>{n.text}</span>
+                </div>
+              ))}
+            </div>
+
             {/* discrete save slots / menu buttons */}
             <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
               <button
@@ -2186,30 +2229,6 @@ const AppContent: React.FC = () => {
                 plain web page that isn't installed as a real app yet) -- the feature itself
                 still works at its default (both on); revisit with a small, unobtrusive icon
                 once this ships as an actual app. */}
-
-            {/* News feed */}
-            <div className="card-title"><Activity size={18} color="var(--accent-green)" /> Feed de Notícias</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {news.slice().reverse().map((n) => (
-                <div 
-                  key={n.id}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    background: '#121316',
-                    borderLeft: `3px solid ${n.type === 'BOARD' ? 'var(--accent-red)' : n.type === 'TRANSFER' ? 'var(--accent-blue)' : n.type === 'OFFER' ? 'var(--accent-gold)' : 'var(--accent-gray)'}`,
-                    fontSize: '0.8rem',
-                    lineHeight: '1.4'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#6b7280', marginBottom: '2px', fontWeight: 700 }}>
-                    <span>{n.type.toUpperCase()}</span>
-                    <span>RODADA {n.week}</span>
-                  </div>
-                  <span style={{ color: '#d1d5db' }}>{n.text}</span>
-                </div>
-              ))}
-            </div>
           </>
         )}
 
@@ -2467,22 +2486,31 @@ const AppContent: React.FC = () => {
                 </button>
               </div>
 
-              {/* Force Summary (under buttons) */}
+              {/* Force Summary (under buttons) -- box color signals the strength tier itself
+                  (gray 0-50, yellow 51-70, blue 71-89, green 90-99), not a fixed defesa/ataque color. */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(41, 182, 246, 0.08)', border: '1px solid rgba(41, 182, 246, 0.25)', borderRadius: '10px', padding: '8px 12px' }}>
-                  <Shield size={18} color="#29B6F6" />
-                  <div>
-                    <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 700, letterSpacing: '0.5px' }}>DEFESA</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#29B6F6', lineHeight: 1.1 }}>{startersForces.defense}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.25)', borderRadius: '10px', padding: '8px 12px' }}>
-                  <TrendingUp size={18} color="#EF5350" />
-                  <div>
-                    <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 700, letterSpacing: '0.5px' }}>ATAQUE</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#EF5350', lineHeight: 1.1 }}>{startersForces.attack}</div>
-                  </div>
-                </div>
+                {(() => {
+                  const defColor = getForceColor(startersForces.defense);
+                  const atkColor = getForceColor(startersForces.attack);
+                  return (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: `${defColor}14`, border: `1px solid ${defColor}40`, borderRadius: '10px', padding: '8px 12px' }}>
+                        <Shield size={18} color={defColor} />
+                        <div>
+                          <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 700, letterSpacing: '0.5px' }}>DEFESA</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: defColor, lineHeight: 1.1 }}>{startersForces.defense}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: `${atkColor}14`, border: `1px solid ${atkColor}40`, borderRadius: '10px', padding: '8px 12px' }}>
+                        <TrendingUp size={18} color={atkColor} />
+                        <div>
+                          <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 700, letterSpacing: '0.5px' }}>ATAQUE</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: atkColor, lineHeight: 1.1 }}>{startersForces.attack}</div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2738,12 +2766,20 @@ const AppContent: React.FC = () => {
                             🔒 Renovar 2 Anos (+76s)
                           </button>
                           <button
-                            onClick={() => { if (!player.contractLocked) { sellPlayer(player); setSelectedManagePlayerId(null); } }}
+                            onClick={() => {
+                              if (player.contractLocked) return;
+                              const input = prompt(`Por quanto quer vender ${player.name}? (Valor de mercado: ${formatCurrency(player.value)}. Pedir mais de 15% acima disso e nenhum clube compra.)`, String(player.value));
+                              if (input === null) return;
+                              const askingPrice = Math.round(Number(input.replace(/[^0-9.]/g, '')));
+                              if (!askingPrice || askingPrice <= 0) { alert('Valor inválido.'); return; }
+                              const sold = attemptSellPlayer(player, askingPrice);
+                              if (sold) setSelectedManagePlayerId(null);
+                            }}
                             disabled={player.contractLocked}
                             className="btn btn-danger"
                             style={{ flex: 1.2, padding: '6px', fontSize: '0.72rem', background: player.contractLocked ? '#2e191b' : 'rgba(255, 23, 68, 0.1)', border: player.contractLocked ? '1px solid #4a1c20' : '1px solid rgba(255, 23, 68, 0.2)', color: player.contractLocked ? '#9ca3af' : 'var(--accent-red)', minWidth: '100px', cursor: player.contractLocked ? 'not-allowed' : 'pointer' }}
                           >
-                            {player.contractLocked ? '🔒 Trancado' : `💰 Vender (${formatCurrency(Math.round(player.value * 0.9))})`}
+                            {player.contractLocked ? '🔒 Trancado' : `💰 Vender (Valor: ${formatCurrency(player.value)})`}
                           </button>
                           <button
                             onClick={() => {

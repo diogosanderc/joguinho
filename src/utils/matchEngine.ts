@@ -72,8 +72,13 @@ export const getAutoStarters = (club: Club): Player[] => {
 
   // Fill any remaining slots with the best available player regardless of position --
   // real squads can genuinely have gaps now (e.g. zero natural CA or PON), so this triggers often.
+  // A keeper never fills an outfield gap here -- unless the team has no fit goalkeeper at all,
+  // in which case an outfielder in goal is the lesser evil over playing a man short.
   if (starters.length < 11) {
-    const rest = club.squad.filter(p => isPlayerAvailable(p) && !usedIds.has(p.id)).sort((a, b) => b.rating - a.rating);
+    const hasGoalkeeper = starters.some(p => p.position === 'GOL');
+    const rest = club.squad
+      .filter(p => isPlayerAvailable(p) && !usedIds.has(p.id) && (!hasGoalkeeper || p.position !== 'GOL'))
+      .sort((a, b) => b.rating - a.rating);
     const need = 11 - starters.length; // captured once -- starters.length changes inside the loop below
     for (let i = 0; i < Math.min(need, rest.length); i++) {
       starters.push(rest[i]);
@@ -343,23 +348,26 @@ export const simulateMatch = (
     }
   };
 
-  // Elastic Goal Scaling: 
-  // If attack is 30% higher than defense, boost scoring rate.
+  // Elastic Goal Scaling: a clearly stronger attack than the opposing defense should convert
+  // meaningfully more often -- thresholds lowered (1.3->1.2, 0.7->0.8) so this kicks in on a
+  // more modest gap, and the bonus raised (0.08->0.12) so a real mismatch (e.g. force 90 vs 60)
+  // compounds with the attackChance exponent above into a heavily favored side, while two
+  // similarly-matched teams (neither clears the threshold) stay on the same 0.35 baseline.
   let homeConversionRate = 0.35;
   let awayConversionRate = 0.35;
-  
-  if (homeAtt >= awayDef * 1.3) {
-    homeConversionRate += 0.08;
+
+  if (homeAtt >= awayDef * 1.2) {
+    homeConversionRate += 0.12;
   }
-  if (awayDef <= homeAtt * 0.7) {
-    homeConversionRate += 0.08;
+  if (awayDef <= homeAtt * 0.8) {
+    homeConversionRate += 0.12;
   }
-  
-  if (awayAtt >= homeDef * 1.3) {
-    awayConversionRate += 0.08;
+
+  if (awayAtt >= homeDef * 1.2) {
+    awayConversionRate += 0.12;
   }
-  if (homeDef <= awayAtt * 0.7) {
-    awayConversionRate += 0.08;
+  if (homeDef <= awayAtt * 0.8) {
+    awayConversionRate += 0.12;
   }
 
   // Blowout / Goleada chance check (5% chance to trigger extra attack strength if one team takes a 2-goal lead)
@@ -421,7 +429,7 @@ export const simulateMatch = (
         } else {
           // AMPLIFY RATING INFLUENCE: Use a power factor to expand the difference between forces
           const baseAttackChance = homeAtt / (homeAtt + awayDef);
-          const attackChance = Math.pow(baseAttackChance, 1.6); // Expands the advantage of higher ratings
+          const attackChance = Math.pow(baseAttackChance, 2.1); // Expands the advantage of higher ratings -- a big force gap should translate into a heavily favored side, not just a mild edge
 
           // Let's decide if it's a Goal, Saved, or Miss
           const attackRoll = Math.random();
@@ -494,7 +502,7 @@ export const simulateMatch = (
           }
         } else {
           const baseAttackChance = awayAtt / (awayAtt + homeDef);
-          const attackChance = Math.pow(baseAttackChance, 1.6);
+          const attackChance = Math.pow(baseAttackChance, 2.1);
 
           const attackRoll = Math.random();
           if (attackRoll < attackChance * awayConversionRate) { // Goal!

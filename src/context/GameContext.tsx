@@ -120,6 +120,7 @@ interface GameContextType {
   nextRound: (starters: Player[]) => void;
   buyPlayer: (player: Player) => void;
   sellPlayer: (player: Player) => void;
+  attemptSellPlayer: (player: Player, askingPrice: number) => boolean;
   retirePlayer: (player: Player) => void;
   upgradeStadium: (capacity: number) => void;
   buildVipBoxes: () => void;
@@ -1712,6 +1713,61 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
+  // Lists a player at a manager-chosen asking price instead of the instant fixed-90% sale
+  // above. Clubs are less likely to bite the higher above market value the price is asked --
+  // above 115% of value nobody bites at all -- while a star player draws extra interest at any
+  // price. Returns true if a buyer was found (and the sale went through), false otherwise.
+  const attemptSellPlayer = (player: Player, askingPrice: number): boolean => {
+    if (!userClub) return false;
+
+    if (userClub.squad.length <= MIN_SQUAD_SIZE) {
+      alert(`Elenco muito reduzido! Você precisa manter pelo menos ${MIN_SQUAD_SIZE} jogadores no elenco (11 titulares + 5 reservas).`);
+      return false;
+    }
+
+    const squadAfterSale = userClub.squad.filter(p => p.id !== player.id);
+    const violation = findDepthViolation(squadAfterSale, player.position);
+    if (violation) {
+      alert(`Impossível vender! O elenco precisa manter pelo menos ${violation.min} jogador(es) de ${violation.pos}.`);
+      return false;
+    }
+
+    const ratio = player.value > 0 ? askingPrice / player.value : 1;
+    if (ratio > 1.15) {
+      alert(`Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name} -- mais de 15% acima do valor de mercado (${formatCurrency(player.value)}). Peça um valor menor.`);
+      return false;
+    }
+
+    let chance = ratio <= 1.0 ? 0.85 + (1 - ratio) * 0.15 : 0.85 * (1 - (ratio - 1.0) / 0.15);
+    if (player.isStar) chance += 0.15;
+    chance = Math.max(0, Math.min(1, chance));
+
+    if (Math.random() >= chance) {
+      alert(`Nenhum clube aceitou pagar ${formatCurrency(askingPrice)} por ${player.name} desta vez. Tente um valor menor ou espere uma nova proposta.`);
+      return false;
+    }
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances + askingPrice, squad: club.squad.filter(p => p.id !== player.id) };
+      }
+      return club;
+    });
+    setClubs(updatedClubs);
+
+    const otherClubs = clubs.filter(c => c.id !== userClubId);
+    const buyerClub = otherClubs[Math.floor(Math.random() * otherClubs.length)] || { name: 'Outro Clube' };
+    const nextNews = [{
+      id: `sell_${Date.now()}`,
+      week: currentRound,
+      text: `Transferência! O ${buyerClub.name} comprou o jogador ${player.name} do ${userClub.name} por ${formatCurrency(askingPrice)}.`,
+      type: 'TRANSFER' as const
+    }];
+    setNews(prev => [...prev, ...nextNews]);
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, [...news, ...nextNews], history, stadiumUpgrade, activeSponsors);
+    return true;
+  };
+
   // Retires a player from the game entirely -- unlike sellPlayer, no other club acquires them
   // and no money changes hands; the player simply leaves the squad and is gone for good.
   const retirePlayer = (player: Player) => {
@@ -2928,6 +2984,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextRound,
       buyPlayer,
       sellPlayer,
+      attemptSellPlayer,
       retirePlayer,
       upgradeStadium,
       buildVipBoxes,

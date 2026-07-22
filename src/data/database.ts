@@ -42,6 +42,34 @@ export interface Player {
 export const isPlayerAvailable = (p: Player): boolean =>
   !p.isInjured && !(p.suspendedMatches && p.suspendedMatches > 0);
 
+// Emergency same-position-unavailable fallbacks: which OTHER positions can realistically cover
+// when there's no healthy player left at the position that actually needs filling. A fullback
+// can drop to centre-back or swap flanks, a volante can push into central midfield, a winger
+// can play centre-forward -- but a goalkeeper never fills an outfield gap, so GOL never appears
+// in any of these chains (see also the isPlayerAvailable-based catch-alls, which exclude GOL too).
+export const POSITION_FALLBACK_CHAIN: Partial<Record<PlayerPosition, PlayerPosition[]>> = {
+  LD: ['ZAG', 'LE'],
+  LE: ['ZAG', 'LD'],
+  VOL: ['ZAG', 'MEI'],
+  CA: ['PON', 'MEI'],
+  PON: ['CA', 'MEI'],
+};
+
+// Resolves an emergency replacement for `neededPosition` by walking its fallback chain in
+// order, skipping goalkeepers entirely (an outfield gap should never default to a keeper).
+export const findFallbackReplacement = (
+  squad: Player[], neededPosition: PlayerPosition, excludeIds: Set<string>
+): Player | undefined => {
+  const chain = POSITION_FALLBACK_CHAIN[neededPosition] ?? [];
+  for (const fallbackPos of chain) {
+    const candidate = squad
+      .filter(p => p.position === fallbackPos && isPlayerAvailable(p) && !excludeIds.has(p.id))
+      .sort((a, b) => b.rating - a.rating)[0];
+    if (candidate) return candidate;
+  }
+  return undefined;
+};
+
 // A player listed in the international transfer market (Premier League, Serie A, Bundesliga,
 // La Liga, Ligue 1, and Libertadores clubs). Backed by a static dataset at
 // public/data/foreign_players.json -- rating/value/salary are precomputed there using the same
