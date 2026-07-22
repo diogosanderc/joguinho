@@ -6,9 +6,9 @@ import type { MatchResult, MatchEvent } from '../utils/matchEngine';
 import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
 import type { Loan } from '../utils/loanEngine';
 import {
-  startCup, drawPhaseTies, simulateFullTie, resolveTie, rankFase1WinnersForDirectQualification,
+  startCup, drawPhaseTies, simulateFullTie, resolveTie,
   getCupTopScorers, PHASES, TWO_LEGGED_PHASES, CUP_MILESTONE_ROUNDS, CUP_PHASE_LABEL,
-  CUP_PRIZE_FOR_REACHING, CUP_CHAMPION_PRIZE, CUP_TOP_SCORER_BONUS, pickShootoutTakers
+  CUP_PRIZE_FOR_REACHING, CUP_CHAMPION_PRIZE, CUP_TOP_SCORER_BONUS, CUP_OITAVAS_SEED_COUNT, pickShootoutTakers
 } from '../utils/cupEngine';
 import type { CupState, CupPhase, CupTieLeg } from '../utils/cupEngine';
 
@@ -186,6 +186,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cupDrawReveal, setCupDrawReveal] = useState<{ phase: CupPhase; opponentId: string; isHome: boolean } | null>(null);
   const dismissCupDrawReveal = () => setCupDrawReveal(null);
 
+  // Top Série A finishers from the season that just ended, captured in endSeason -- consumed by
+  // the next startCup() call (stayAtClub/acceptJobOffer) to seed them straight to the Oitavas.
+  const [lastSeasonTopSerieA, setLastSeasonTopSerieA] = useState<string[]>([]);
+
   // Live penalty shootout for the user's own Copa do Brasil tie. Kept in a ref too (same
   // pattern as cupStateRef) since takePenaltyShootoutKick() is called repeatedly on a timer from
   // the UI and needs the latest value synchronously, not a stale render closure.
@@ -341,7 +345,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       foreignMarketPlayers: foreignMarketRef.current,
       boughtForeignIds: boughtForeignIdsRef.current,
       divisionExperience: divisionExperienceRef.current,
-      formerClubName
+      formerClubName,
+      lastSeasonTopSerieA
     });
 
     const slimSchedule = slimOldMatchEvents(currentSchedule, round);
@@ -415,7 +420,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory([]);
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
-    setCupState(startCup(updatedClubs.map(c => c.id), 2026));
+    setCupState(startCup(updatedClubs, 2026));
     setBoughtForeignIds([]);
     setForeignMarketPlayers(foreignPlayerPool.length > 0 ? sampleForeignPlayers(foreignPlayerPool, [], 18) : []);
 
@@ -1161,6 +1166,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ) => {
     // 1. Calculate League Standings for each division
     const standings = calculateStandings(currentClubs, currentSchedule);
+
+    // Captures the top Série A finishers before the season rolls over, so next year's Copa do
+    // Brasil can seed them straight to the Oitavas draw (see startCup in cupEngine.ts).
+    setLastSeasonTopSerieA(standings.A.slice(0, CUP_OITAVAS_SEED_COUNT).map(s => s.clubId));
 
     // 2. Identify Promoted and Relegated teams
     const promotions: Record<'B' | 'C', string[]> = { B: [], C: [] };
@@ -2156,7 +2165,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSchedule(newSchedule);
     setCurrentRound(1);
     setCurrentYear(prev => prev + 1);
-    setCupState(startCup(updatedClubs.map(c => c.id), currentYear + 1));
+    const newCup = startCup(updatedClubs, currentYear + 1, lastSeasonTopSerieA);
+    setCupState(newCup);
     setOffers([]);
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null }); // Clear sponsorships for new club
@@ -2167,6 +2177,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const bankEvent = getBankEventForYear(currentYear + 1);
     if (bankEvent.label) {
       nextNews.push({ id: `bank_event_${currentYear + 1}`, week: 0, text: bankEvent.label, type: 'INFO' });
+    }
+    if (newCup.oitavasSeeds.includes(clubId)) {
+      nextNews.push({ id: `cup_seed_${currentYear + 1}`, week: 0, text: `Copa do Brasil: como um dos melhores colocados da Série A na temporada passada, o ${newClub.name} entra direto nas Oitavas de Final, sem disputar Fase 0, 1ª e 2ª Fase!`, type: 'BOARD' });
+    } else if (newCup.fase1ByeClubIds.includes(clubId)) {
+      nextNews.push({ id: `cup_bye_${currentYear + 1}`, week: 0, text: `Copa do Brasil: o ${newClub.name} está entre os melhores fora dos classificados diretos e ganhou um bye, entrando direto na 1ª Fase.`, type: 'INFO' });
     }
     setNews(nextNews);
     setGameState('PLAYING');
@@ -2205,7 +2220,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSchedule(newSchedule);
     setCurrentRound(1);
     setCurrentYear(prev => prev + 1);
-    setCupState(startCup(updatedClubs.map(c => c.id), currentYear + 1));
+    const newCup = startCup(updatedClubs, currentYear + 1, lastSeasonTopSerieA);
+    setCupState(newCup);
     setOffers([]);
 
     const userClubInstance = clubs.find(c => c.id === userClubId)!;
@@ -2233,6 +2249,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextSponsors[key] = { ...sp, weeklyPayment: scaledPayment, signedDivision: userClubInstance.division };
       nextNews.push({ id: `sponsor_boost_${key}_${Date.now()}`, week: 0, text: `Acesso de Série! O patrocinador ${sp.name} renegociou o contrato após o acesso -- pagamento semanal subiu para ${formatCurrency(scaledPayment)}.`, type: 'INFO' });
     });
+
+    if (newCup.oitavasSeeds.includes(userClubId)) {
+      nextNews.push({ id: `cup_seed_${currentYear + 1}`, week: 0, text: `Copa do Brasil: como um dos melhores colocados da Série A na temporada passada, o ${userClubInstance.name} entra direto nas Oitavas de Final, sem disputar Fase 0, 1ª e 2ª Fase!`, type: 'BOARD' });
+    } else if (newCup.fase1ByeClubIds.includes(userClubId)) {
+      nextNews.push({ id: `cup_bye_${currentYear + 1}`, week: 0, text: `Copa do Brasil: o ${userClubInstance.name} está entre os melhores fora dos classificados diretos e ganhou um bye, entrando direto na 1ª Fase.`, type: 'INFO' });
+    }
 
     setActiveSponsors(nextSponsors);
     setNews(nextNews);
@@ -2405,32 +2427,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const nextCup: CupState = { ...cup, userTie: null, pendingSecondLeg: null };
     const nameOf = (id: string) => clubsList.find(c => c.id === id)?.name ?? id;
 
-    if (phase === 'FASE1') {
-      const directQualifiers = rankFase1WinnersForDirectQualification(phaseTies);
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.FASE2); });
-      directQualifiers.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.OITAVAS); });
-      nextCup.directQualifiers = directQualifiers;
-      nextCup.aliveClubIds = winners.filter(w => !directQualifiers.includes(w));
+    if (phase === 'FASE0') {
+      nextCup.aliveClubIds = [...winners, ...cup.fase1ByeClubIds];
+      nextCup.fase1ByeClubIds = [];
       nextCup.phaseIndex = 1;
-      if (directQualifiers.includes(userClubId)) {
-        pushNews({ id: `cup_direct_${Date.now()}`, week: currentRound, text: `Copa: seu time terminou entre os 2 melhores visitantes da 1ª Fase e avançou direto às Oitavas de Final, sem disputar a 2ª Fase!`, type: 'BOARD' });
-      }
+    } else if (phase === 'FASE1') {
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.FASE2); });
+      nextCup.aliveClubIds = winners;
+      nextCup.phaseIndex = 2;
     } else if (phase === 'FASE2') {
       winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.OITAVAS); });
-      nextCup.aliveClubIds = [...winners, ...cup.directQualifiers];
-      nextCup.directQualifiers = [];
-      nextCup.phaseIndex = 2;
+      nextCup.aliveClubIds = [...winners, ...cup.oitavasSeeds];
+      nextCup.oitavasSeeds = [];
+      nextCup.phaseIndex = 3;
     } else if (phase === 'OITAVAS') {
       winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.QUARTAS); });
       nextCup.aliveClubIds = winners;
-      nextCup.phaseIndex = 3;
+      nextCup.phaseIndex = 4;
     } else if (phase === 'QUARTAS') {
       winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.SEMI); });
       nextCup.aliveClubIds = winners;
-      nextCup.phaseIndex = 4;
+      nextCup.phaseIndex = 5;
     } else if (phase === 'SEMI') {
       nextCup.aliveClubIds = winners;
-      nextCup.phaseIndex = 5;
+      nextCup.phaseIndex = 6;
     } else {
       const championId = winners[0];
       nextClubs = applyCupPrize(nextClubs, championId, CUP_CHAMPION_PRIZE);
@@ -2926,12 +2946,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory(data.history);
     setStadiumUpgrade(data.stadiumUpgrade);
     setActiveSponsors(data.activeSponsors);
-    if (data.cupState) {
+    if (data.cupState && data.cupState.fase1ByeClubIds) {
       setCupState(data.cupState);
     } else {
-      // Older saves predate the Copa -- retroactively start one for the rest of this season
-      // instead of leaving the club out until next year, skipping milestone rounds already past.
-      const freshCup = startCup(data.clubs.map((c: Club) => c.id), data.currentYear);
+      // Older saves either predate the Copa entirely, or predate the Fase 0/seeding rework
+      // (the bracket shape itself changed, so an in-progress old-format run can't be remapped
+      // safely) -- retroactively start a fresh one for the rest of this season instead of
+      // leaving the club out until next year, skipping milestone rounds already past.
+      const freshCup = startCup(data.clubs, data.currentYear);
       const alreadyPassed = CUP_MILESTONE_ROUNDS.filter(r => r < data.currentRound).length;
       setCupState({ ...freshCup, milestonesConsumed: alreadyPassed });
     }
@@ -2939,6 +2961,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBoughtForeignIds(data.boughtForeignIds ?? []);
     setDivisionExperience(data.divisionExperience ?? { A: 0, B: 0, C: 0 });
     setFormerClubName(data.formerClubName ?? '');
+    setLastSeasonTopSerieA(data.lastSeasonTopSerieA ?? []);
   };
 
   const cheatFinances = () => {

@@ -3958,7 +3958,7 @@ const AppContent: React.FC = () => {
                 <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '10px' }}>
                   {cupState.championId
                     ? (cupState.championId === userClubId ? '🏆 Seu time é o CAMPEÃO da Copa!' : `Campeão: ${clubs.find(c => c.id === cupState.championId)?.name ?? '???'}`)
-                    : cupState.aliveClubIds.includes(userClubId) || cupState.userTie
+                    : cupState.aliveClubIds.includes(userClubId) || cupState.fase1ByeClubIds.includes(userClubId) || cupState.oitavasSeeds.includes(userClubId) || cupState.userTie
                     ? `Seu time segue vivo na competição -- fase atual: ${CUP_PHASE_LABEL[PHASES[Math.min(cupState.phaseIndex, PHASES.length - 1)]]}.`
                     : 'Seu time foi eliminado da Copa nesta temporada.'}
                 </p>
