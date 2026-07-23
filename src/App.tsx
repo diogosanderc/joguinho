@@ -1947,12 +1947,16 @@ const AppContent: React.FC = () => {
                   const outgoing = midMatchStarters[subslotIndex];
                   const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && isPlayerAvailable(p));
                   const samePositionBench = healthyBench.filter(p => p.position === outgoing?.position);
-                  // No restriction to a fallback chain of "similar" positions -- any healthy
-                  // reserve can come in for any slot, letting the manager decide the tradeoff
-                  // (e.g. weakening the attack to reinforce defense after a red card).  A
-                  // goalkeeper is still never offered as an outfield substitute.
-                  const anyBench = outgoing?.position !== 'GOL' ? healthyBench.filter(p => p.position !== 'GOL') : healthyBench;
-                  const benchPool = samePositionBench.length > 0 ? samePositionBench : anyBench;
+                  // Always show the WHOLE bench, not just same-position reserves -- the manager
+                  // might deliberately want to bring on a different position (e.g. a defender in
+                  // place of a winger, to shore up the defense after a red card elsewhere) even
+                  // when a same-position reserve is available. Same-position options are sorted
+                  // first purely for convenience. A goalkeeper is still never offered as an
+                  // outfield substitute.
+                  const restOfBench = outgoing?.position !== 'GOL'
+                    ? healthyBench.filter(p => p.position !== 'GOL' && p.position !== outgoing?.position)
+                    : healthyBench.filter(p => p.position !== outgoing?.position);
+                  const benchPool = [...samePositionBench, ...restOfBench];
                   return (
                   <>
                     <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-green)', fontWeight: 700 }}>
