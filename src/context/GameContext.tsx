@@ -1083,7 +1083,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const group = getPositionGroup(player.position);
           const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
           const valBase = Math.pow(rating - 30, 2.5) * 800;
-          value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
+          // Never worth less than what the user's club actually paid for him.
+          value = Math.max(10000, Math.round(valBase * ageFactor * posFactor), player.purchasePrice ?? 0);
           salary = Math.round(value * 0.005);
         }
 
@@ -1568,7 +1569,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const ageFactor = age < 24 ? 1.3 : age > 30 ? 0.7 : 1.0;
           const posFactor = posGroup === 'FW' ? 1.2 : posGroup === 'GK' ? 0.9 : 1.0;
           const valBase = Math.pow(rating - 30, 2.5) * 800;
-          value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
+          // Never worth less than what the user's club actually paid for him.
+          value = Math.max(10000, Math.round(valBase * ageFactor * posFactor), p.purchasePrice ?? 0);
           salary = Math.round(value * 0.005);
         }
 
@@ -1836,13 +1838,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [...squad].sort((a, b) => order[a.position] - order[b.position]);
     };
 
-    // Deduct cost and add player
+    // Deduct cost and add player -- his market value can never drop below what was actually
+    // paid for him afterward (see the value-recompute floors below).
     const updatedClubs = clubs.map(club => {
       if (club.id === userClubId) {
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: sortSquad([...club.squad, player])
+          squad: sortSquad([...club.squad, { ...player, purchasePrice: player.value }])
         };
       }
       return club;
@@ -1887,7 +1890,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: sortSquad([...club.squad, basePlayer])
+          squad: sortSquad([...club.squad, { ...basePlayer, purchasePrice: player.value }])
         };
       }
       return club;
@@ -1934,7 +1937,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: sortSquad([...club.squad, { ...player, contractLocked: false }])
+          squad: sortSquad([...club.squad, { ...player, contractLocked: false, purchasePrice: player.value }])
         };
       }
       return club;
@@ -2130,7 +2133,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updatedClubs = clubs.map(club => {
       if (club.id === userClubId) {
-        const newPlayer = { ...player, contractLocked: true };
+        // A winning bid can exceed the player's listed value -- his stored value should reflect
+        // what was actually paid right away, not the pre-negotiation market price.
+        const newPlayer = { ...player, contractLocked: true, value: pricePaid, purchasePrice: pricePaid };
         return {
           ...club,
           finances: club.finances - pricePaid,
@@ -3471,7 +3476,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const ageFactor = p.age < 24 ? 1.3 : p.age > 30 ? 0.7 : 1.0;
         const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
         const valBase = Math.pow(rating - 30, 2.5) * 800;
-        const value = Math.max(10000, Math.round(valBase * ageFactor * posFactor));
+        // Never worth less than what the user's club actually paid for him.
+        const value = Math.max(10000, Math.round(valBase * ageFactor * posFactor), p.purchasePrice ?? 0);
         const salary = Math.round(value * 0.005);
         return {
           ...p,
