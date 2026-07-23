@@ -1227,6 +1227,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
 
+    // --- LIBERTADORES-CHASING MOTIVATIONAL NEWS (Série A, mid-season, while in the G4) ---
+    // Only the top 4 of Série A actually qualify for next year's Libertadores -- this doesn't
+    // change anything mechanically, just gives the user a periodic reminder/incentive while
+    // they're in that spot, mid-campaign rather than only in the end-of-season recap.
+    if (userClub && userClub.division === 'A' && Math.random() < 0.12) {
+      const standingsNow = calculateStandings(finalClubs, updatedMatches);
+      const rank = standingsNow.A.findIndex(s => s.clubId === userClubId);
+      if (rank >= 0 && rank < 4) {
+        const libChaseMessages = [
+          `A diretoria do ${userClub.name} confia na classificação para a Libertadores e cobra foco total do elenco até o fim da temporada.`,
+          `Com o ${userClub.name} no G4, a torcida já sonha com a Libertadores -- e a diretoria espera que os jogadores mantenham a intensidade nos próximos jogos.`,
+          `Classificação para a Libertadores no horizonte! A diretoria do ${userClub.name} pede que o elenco não tire o pé até a última rodada.`,
+          `O ${userClub.name} segue entre os 4 primeiros -- a diretoria acredita na vaga da Libertadores e conta com a entrega máxima dos jogadores.`,
+          `Expectativa cresce nos bastidores: a diretoria do ${userClub.name} já projeta a Libertadores do ano que vem e cobra vitórias até o fim do campeonato.`
+        ];
+        pushNews({
+          id: `lib_chase_${Date.now()}`,
+          week: currentRound,
+          text: libChaseMessages[Math.floor(Math.random() * libChaseMessages.length)],
+          type: 'BOARD'
+        });
+      }
+    }
+
     // --- MID-SEASON OFFERS FROM HIGHER DIVISION BOTS IN CRISIS ---
     // If player club is doing very well (confidence > 75) and there's a club in a higher division in crisis (confidence < 35)
     if (userClub && userClub.confidence >= 75 && Math.random() < 0.18) {
