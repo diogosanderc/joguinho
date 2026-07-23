@@ -1430,7 +1430,8 @@ const AppContent: React.FC = () => {
   // --- LIVE MATCH SIMULATOR OVERLAY ---
   if (gameState === 'MATCH_DAY' && currentMatch) {
     const isHome = currentMatch.homeId === userClubId;
-    const opponent = clubs.find(c => c.id === (isHome ? currentMatch.awayId : currentMatch.homeId))!;
+    const opponentId = isHome ? currentMatch.awayId : currentMatch.homeId;
+    const opponent = (clubs.find(c => c.id === opponentId) ?? libertadoresClubs.find(c => c.id === opponentId))!;
     const roundToDisplay = currentRound - 1;
     const roundMatches = schedule.filter(m => m.round === roundToDisplay);
 
