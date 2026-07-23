@@ -1028,14 +1028,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           // Reserve - training! (rates halved from the original 0.15/0.06/0.08 -- ratings were
           // compounding too fast season over season when combined with the end-of-season bumps)
+          // The 99 cap only applies to normal players -- a boosted foreign star already sitting
+          // above it (see foreign_players.json's eliteStamina/rating boost) must never be pulled
+          // back DOWN to 99 by a growth roll; his own current rating is the effective floor.
+          const growthCap = Math.max(99, player.rating);
           if (isYoung) {
-            if (Math.random() < 0.08) rating = Math.min(99, rating + 1);
+            if (Math.random() < 0.08) rating = Math.min(growthCap, rating + 1);
           } else if (isOld) {
             const roll = Math.random();
             if (roll < 0.04) rating = Math.max(40, rating - 1);
-            else if (roll < 0.05) rating = Math.min(99, rating + 1);
+            else if (roll < 0.05) rating = Math.min(growthCap, rating + 1);
           } else {
-            if (Math.random() < 0.04) rating = Math.min(99, rating + 1);
+            if (Math.random() < 0.04) rating = Math.min(growthCap, rating + 1);
           }
         }
 
@@ -1531,23 +1535,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Any player who scored 10+ goals this season earns a star and a rating bump for
-        // next year, on top of whatever the checks above already decided. (Reduced from 10%
-        // -- compounding year over year on top of the other bumps below was inflating ratings
-        // too fast for a prolific scorer over a few seasons.)
+        // next year, on top of whatever the checks above already decided. (Reduced further to
+        // 3% -- even at 6% these bonuses, stacked with the consistency one below, were pushing
+        // ratings up too fast season over season.) Only players still in their prime/growth
+        // years (under 31) get this bump -- a veteran racking up 10 goals should still be
+        // trending toward decline, not fighting his own aging curve back up.
+        // The 99 cap below only applies to normal players -- a boosted foreign star already
+        // sitting above it must never be pulled back DOWN to 99 by one of these season-end
+        // bumps; his own rating at the start of this calculation is the effective floor.
+        const growthCap = Math.max(99, p.rating);
         let rating = p.rating;
         if (p.goals >= 10) {
           isStar = true;
-          rating = Math.min(99, Math.round(p.rating * 1.06));
+          if (p.age < 31) rating = Math.min(growthCap, Math.round(p.rating * 1.03));
         }
 
-        // Consistently good form this season earns an extra 5% growth bump for next year:
-        // needs a real sample of starts (10+) and to have spent most of them (75%+) rated
-        // "Bom"/"Otimo" rather than "Ruim" -- rewards reliable performers, not just anyone
-        // who avoided a bad-luck dip while barely playing.
+        // Consistently good form this season earns an extra growth bump for next year (reduced
+        // to 2.5%): needs a real sample of starts (10+) and to have spent most of them (75%+)
+        // rated "Bom"/"Otimo" rather than "Ruim" -- rewards reliable performers, not just anyone
+        // who avoided a bad-luck dip while barely playing. Same under-31 gate as above.
         const startedRounds = p.seasonStartedRounds ?? 0;
         const goodRounds = p.seasonGoodRounds ?? 0;
-        if (startedRounds >= 10 && goodRounds / startedRounds >= 0.75) {
-          rating = Math.min(99, Math.round(rating * 1.05));
+        if (startedRounds >= 10 && goodRounds / startedRounds >= 0.75 && p.age < 31) {
+          rating = Math.min(growthCap, Math.round(rating * 1.025));
         }
 
         // Age up a year, and let a real career progression/decline curve play out: young
@@ -1557,10 +1567,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // that already happens round to round (see the isYoung/isOld block above).
         const age = p.age + 1;
         if (age <= 23) {
-          if (Math.random() < 0.22) rating = Math.min(99, rating + 1);
+          if (Math.random() < 0.22) rating = Math.min(growthCap, rating + 1);
         } else if (age >= 32) {
-          const declineChance = 0.35 + (age - 32) * 0.05;
-          if (Math.random() < Math.min(0.85, declineChance)) rating = Math.max(40, rating - (age >= 36 ? 2 : 1));
+          // A veteran still scoring like a prime player (10+ goals this season) is proving his
+          // legs haven't gone yet -- skip the aging roll entirely so his rating holds steady
+          // instead of falling just because of the calendar, while a veteran who ISN'T still
+          // producing declines as normal.
+          if (p.goals < 10) {
+            const declineChance = 0.35 + (age - 32) * 0.05;
+            if (Math.random() < Math.min(0.85, declineChance)) rating = Math.max(40, rating - (age >= 36 ? 2 : 1));
+          }
         }
 
         let value = p.value;
@@ -3471,7 +3487,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedSquad = c.squad.map(p => {
         if (p.id !== playerId || p.contractLocked) return p;
         const currentW = p.contractWeeks ?? 38;
-        const rating = Math.min(99, p.rating + 2);
+        // A boosted foreign star already above 99 must never be pulled back down to it by this
+        // renewal bump -- his own current rating is the effective floor for the cap.
+        const rating = Math.min(Math.max(99, p.rating), p.rating + 2);
         const group = getPositionGroup(p.position);
         const ageFactor = p.age < 24 ? 1.3 : p.age > 30 ? 0.7 : 1.0;
         const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
