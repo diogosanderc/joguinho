@@ -107,6 +107,8 @@ interface GameContextType {
   startCupMatch: (starters: Player[]) => void;
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
+  sponsorAlert: { kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null;
+  dismissSponsorAlert: () => void;
   penaltyShootout: PenaltyShootoutState | null;
   takePenaltyShootoutKick: () => void;
   finalizePenaltyShootout: () => void;
@@ -189,6 +191,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Top Série A finishers from the season that just ended, captured in endSeason -- consumed by
   // the next startCup() call (stayAtClub/acceptJobOffer) to seed them straight to the Oitavas.
   const [lastSeasonTopSerieA, setLastSeasonTopSerieA] = useState<string[]>([]);
+
+  // Transient (not persisted) alert for the sponsor-contract modal -- fires when a deal expires
+  // (a passive event during round processing, easy to miss in the news feed alone) or when the
+  // user signs/renews one (an explicit confirmation on top of the news item).
+  const [sponsorAlert, setSponsorAlert] = useState<{ kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null>(null);
+  const dismissSponsorAlert = () => setSponsorAlert(null);
 
   // Live penalty shootout for the user's own Copa do Brasil tie. Kept in a ref too (same
   // pattern as cupStateRef) since takePenaltyShootoutKick() is called repeatedly on a timer from
@@ -1043,6 +1051,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             text: `Contrato de patrocínio com a ${sp.name} expirou.`,
             type: 'INFO'
           });
+          setSponsorAlert({ kind: 'EXPIRED', sponsorName: sp.name, sponsorType: type });
         }
       }
     });
@@ -1934,6 +1943,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       text: `Novo Patrocinador! O ${userClub.name} assinou contrato de ${sponsor.type === 'MASTER' ? 'Patrocínio Master' : sponsor.type === 'COSTAS' ? 'Patrocínio Costas' : 'Patrocínio Mangas'} com a ${sponsor.name}!`,
       type: 'INFO'
     }]);
+    setSponsorAlert({ kind: 'SIGNED', sponsorName: sponsor.name, sponsorType: sponsor.type });
 
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, nextSponsors);
   };
@@ -3027,6 +3037,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startCupMatch,
       cupDrawReveal,
       dismissCupDrawReveal,
+      sponsorAlert,
+      dismissSponsorAlert,
       penaltyShootout,
       takePenaltyShootoutKick,
       finalizePenaltyShootout,

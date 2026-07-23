@@ -56,7 +56,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -4066,10 +4066,32 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
+      {/* SPONSOR CONTRACT ALERT MODAL -- fires when a deal expires (passive, during round
+          processing, easy to miss in the news feed alone) or when the user signs a new one
+          (explicit confirmation on top of the news item). */}
+      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && !penaltyShootout && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+            <span style={{ fontSize: '2.5rem' }}>{sponsorAlert.kind === 'SIGNED' ? '🤝' : '📉'}</span>
+            <h3 style={{ fontWeight: 800, marginTop: '8px', color: sponsorAlert.kind === 'SIGNED' ? 'var(--accent-green)' : 'var(--accent-gold)' }}>
+              {sponsorAlert.kind === 'SIGNED' ? 'Novo Patrocínio!' : 'Patrocínio Encerrado'}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 20px 0' }}>
+              {sponsorAlert.kind === 'SIGNED'
+                ? `Contrato de Patrocínio ${sponsorAlert.sponsorType === 'MASTER' ? 'Master' : sponsorAlert.sponsorType === 'COSTAS' ? 'Costas' : 'Mangas'} assinado com a **${sponsorAlert.sponsorName}**!`
+                : `O contrato de Patrocínio ${sponsorAlert.sponsorType === 'MASTER' ? 'Master' : sponsorAlert.sponsorType === 'COSTAS' ? 'Costas' : 'Mangas'} com a **${sponsorAlert.sponsorName}** chegou ao fim. Procure um novo patrocinador na aba Finanças.`}
+            </p>
+            <button className="btn btn-primary" onClick={dismissSponsorAlert}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
           above: guard against rendering over a live match that's already in progress, and
           queue behind the other two auto-popup modals instead of stacking on top of them. */}
-      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && !penaltyShootout && (
+      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
