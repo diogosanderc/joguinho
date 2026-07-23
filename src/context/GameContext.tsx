@@ -3261,15 +3261,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const homeKicksTaken = shootout.homeKicksTaken + (side === 'home' ? 1 : 0);
     const awayKicksTaken = shootout.awayKicksTaken + (side === 'away' ? 1 : 0);
 
-    // Real shootout rule: decided the instant the trailing side can no longer catch up within
-    // the remaining kicks of the initial best-of-5, OR (past round 5) as soon as scores differ
-    // once both sides have taken the same number of kicks (sudden death, one kick each).
-    const homeRemaining = Math.max(0, 5 - homeKicksTaken);
-    const awayRemaining = Math.max(0, 5 - awayKicksTaken);
+    // Real shootout rule: within the initial best-of-5, decided the instant the trailing side
+    // can no longer catch up within ITS remaining initial kicks. Past that (sudden death), each
+    // round is exactly one kick per side and is NEVER decided until both have taken theirs --
+    // home scoring its sudden-death kick only means the away side must now match it or lose,
+    // never an immediate win the moment home scores (that would skip away's kick entirely).
+    const inSuddenDeath = homeKicksTaken >= 5 && awayKicksTaken >= 5;
     let decided = false;
-    if (homeGoals > awayGoals + awayRemaining) decided = true;
-    else if (awayGoals > homeGoals + homeRemaining) decided = true;
-    else if (homeKicksTaken >= 5 && homeKicksTaken === awayKicksTaken && homeGoals !== awayGoals) decided = true;
+    if (!inSuddenDeath) {
+      const homeRemaining = Math.max(0, 5 - homeKicksTaken);
+      const awayRemaining = Math.max(0, 5 - awayKicksTaken);
+      if (homeGoals > awayGoals + awayRemaining) decided = true;
+      else if (awayGoals > homeGoals + homeRemaining) decided = true;
+    } else if (homeKicksTaken === awayKicksTaken && homeGoals !== awayGoals) {
+      decided = true;
+    }
 
     setPenaltyShootout({
       ...shootout,
