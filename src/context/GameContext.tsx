@@ -116,6 +116,8 @@ interface GameContextType {
   foreignPlayerPool: ForeignPlayer[];
   boughtForeignIds: string[];
   buyForeignPlayer: (player: ForeignPlayer) => void;
+  libertadoresClubs: Club[];
+  buyLibertadoresPlayer: (player: Player, sourceClubId: string) => void;
   currentSlot: number | null;
   getFreeSlot: () => number | null;
   startGame: (name: string, chosenClubId: string, slot?: number) => void;
@@ -155,6 +157,46 @@ interface GameContextType {
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
   cheatFinances: () => void;
 }
+
+// --- Squad replenishment (used by endSeason for both `clubs` and `libertadoresClubs`) ---
+// A gap in the automatic retirement mechanic: nothing ever generated a replacement, so over a
+// long career every club's squad -- Brazilian or Libertadores -- could quietly thin out from
+// retirements and sales with no way back. This tops every club back up to a healthy minimum
+// every season, favoring whichever position is currently thinnest so the squad stays balanced.
+const YOUTH_TARGET_SQUAD_SIZE = 22;
+const BR_YOUTH_FIRST_NAMES = ['Kaio', 'Pedro', 'Vini', 'Endrick', 'Bento', 'Murilo', 'Allan', 'Everton', 'Ruan', 'Higor', 'Darlisson', 'Talisca', 'Vitinho', 'Gabriel', 'Matheus', 'Lucas', 'Wesley', 'Kauã', 'Yuri', 'Igor'];
+const BR_YOUTH_LAST_NAMES = ['Teixeira', 'Junior', 'Barreto', 'Cardoso', 'Borges', 'Coelho', 'Guedes', 'Marinho', 'Assis', 'Duarte', 'Sampaio', 'Sales', 'Nascimento', 'Rocha', 'Farias'];
+const ES_YOUTH_FIRST_NAMES = ['Santiago', 'Mateo', 'Lucas', 'Joaquín', 'Franco', 'Nicolás', 'Agustín', 'Bruno', 'Thiago', 'Emiliano', 'Facundo', 'Ignacio', 'Máximo', 'Valentino', 'Tomás'];
+const ES_YOUTH_LAST_NAMES = ['González', 'Rodríguez', 'Fernández', 'López', 'Martínez', 'García', 'Pérez', 'Sánchez', 'Romero', 'Torres', 'Ramírez', 'Flores', 'Acosta', 'Molina', 'Medina'];
+
+const generateYouthPlayer = (clubId: string, position: PlayerPosition, clubReputation: number, isForeignClub: boolean): Player => {
+  const firstPool = isForeignClub ? ES_YOUTH_FIRST_NAMES : BR_YOUTH_FIRST_NAMES;
+  const lastPool = isForeignClub ? ES_YOUTH_LAST_NAMES : BR_YOUTH_LAST_NAMES;
+  const name = `${firstPool[Math.floor(Math.random() * firstPool.length)]} ${lastPool[Math.floor(Math.random() * lastPool.length)]}`;
+  const age = 17 + Math.floor(Math.random() * 4); // 17-20, always under 24 for the value curve below
+  const rating = Math.round(Math.min(70, Math.max(45, clubReputation * 0.6 + (Math.random() * 10 - 5))));
+  const group = getPositionGroup(position);
+  const posFactor = group === 'FW' ? 1.2 : group === 'GK' ? 0.9 : 1.0;
+  const value = Math.max(10000, Math.round(Math.pow(rating - 30, 2.5) * 800 * 1.3 * posFactor));
+  const salary = Math.round(value * 0.005);
+  return {
+    id: `youth_${clubId}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
+    name, age, position, rating, energy: 100, value, salary,
+    goals: 0, yellowCards: 0, redCards: 0, isInjured: false, isStar: false, contractLocked: false
+  };
+};
+
+const replenishSquad = (squad: Player[], clubId: string, clubReputation: number, isForeignClub: boolean): Player[] => {
+  if (squad.length >= YOUTH_TARGET_SQUAD_SIZE) return squad;
+  const positions: PlayerPosition[] = ['GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'];
+  const next = [...squad];
+  while (next.length < YOUTH_TARGET_SQUAD_SIZE) {
+    const counts = positions.map(pos => ({ pos, count: next.filter(p => p.position === pos).length }));
+    counts.sort((a, b) => a.count - b.count);
+    next.push(generateYouthPlayer(clubId, counts[0].pos, clubReputation, isForeignClub));
+  }
+  return next;
+};
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
@@ -235,6 +277,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then((data: ForeignPlayer[]) => setForeignPlayerPool(data))
       .catch(() => {});
   }, []);
+
+  // Real South American clubs (Argentina + Colômbia), each with a real squad -- unlike
+  // foreignPlayerPool above (a disposable flavor pool for the 5 European leagues), these are
+  // live, persisted game state: buying one of their players actually removes them from the
+  // club's squad, and they age/retire/get replenished every season exactly like Série A/B/C
+  // (see endSeason). libertadoresSeed is the raw dataset fetched once; libertadoresClubs is the
+  // mutable state, seeded from it only the first time (a loaded save already has its own copy).
+  const [libertadoresSeed, setLibertadoresSeed] = useState<Club[]>([]);
+  const [libertadoresClubs, setLibertadoresClubsRaw] = useState<Club[]>([]);
+  const libertadoresClubsRef = useRef<Club[]>([]);
+  const setLibertadoresClubs = (next: Club[]) => {
+    libertadoresClubsRef.current = next;
+    setLibertadoresClubsRaw(next);
+  };
+
+  useEffect(() => {
+    fetch('/data/libertadores_clubs.json')
+      .then(r => r.json())
+      .then((data: Club[]) => setLibertadoresSeed(data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (libertadoresSeed.length > 0 && libertadoresClubsRef.current.length === 0) {
+      setLibertadoresClubs(libertadoresSeed);
+    }
+  }, [libertadoresSeed]);
 
   const sampleForeignPlayers = (pool: ForeignPlayer[], excludeIds: string[], count: number): ForeignPlayer[] => {
     const available = pool.filter(p => !excludeIds.includes(p.id));
@@ -354,7 +423,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       boughtForeignIds: boughtForeignIdsRef.current,
       divisionExperience: divisionExperienceRef.current,
       formerClubName,
-      lastSeasonTopSerieA
+      lastSeasonTopSerieA,
+      libertadoresClubs: libertadoresClubsRef.current
     });
 
     const slimSchedule = slimOldMatchEvents(currentSchedule, round);
@@ -1416,7 +1486,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
 
-      const squad = agedSquad.filter(p => {
+      const squadAfterRetirement = agedSquad.filter(p => {
         if (!rollRetirement(p.position, p.age)) return true;
         if (club.id === userClubId) {
           retirementNews.push({
@@ -1428,6 +1498,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return false;
       });
+      const squad = replenishSquad(squadAfterRetirement, club.id, club.reputation, false);
 
       return {
         ...club,
@@ -1509,6 +1580,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     }
+
+    // Real Libertadores clubs don't play a Brazilian schedule yet (Fase 2/3), but they still
+    // need to age, retire players, and get replenished every season exactly like Série A/B/C --
+    // otherwise they'd arrive at the actual competition with stale, untouched squads.
+    const agedLibertadoresClubs = libertadoresClubs.map(club => {
+      const agedSquad = club.squad.map(p => ({ ...p, age: p.age + 1 }));
+      const squadAfterRetirement = agedSquad.filter(p => !rollRetirement(p.position, p.age));
+      const squad = replenishSquad(squadAfterRetirement, club.id, club.reputation, true);
+      return { ...club, squad };
+    });
+    setLibertadoresClubs(agedLibertadoresClubs);
 
     setClubs(finalClubs);
     setOffers(careerOffers);
@@ -1716,6 +1798,56 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `buy_foreign_${Date.now()}`,
       week: currentRound,
       text: `Contratação internacional! O ${userClub.name} anunciou a contratação de ${player.name} (${originClub} - ${league}) por ${formatCurrency(player.value)}.`,
+      type: 'TRANSFER'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Sign a player away from a real Libertadores club (see `libertadoresClubs`). Unlike
+  // buyForeignPlayer's disposable flavor pool, these ARE real clubs with real squads -- so
+  // buying removes the player from the source club's actual roster, not just an id-blocklist.
+  const buyLibertadoresPlayer = (player: Player, sourceClubId: string) => {
+    if (!userClub) return;
+
+    if (userClub.finances < player.value) {
+      alert('Finanças insuficientes para contratar este jogador.');
+      return;
+    }
+
+    const sourceClub = libertadoresClubs.find(c => c.id === sourceClubId);
+    if (!sourceClub) return;
+
+    const sortSquad = (squad: Player[]) => {
+      const order: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
+      return [...squad].sort((a, b) => order[a.position] - order[b.position]);
+    };
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return {
+          ...club,
+          finances: club.finances - player.value,
+          squad: sortSquad([...club.squad, { ...player, contractLocked: false }])
+        };
+      }
+      return club;
+    });
+
+    const updatedLibertadoresClubs = libertadoresClubs.map(club => {
+      if (club.id === sourceClubId) {
+        return { ...club, squad: club.squad.filter(p => p.id !== player.id) };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+    setLibertadoresClubs(updatedLibertadoresClubs);
+
+    setNews(prev => [...prev, {
+      id: `buy_libertadores_${Date.now()}`,
+      week: currentRound,
+      text: `Contratação internacional! O ${userClub.name} anunciou a contratação de ${player.name} (${sourceClub.name} - Libertadores) por ${formatCurrency(player.value)}.`,
       type: 'TRANSFER'
     }]);
 
@@ -2905,6 +3037,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return club;
     });
 
+    // The buyer might instead be a real Libertadores club (not part of `clubs` at all) --
+    // symmetric with buyLibertadoresPlayer, the player actually joins that club's real squad.
+    const isLibertadoresBuyer = libertadoresClubs.some(c => c.id === buyerClubId);
+    if (isLibertadoresBuyer) {
+      const updatedLibertadoresClubs = libertadoresClubs.map(club => {
+        if (club.id !== buyerClubId) return club;
+        return { ...club, squad: [...club.squad, { ...player, contractLocked: false, benchRounds: 0 }] };
+      });
+      setLibertadoresClubs(updatedLibertadoresClubs);
+    }
+
     setClubs(updatedClubs);
 
     setNews(prev => [...prev, {
@@ -3009,6 +3152,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDivisionExperience(data.divisionExperience ?? { A: 0, B: 0, C: 0 });
     setFormerClubName(data.formerClubName ?? '');
     setLastSeasonTopSerieA(data.lastSeasonTopSerieA ?? []);
+    setLibertadoresClubs(data.libertadoresClubs ?? []);
   };
 
   const cheatFinances = () => {
@@ -3050,6 +3194,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       foreignPlayerPool,
       boughtForeignIds,
       buyForeignPlayer,
+      libertadoresClubs,
+      buyLibertadoresPlayer,
       currentSlot,
       getFreeSlot,
       startGame,

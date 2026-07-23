@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, findFallbackReplacement } from './data/database';
-import type { Player, Club, PlayerPosition } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
+import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
 // listings throughout the app.
@@ -56,7 +56,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -814,7 +814,13 @@ const AppContent: React.FC = () => {
           const isEliteTarget = targetPlayer.isStar || targetPlayer.rating >= 78;
           const goForeign = isEliteTarget && Math.random() < 0.5;
           if (goForeign) {
-            const buyer = FOREIGN_CLUBS[Math.floor(Math.random() * FOREIGN_CLUBS.length)];
+            // Combine the European flavor-only list with the real Libertadores clubs so
+            // incoming offers can cite an actual South American club by name.
+            const foreignBuyerPool: { id: string; name: string; league?: string }[] = [
+              ...FOREIGN_CLUBS,
+              ...libertadoresClubs.map(c => ({ id: c.id, name: c.name, league: 'Libertadores' }))
+            ];
+            const buyer = foreignBuyerPool[Math.floor(Math.random() * foreignBuyerPool.length)];
             const amount = Math.round(targetPlayer.value * (1.10 + Math.random() * 0.60));
             setIncomingProposal({ player: targetPlayer, buyerClub: buyer, amount });
             setNegOfferAmount(amount);
@@ -2952,7 +2958,22 @@ const AppContent: React.FC = () => {
                   );
                 })()}
               </div>
-            ) : (
+            ) : (() => {
+              // Libertadores clubs are real, persisted state (libertadoresClubs), not part of
+              // the static foreign_players.json pool -- flatten their squads into the same
+              // ForeignPlayer shape so the existing browse/buy UI below needs no branching.
+              const libertadoresAsForeignPlayers: ForeignPlayer[] = libertadoresClubs.flatMap(c =>
+                c.squad.map(p => ({
+                  ...p,
+                  nationality: c.country || '',
+                  originClub: c.name,
+                  league: 'Libertadores',
+                  valueEur: Math.round(p.value / EUR_TO_BRL_RATE)
+                }))
+              );
+              const combinedForeignPool = [...foreignPlayerPool, ...libertadoresAsForeignPlayers];
+
+              return (
               <>
                 {/* INTERNATIONAL MARKET -- Premier League, Serie A, Bundesliga, La Liga,
                     Ligue 1 and Libertadores clubs. Foreign signings cost far more than
@@ -3006,7 +3027,7 @@ const AppContent: React.FC = () => {
                       }}
                     >
                       <option value="" disabled>Escolha um clube...</option>
-                      {[...new Set(foreignPlayerPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
+                      {[...new Set(combinedForeignPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
                         .sort((a, b) => a.localeCompare(b))
                         .map(clubName => (
                           <option key={clubName} value={clubName}>{clubName}</option>
@@ -3024,7 +3045,7 @@ const AppContent: React.FC = () => {
                   )}
                   {(foreignBrowseMode === 'SAMPLE'
                     ? foreignMarketPlayers
-                    : foreignPlayerPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
+                    : combinedForeignPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
                   )
                     .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
                     .sort(byPosition)
@@ -3044,7 +3065,14 @@ const AppContent: React.FC = () => {
                                 player,
                                 clubName: `${player.originClub} (${player.league})`,
                                 price: player.value,
-                                onConfirm: () => buyForeignPlayer(player)
+                                onConfirm: () => {
+                                  if (player.league === 'Libertadores') {
+                                    const sourceClub = libertadoresClubs.find(c => c.name === player.originClub);
+                                    if (sourceClub) buyLibertadoresPlayer(player, sourceClub.id);
+                                  } else {
+                                    buyForeignPlayer(player);
+                                  }
+                                }
                               });
                             }}
                             className="btn btn-primary"
@@ -3057,7 +3085,8 @@ const AppContent: React.FC = () => {
                     ))}
                 </div>
               </>
-            )}
+              );
+            })()}
 
             {/* NEGOTIATION MODAL */}
             {negotiatingPlayer && (
