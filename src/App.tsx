@@ -1901,13 +1901,12 @@ const AppContent: React.FC = () => {
                   const outgoing = midMatchStarters[subslotIndex];
                   const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && isPlayerAvailable(p));
                   const samePositionBench = healthyBench.filter(p => p.position === outgoing?.position);
-                  const usedIds = new Set(midMatchStarters.map(s => s.id));
-                  const fallbackReplacement = samePositionBench.length === 0 && outgoing ? findFallbackReplacement(userClub.squad, outgoing.position, usedIds) : undefined;
-                  const fallbackBench = fallbackReplacement ? healthyBench.filter(p => p.position === fallbackReplacement.position) : [];
-                  // A goalkeeper never fills in outfield -- only offer the rest of the bench
-                  // regardless of position as the very last resort for an outfield player.
+                  // No restriction to a fallback chain of "similar" positions -- any healthy
+                  // reserve can come in for any slot, letting the manager decide the tradeoff
+                  // (e.g. weakening the attack to reinforce defense after a red card).  A
+                  // goalkeeper is still never offered as an outfield substitute.
                   const anyBench = outgoing?.position !== 'GOL' ? healthyBench.filter(p => p.position !== 'GOL') : healthyBench;
-                  const benchPool = samePositionBench.length > 0 ? samePositionBench : fallbackBench.length > 0 ? fallbackBench : anyBench;
+                  const benchPool = samePositionBench.length > 0 ? samePositionBench : anyBench;
                   return (
                   <>
                     <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-green)', fontWeight: 700 }}>
@@ -1915,9 +1914,7 @@ const AppContent: React.FC = () => {
                     </h4>
                     {samePositionBench.length === 0 && outgoing && (
                       <p style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', marginBottom: '6px' }}>
-                        {fallbackBench.length > 0
-                          ? `Nenhum jogador de ${outgoing.position} disponível — mostrando opções de ${fallbackReplacement!.position}.`
-                          : `Nenhum jogador de ${outgoing.position} disponível no banco — mostrando todo o banco.`}
+                        Nenhum jogador de {outgoing.position} disponível — mostrando todo o banco.
                       </p>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
