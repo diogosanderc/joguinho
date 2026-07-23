@@ -9,6 +9,15 @@ import type { Player, Club, PlayerPosition } from './data/database';
 const POSITION_ORDER: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
 const byPosition = <T extends { position: PlayerPosition }>(a: T, b: T) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position];
 
+// Formats a plain digit string as a thousands-separated number for display while it's being
+// typed (e.g. "10919340" -> "10.919.340"), Brazilian-style. Any non-digit characters are
+// stripped first, so it's safe to feed back in the raw value from an onChange handler.
+const formatDigitsWithSeparators = (digits: string): string => {
+  const clean = digits.replace(/\D/g, '');
+  if (!clean) return '';
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
 // Force box color tier: gray (weak) -> yellow -> blue -> green (elite), used for the
 // defesa/ataque force boxes so the color itself signals how strong the number actually is.
 const getForceColor = (value: number): string => {
@@ -138,6 +147,8 @@ const AppContent: React.FC = () => {
   const [injuryPlayer, setInjuryPlayer] = useState<Player | null>(null);
   const [savesModalOpen, setSavesModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [sellPriceModal, setSellPriceModal] = useState<Player | null>(null);
+  const [sellPriceDigits, setSellPriceDigits] = useState('');
 
   // Penalty and VAR suspense modals. For the user's own penalties, 'CHOOSE' comes first so the
   // manager picks who takes it live; then (for both sides) 'WAITING' shows the setup/analysis
@@ -2679,12 +2690,8 @@ const AppContent: React.FC = () => {
                           <button
                             onClick={() => {
                               if (player.contractLocked) return;
-                              const input = prompt(`Por quanto quer vender ${player.name}? (Valor de mercado: ${formatCurrency(player.value)}. Pedir mais de 15% acima disso e nenhum clube compra.)`, String(player.value));
-                              if (input === null) return;
-                              const askingPrice = Math.round(Number(input.replace(/[^0-9.]/g, '')));
-                              if (!askingPrice || askingPrice <= 0) { alert('Valor inválido.'); return; }
-                              const sold = attemptSellPlayer(player, askingPrice);
-                              if (sold) setSelectedManagePlayerId(null);
+                              setSellPriceDigits(String(player.value));
+                              setSellPriceModal(player);
                             }}
                             disabled={player.contractLocked}
                             className="btn btn-danger"
@@ -4154,6 +4161,59 @@ const AppContent: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* SELL PLAYER ASKING-PRICE MODAL -- replaces a native prompt() with a proper styled
+          input that formats the number with thousand separators as the user types, instead of
+          showing a raw unbroken digit string like "10919340". */}
+      {sellPriceModal && (() => {
+        const player = sellPriceModal;
+        const maxPrice = Math.round(player.value * 1.15);
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1260 }}>
+            <div className="modal-content" style={{ width: '340px', padding: '18px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2rem' }}>💰</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px' }}>Vender {player.name}</h3>
+              <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '8px 0 14px', lineHeight: '1.4' }}>
+                Valor de mercado: <strong style={{ color: 'white' }}>{formatCurrency(player.value)}</strong>.
+                Pedir mais de 15% acima disso ({formatCurrency(maxPrice)}) e nenhum clube compra.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#121316', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px' }}>
+                <span style={{ color: '#9ca3af', fontWeight: 700, marginRight: '4px' }}>R$</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatDigitsWithSeparators(sellPriceDigits)}
+                  onChange={(e) => setSellPriceDigits(e.target.value.replace(/\D/g, ''))}
+                  autoFocus
+                  style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'white', fontSize: '1.1rem', fontWeight: 700, textAlign: 'right' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                  onClick={() => setSellPriceModal(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    const askingPrice = Number(sellPriceDigits);
+                    if (!askingPrice || askingPrice <= 0) { alert('Valor inválido.'); return; }
+                    const sold = attemptSellPlayer(player, askingPrice);
+                    setSellPriceModal(null);
+                    if (sold) setSelectedManagePlayerId(null);
+                  }}
+                >
+                  Vender
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* DISCRETE SAVE SLOTS OVERLAY MODAL */}
       {/* SETTINGS MODAL -- gear icon in the header opens this instead of the old row of 4
