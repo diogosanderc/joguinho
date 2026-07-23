@@ -2020,7 +2020,13 @@ const AppContent: React.FC = () => {
 
                 {subslotIndex !== null && (() => {
                   const outgoing = midMatchStarters[subslotIndex];
-                  const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && isPlayerAvailable(p));
+                  // A player sent off THIS match is gone for the rest of it -- isPlayerAvailable
+                  // alone doesn't catch that, since a live red card only gets recorded onto the
+                  // player's persistent suspendedMatches field once the round ends, not mid-match.
+                  // He's already filtered out of midMatchStarters by the live red-card effect, so
+                  // without this he'd otherwise look like a perfectly fine bench option here.
+                  const redCardedNamesThisMatch = new Set(simEvents.filter(e => e.type === 'RED').map(e => e.player));
+                  const healthyBench = userClub.squad.filter(p => !midMatchStarters.some(s => s.id === p.id) && isPlayerAvailable(p) && !redCardedNamesThisMatch.has(p.name));
                   const samePositionBench = healthyBench.filter(p => p.position === outgoing?.position);
                   // Always show the WHOLE bench, not just same-position reserves -- the manager
                   // might deliberately want to bring on a different position (e.g. a defender in
