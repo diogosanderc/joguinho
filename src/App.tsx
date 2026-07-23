@@ -137,6 +137,7 @@ const AppContent: React.FC = () => {
   const [lastInjuryMinute, setLastInjuryMinute] = useState(-1);
   const [injuryPlayer, setInjuryPlayer] = useState<Player | null>(null);
   const [savesModalOpen, setSavesModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   // Penalty and VAR suspense modals. For the user's own penalties, 'CHOOSE' comes first so the
   // manager picks who takes it live; then (for both sides) 'WAITING' shows the setup/analysis
@@ -2084,13 +2085,22 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: 800, color: userClub.finances < 0 ? 'var(--accent-red)' : 'var(--accent-green)', fontSize: '1rem' }}>
-            {formatCurrency(userClub.finances)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontWeight: 800, color: userClub.finances < 0 ? 'var(--accent-red)' : 'var(--accent-green)', fontSize: '1rem' }}>
+              {formatCurrency(userClub.finances)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600 }}>
+              {managerName} • Ano {currentYear}
+            </div>
           </div>
-          <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600 }}>
-            {managerName} • Ano {currentYear}
-          </div>
+          <button
+            onClick={() => setSettingsModalOpen(true)}
+            title="Configurações"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e7eb', borderRadius: '10px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1rem', flexShrink: 0 }}
+          >
+            ⚙️
+          </button>
         </div>
       </div>
 
@@ -2122,117 +2132,6 @@ const AppContent: React.FC = () => {
                   <span style={{ color: '#d1d5db' }}>{n.text}</span>
                 </div>
               ))}
-            </div>
-
-            {/* discrete save slots / menu buttons */}
-            <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
-              <button
-                onClick={() => setGameState('MENU')}
-                style={{
-                  flex: 1,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#e5e7eb',
-                  borderRadius: '10px',
-                  padding: '9px 0',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'background 0.2s'
-                }}
-              >
-                🏠 Voltar ao Menu
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm('Tem certeza que deseja pedir demissão? Você ficará sem clube até receber e aceitar uma proposta.')) {
-                    requestResignation();
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  background: 'rgba(255, 23, 68, 0.07)',
-                  border: '1px solid rgba(255, 23, 68, 0.25)',
-                  color: 'var(--accent-red)',
-                  borderRadius: '10px',
-                  padding: '9px 0',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'background 0.2s'
-                }}
-              >
-                🚪 Pedir Demissão
-              </button>
-            </div>
-            {/* Save / Delete campaign buttons */}
-            <div style={{ display: 'flex', gap: '8px', margin: '0 0 14px 0' }}>
-              <button
-                onClick={manualSave}
-                style={{
-                  flex: 1,
-                  background: 'rgba(0, 230, 118, 0.1)',
-                  border: '1px solid rgba(0, 230, 118, 0.35)',
-                  color: 'var(--accent-green)',
-                  borderRadius: '10px',
-                  padding: '9px 0',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'background 0.2s'
-                }}
-              >
-                💾 Salvar Rápido
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm('Tem certeza que deseja excluir esta campanha? Você voltará à tela inicial.')) {
-                    resetGame();
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  background: 'rgba(255, 23, 68, 0.07)',
-                  border: '1px solid rgba(255, 23, 68, 0.25)',
-                  color: 'var(--accent-red)',
-                  borderRadius: '10px',
-                  padding: '9px 0',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'background 0.2s'
-                }}
-              >
-                🗑️ Excluir Campanha
-              </button>
-            </div>
-
-            {/* Small, unobtrusive link to the export/import save modal -- the "Slots" card was
-                removed per user request, but this stays reachable since it's the only path to
-                Export when there's no active save (e.g. after a cache wipe). */}
-            <div style={{ textAlign: 'center', margin: '0 0 14px 0' }}>
-              <button
-                onClick={() => setSavesModalOpen(true)}
-                style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                Exportar / Importar Save (Slot {currentSlot ? `0${currentSlot}` : '-'})
-              </button>
             </div>
 
             {/* Sound/vibration toggle UI intentionally hidden for now (too prominent for a
@@ -4257,6 +4156,74 @@ const AppContent: React.FC = () => {
       )}
 
       {/* DISCRETE SAVE SLOTS OVERLAY MODAL */}
+      {/* SETTINGS MODAL -- gear icon in the header opens this instead of the old row of 4
+          buttons that used to sit under the news feed (moved here per user request: those
+          are account/session actions, not something that belongs mixed into the main content). */}
+      {settingsModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1250 }}>
+          <div className="modal-content" style={{ width: '340px', padding: '18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontWeight: 800, fontSize: '1.1rem' }}>⚙️ Configurações</h3>
+              <button
+                onClick={() => setSettingsModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.4rem', cursor: 'pointer', fontWeight: 800 }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={manualSave}
+                style={{ background: 'rgba(0, 230, 118, 0.1)', border: '1px solid rgba(0, 230, 118, 0.35)', color: 'var(--accent-green)', borderRadius: '10px', padding: '11px 0', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                💾 Salvar Rápido
+              </button>
+
+              <button
+                onClick={() => { setSettingsModalOpen(false); setSavesModalOpen(true); }}
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e7eb', borderRadius: '10px', padding: '11px 0', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                ⬇️⬆️ Exportar / Importar Save
+              </button>
+
+              <button
+                onClick={() => {
+                  if (confirm('Tem certeza que deseja pedir demissão? Você ficará sem clube até receber e aceitar uma proposta.')) {
+                    setSettingsModalOpen(false);
+                    requestResignation();
+                  }
+                }}
+                style={{ background: 'rgba(255, 23, 68, 0.07)', border: '1px solid rgba(255, 23, 68, 0.25)', color: 'var(--accent-red)', borderRadius: '10px', padding: '11px 0', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                🚪 Pedir Demissão
+              </button>
+
+              <button
+                onClick={() => { setSettingsModalOpen(false); setGameState('MENU'); }}
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e7eb', borderRadius: '10px', padding: '11px 0', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                🏠 Voltar ao Menu
+              </button>
+
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
+
+              <button
+                onClick={() => {
+                  if (confirm('Tem certeza que deseja excluir esta campanha? Você voltará à tela inicial.')) {
+                    setSettingsModalOpen(false);
+                    resetGame();
+                  }
+                }}
+                style={{ background: 'none', border: '1px solid rgba(255, 23, 68, 0.2)', color: 'var(--accent-red)', borderRadius: '10px', padding: '10px 0', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                🗑️ Excluir Campanha
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {savesModalOpen && (
         <div className="modal-overlay" style={{ zIndex: 1250 }}>
           <div className="modal-content" style={{ width: '360px', padding: '18px', maxHeight: '85vh', overflowY: 'auto' }}>
