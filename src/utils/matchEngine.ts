@@ -37,6 +37,7 @@ export interface MatchResult {
 // one-shot simulation had no way to know about a substitution decided live in the UI.
 export interface SimulateMatchOptions {
   startMinute?: number;
+  endMinute?: number; // defaults to 90 -- set to 120 (with startMinute 91) for extra time
   initialHomeScore?: number;
   initialAwayScore?: number;
   initialHomeStats?: MatchStats;
@@ -378,9 +379,11 @@ export const simulateMatch = (
   // Already-decisive gaps carried over from a resumed match shouldn't be able to re-trigger this.
   let blowoutTriggered = Math.abs(homeScore - awayScore) >= 2;
 
-  // Match Simulation Loop (resumes from startMinute when continuing an in-progress match)
+  // Match Simulation Loop (resumes from startMinute when continuing an in-progress match;
+  // endMinute lets a Libertadores final's extra time be simulated as a 91-120 continuation).
   const startMinute = options.startMinute ?? 1;
-  for (let min = startMinute; min <= 90; min++) {
+  const endMinute = options.endMinute ?? 90;
+  for (let min = startMinute; min <= endMinute; min++) {
     // In-match fatigue: a small, monotonic per-minute strength decay for both sides -- see the
     // fatigueDecay setup above.
     homeAtt *= (1 - homeFatigueDecay); homeMid *= (1 - homeFatigueDecay); homeDef *= (1 - homeFatigueDecay);
