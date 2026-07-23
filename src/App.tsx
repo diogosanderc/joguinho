@@ -875,6 +875,14 @@ const AppContent: React.FC = () => {
     setUnhappyPlayer(null);
     setRedCardPlayer(null);
     setLastRedCardMinute(-1);
+    // `starters` is kept in sync with squad changes (suspensions, injuries, sales) by the
+    // "sync starters when club squad changes" effect, but that effect only ever updates
+    // `starters` itself -- `midMatchStarters` (the array the live match view and substitution
+    // modal actually read from) was never refreshed from it, so a player suspended between
+    // matches could still show up as an "on-field titular" you could keep fielding, using
+    // whatever stale lineup midMatchStarters last held. Re-sync it here, at the exact moment
+    // a match kicks off, so it always reflects the current validated starting XI.
+    setMidMatchStarters(starters);
   };
 
   // Helper to make substitution in current match
