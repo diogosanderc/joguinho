@@ -57,7 +57,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -2048,9 +2048,23 @@ const AppContent: React.FC = () => {
   // --- SEASON END OVERLAY ---
   if (gameState === 'SEASON_END') {
     const isSacked = userClub.confidence <= 0;
-    
+
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px', gap: '16px' }}>
+        {championCelebration && (
+          <div className="modal-overlay" style={{ zIndex: 1300 }}>
+            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2.5rem' }}>🏆</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Parabéns!</h3>
+              <p style={{ fontSize: '1rem', margin: '10px 0 20px', color: '#d1d5db' }}>
+                Você foi campeão da <strong style={{ color: 'var(--accent-gold)' }}>{championCelebration.competition}</strong> com o <strong>{championCelebration.clubName}</strong>!
+              </p>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissChampionCelebration}>
+                Continuar
+              </button>
+            </div>
+          </div>
+        )}
         <div style={{ textAlign: 'center' }}>
           <Trophy size={48} color="var(--accent-gold)" style={{ margin: '0 auto 12px auto' }} />
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Resumo da Temporada</h2>
@@ -4166,9 +4180,29 @@ const AppContent: React.FC = () => {
         );
       })()}
 
+      {/* CHAMPION CELEBRATION MODAL -- top priority in the modal queue, since it's a one-off
+          highlight (Copa do Brasil title, decided mid-season) that shouldn't get buried behind
+          any other auto-popup modal. The Série A version of this same modal is rendered inside
+          the SEASON_END screen instead, since that's a full-screen state swap, not an overlay
+          on the office screen. */}
+      {championCelebration && gameState !== 'MATCH_DAY' && !penaltyShootout && (
+        <div className="modal-overlay" style={{ zIndex: 1300 }}>
+          <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+            <span style={{ fontSize: '2.5rem' }}>🏆</span>
+            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Parabéns!</h3>
+            <p style={{ fontSize: '1rem', margin: '10px 0 20px', color: '#d1d5db' }}>
+              Você foi campeão da <strong style={{ color: 'var(--accent-gold)' }}>{championCelebration.competition}</strong> com o <strong>{championCelebration.clubName}</strong>!
+            </p>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissChampionCelebration}>
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* COPA DO BRASIL DRAW REVEAL MODAL -- gated the same way as the other office-screen
           modals below, so it can never render over a match that's already in progress. */}
-      {cupDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && (() => {
+      {cupDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && !championCelebration && (() => {
         const opponentClub = clubs.find(c => c.id === cupDrawReveal.opponentId);
         return (
           <div className="modal-overlay" style={{ zIndex: 1200 }}>
@@ -4204,7 +4238,7 @@ const AppContent: React.FC = () => {
         );
       })()}
 
-      {libertadoresDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && !cupDrawReveal && (() => {
+      {libertadoresDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && !cupDrawReveal && !championCelebration && (() => {
         if (libertadoresDrawReveal.kind === 'GROUPS') {
           const opponents = libertadoresDrawReveal.opponentIds.map(id => clubs.find(c => c.id === id) ?? libertadoresClubs.find(c => c.id === id));
           return (
@@ -4255,7 +4289,7 @@ const AppContent: React.FC = () => {
           deferred behind cupDrawReveal/libertadoresDrawReveal so these auto-popup modals queue
           one at a time instead of stacking when more than one triggers on the same round
           transition. */}
-      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !penaltyShootout && (
+      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>😠</span>
@@ -4290,7 +4324,7 @@ const AppContent: React.FC = () => {
       {/* SPONSOR CONTRACT ALERT MODAL -- fires when a deal expires (passive, during round
           processing, easy to miss in the news feed alone) or when the user signs a new one
           (explicit confirmation on top of the news item). */}
-      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !penaltyShootout && (
+      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{sponsorAlert.kind === 'SIGNED' ? '🤝' : '📉'}</span>
@@ -4312,7 +4346,7 @@ const AppContent: React.FC = () => {
       {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
           above: guard against rendering over a live match that's already in progress, and
           queue behind the other two auto-popup modals instead of stacking on top of them. */}
-      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && (
+      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>

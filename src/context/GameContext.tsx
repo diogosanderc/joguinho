@@ -118,6 +118,8 @@ interface GameContextType {
   startCupMatch: (starters: Player[]) => void;
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
+  championCelebration: { competition: 'Série A' | 'Copa do Brasil'; clubName: string } | null;
+  dismissChampionCelebration: () => void;
   libertadoresState: LibertadoresState | null;
   startLibertadoresMatch: (starters: Player[]) => void;
   libertadoresDrawReveal:
@@ -247,6 +249,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // fresh Copa do Brasil phase is drawn and the user gets a new opponent.
   const [cupDrawReveal, setCupDrawReveal] = useState<{ phase: CupPhase; opponentId: string; isHome: boolean } | null>(null);
   const dismissCupDrawReveal = () => setCupDrawReveal(null);
+
+  // Transient (not persisted) celebration modal, shown once when the user's club is crowned
+  // Série A champion (at season end) or Copa do Brasil champion (right when the final ends).
+  const [championCelebration, setChampionCelebration] = useState<{ competition: 'Série A' | 'Copa do Brasil'; clubName: string } | null>(null);
+  const dismissChampionCelebration = () => setChampionCelebration(null);
 
   // Top Série A finishers from the season that just ended, captured in endSeason -- consumed by
   // the next startCup() call (stayAtClub/acceptJobOffer) to seed them straight to the Oitavas,
@@ -1670,6 +1677,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClubs(finalClubs);
     setOffers(careerOffers);
     setGameState('SEASON_END');
+    if (isPlayerChampion && playerDiv === 'A') {
+      setChampionCelebration({ competition: 'Série A', clubName: playerClubFinal.name });
+    }
 
     // Create annual summary news
     const userRankIndex = standings[playerDiv].findIndex(s => s.clubId === userClubId);
@@ -2754,6 +2764,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : `A Copa do Brasil terminou com o título para o ${nameOf(championId)}.`,
         type: 'BOARD'
       });
+      if (championId === userClubId) {
+        setChampionCelebration({ competition: 'Copa do Brasil', clubName: nameOf(championId) });
+      }
     }
 
     return { nextCup, nextClubs };
@@ -3653,6 +3666,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startCupMatch,
       cupDrawReveal,
       dismissCupDrawReveal,
+      championCelebration,
+      dismissChampionCelebration,
       libertadoresState,
       startLibertadoresMatch,
       libertadoresDrawReveal,
