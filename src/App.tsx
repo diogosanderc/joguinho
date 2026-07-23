@@ -1468,12 +1468,34 @@ const AppContent: React.FC = () => {
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px', margin: '4px 0' }}>
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{isHome ? userClub.name : opponent.name}</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, letterSpacing: '2px', color: 'var(--accent-gold)' }}>
-              {simScoreHome} - {simScoreAway}
-            </span>
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{!isHome ? userClub.name : opponent.name}</span>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', margin: '4px 0' }}>
+            {(() => {
+              const homeName = isHome ? userClub.name : opponent.name;
+              const awayName = !isHome ? userClub.name : opponent.name;
+              // Long/hyphenated club names ("Estudiantes de La Plata", "Atletico-MG") would
+              // otherwise overflow or wrap mid-word right at the hyphen -- shrink the font for
+              // long names and swap the hyphen for a non-breaking one so the browser only ever
+              // wraps at real word boundaries.
+              const nameStyle = (name: string): React.CSSProperties => ({
+                fontWeight: 800,
+                fontSize: name.length > 18 ? '0.72rem' : name.length > 13 ? '0.85rem' : '1rem',
+                color: 'white',
+                flex: 1,
+                minWidth: 0,
+                textAlign: 'center',
+                lineHeight: 1.15
+              });
+              const displayName = (name: string) => name.replace(/-/g, '‑');
+              return (
+                <>
+                  <span style={nameStyle(homeName)}>{displayName(homeName)}</span>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 900, letterSpacing: '2px', color: 'var(--accent-gold)', flexShrink: 0 }}>
+                    {simScoreHome} - {simScoreAway}
+                  </span>
+                  <span style={nameStyle(awayName)}>{displayName(awayName)}</span>
+                </>
+              );
+            })()}
           </div>
 
           {currentMatchResult?.attendance !== undefined && (
@@ -1495,14 +1517,20 @@ const AppContent: React.FC = () => {
             fontStyle: 'italic',
             marginBottom: '4px'
           }}>
-            {simEvents
-              .filter(e => e.type === 'GOAL')
-              .map(e => {
-                const icon = '⚽';
-                const suffix = e.isPenalty ? ' (P)' : e.isHeader ? ' (C)' : '';
-                return `${icon} ${e.player} ${e.minute}'${suffix}`;
-              })
-              .join('   ')}
+            {(() => {
+              const goals = simEvents.filter(e => e.type === 'GOAL');
+              // A player who scores more than once lists his name a single time followed by
+              // every minute ("Jogador 12', 45', 78'") instead of repeating the name per goal.
+              const goalsByScorer = new Map<string, typeof goals>();
+              goals.forEach(g => {
+                const key = g.player ?? '';
+                goalsByScorer.set(key, [...(goalsByScorer.get(key) ?? []), g]);
+              });
+              return Array.from(goalsByScorer.entries()).map(([name, gs]) => {
+                const minutesText = gs.map(g => `${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''}`).join(', ');
+                return `⚽ ${name} ${minutesText}`;
+              }).join('   ');
+            })()}
           </div>
 
           {/* Quick controls */}
