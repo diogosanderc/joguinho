@@ -409,6 +409,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ('MATCH_DAY') at the end of nextRound clobbers whatever real transition (SEASON_END from
   // a completed season, or from getting sacked mid-season) was supposed to happen.
   const pendingGameStateRef = useRef<GameState>('PLAYING');
+  // Separate from pendingGameStateRef because starting a Cup/Libertadores match (startCupMatch/
+  // startLibertadoresMatch) unconditionally resets THAT ref to 'PLAYING' -- correct for a normal
+  // mid-season fixture, but round 38 (the season's last) can ALSO be the exact round the
+  // Libertadores Final's own milestone sets up a fresh tie for the user to play. If that happens,
+  // pendingGameStateRef gets clobbered back to 'PLAYING' the moment the user starts that Final,
+  // silently losing the "the season actually ended" fact. This ref survives that clobbering, so
+  // the deferred SEASON_END transition still fires once every pending tie is truly resolved.
+  const seasonEndPendingRef = useRef(false);
   // Guards against nextRound() running twice for the same tap -- a fast double-tap (common on
   // mobile) fires the click handler twice within the same synchronous event, before React has
   // re-rendered to hide/disable the "Iniciar Partida" button, so a state-based guard wouldn't
@@ -1597,9 +1605,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentRound(prev => prev + 1);
       saveGame(nextGameState === 'SEASON_END' ? 'SEASON_END' : 'PLAYING', managerName, currentYear, currentRound + 1, finalClubs, userClubId, updatedMatches, nextMarket, nextOffers, [...news, ...roundNews], history, nextUpgrade, updatedSponsors);
       pendingGameStateRef.current = nextGameState;
+      if (nextGameState === 'SEASON_END') seasonEndPendingRef.current = true;
     } else {
       // Trigger season end
       endSeason(finalClubs, updatedMatches, updatedSponsors, nextUpgrade);
+      seasonEndPendingRef.current = true;
       pendingGameStateRef.current = 'SEASON_END';
     }
 
@@ -2992,7 +3002,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentMatch(null);
     setCurrentMatchResult(null);
     if (gameState === 'MATCH_DAY') {
-      setGameState(pendingGameStateRef.current);
+      // Round 38 (the season's last) is also the Libertadores Final's own milestone round --
+      // processLibertadoresMilestone above can set a fresh userTie for it in the very same call
+      // that nextRoundImpl already queued 'SEASON_END' into pendingGameStateRef. Jumping straight
+      // to the Season End screen here would strand that Final unplayed and no champion ever
+      // crowned, only for a brand new Libertadores to start next season regardless -- so hold off
+      // on the season-end transition (without discarding it) until every pending Copa/Libertadores
+      // tie the user still needs to play live has actually been resolved.
+      const hasPendingTie = !!cupStateRef.current?.userTie || !!libertadoresStateRef.current?.userTie;
+      if (hasPendingTie) {
+        setGameState('PLAYING');
+      } else if (seasonEndPendingRef.current) {
+        // The season-end intent survives even if starting that Cup/Libertadores fixture (via
+        // startCupMatch/startLibertadoresMatch) reset pendingGameStateRef to 'PLAYING' in the
+        // meantime -- apply it now that there's truly nothing left to play, then clear the flag.
+        seasonEndPendingRef.current = false;
+        setGameState('SEASON_END');
+      } else {
+        setGameState(pendingGameStateRef.current);
+      }
     }
   };
 
