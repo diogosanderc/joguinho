@@ -11,13 +11,24 @@ import {
   CUP_PRIZE_FOR_REACHING, CUP_CHAMPION_PRIZE, CUP_TOP_SCORER_BONUS, CUP_OITAVAS_SEED_COUNT, pickShootoutTakers
 } from '../utils/cupEngine';
 import type { CupState, CupPhase, CupTieLeg } from '../utils/cupEngine';
+import {
+  startLibertadores, simulateGroupRound, getLibertadoresAdvancement, drawLibertadoresKnockout,
+  getBracketPairs, resolveLibertadoresTie, simulateFullLibertadoresTie, getLibertadoresTopScorers,
+  LIBERTADORES_PHASES, LIBERTADORES_PHASE_LABEL, LIBERTADORES_TWO_LEGGED_PHASES,
+  LIBERTADORES_MILESTONE_ROUNDS, LIBERTADORES_GROUP_ROUNDS,
+  LIBERTADORES_PRIZE_FOR_REACHING, LIBERTADORES_CHAMPION_PRIZE, LIBERTADORES_TOP_SCORER_BONUS
+} from '../utils/libertadoresEngine';
+import type { LibertadoresState, LibertadoresPhase, LibertadoresTieLeg, LibertadoresGroupLabel } from '../utils/libertadoresEngine';
 
-// Live, kick-by-kick penalty shootout for the user's own Copa do Brasil tie (every other tie in
-// the phase is still resolved instantly). Real shootout rules: alternating single kicks, home
-// first, best of 5 then sudden death, ending the instant the outcome is mathematically decided
-// (e.g. 4-1 after 8 kicks) rather than always playing out all 10.
+// Live, kick-by-kick penalty shootout for the user's own Copa do Brasil OR Libertadores tie
+// (every other tie in the phase is still resolved instantly). Real shootout rules: alternating
+// single kicks, home first, best of 5 then sudden death, ending the instant the outcome is
+// mathematically decided (e.g. 4-1 after 8 kicks) rather than always playing out all 10.
+// `competition` routes finalizePenaltyShootout to the right competition's finish-tie logic;
+// absent means Copa do Brasil (kept optional for save-compat with pre-Libertadores shootouts).
 export interface PenaltyShootoutState {
-  phase: CupPhase;
+  competition?: 'CUP' | 'LIBERTADORES';
+  phase: CupPhase | LibertadoresPhase;
   homeId: string;
   awayId: string;
   homeClubName: string;
@@ -39,7 +50,7 @@ export interface LeagueMatch {
   round: number;
   homeId: string;
   awayId: string;
-  division: 'A' | 'B' | 'C' | 'CUP';
+  division: 'A' | 'B' | 'C' | 'CUP' | 'LIBERTADORES';
   simulated: boolean;
   result?: MatchResult;
 }
@@ -107,6 +118,13 @@ interface GameContextType {
   startCupMatch: (starters: Player[]) => void;
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
+  libertadoresState: LibertadoresState | null;
+  startLibertadoresMatch: (starters: Player[]) => void;
+  libertadoresDrawReveal:
+    | { kind: 'GROUPS'; group: LibertadoresGroupLabel; opponentIds: string[] }
+    | { kind: 'KNOCKOUT'; phase: LibertadoresPhase; opponentId: string; isHome: boolean }
+    | null;
+  dismissLibertadoresDrawReveal: () => void;
   sponsorAlert: { kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null;
   dismissSponsorAlert: () => void;
   penaltyShootout: PenaltyShootoutState | null;
@@ -231,8 +249,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const dismissCupDrawReveal = () => setCupDrawReveal(null);
 
   // Top Série A finishers from the season that just ended, captured in endSeason -- consumed by
-  // the next startCup() call (stayAtClub/acceptJobOffer) to seed them straight to the Oitavas.
+  // the next startCup() call (stayAtClub/acceptJobOffer) to seed them straight to the Oitavas,
+  // and by startLibertadores() for the 4 automatic Libertadores slots.
   const [lastSeasonTopSerieA, setLastSeasonTopSerieA] = useState<string[]>([]);
+
+  // Copa Libertadores state -- same ref-mirroring pattern as cupState, for the same reason
+  // (saveGame reads it synchronously outside of any state-setter callback).
+  const [libertadoresState, setLibertadoresStateRaw] = useState<LibertadoresState | null>(null);
+  const libertadoresStateRef = useRef<LibertadoresState | null>(null);
+  const setLibertadoresState = (next: LibertadoresState | null) => {
+    libertadoresStateRef.current = next;
+    setLibertadoresStateRaw(next);
+  };
+  // Last season's Libertadores champion, if the competition finished (it always does within the
+  // same season it starts, since all 13 milestones fit in that season's 38 rounds) -- consumed by
+  // the next startLibertadores() call for the defending-champion bonus slot.
+  const [defendingLibertadoresChampionId, setDefendingLibertadoresChampionId] = useState<string | null>(null);
+  // Transient (not persisted) draw-reveal modal -- shown once at the season's group draw (all 3
+  // group opponents at once) and again at the round-of-16 draw (a single opponent, like Copa do
+  // Brasil's own reveal).
+  const [libertadoresDrawReveal, setLibertadoresDrawReveal] = useState<
+    | { kind: 'GROUPS'; group: LibertadoresGroupLabel; opponentIds: string[] }
+    | { kind: 'KNOCKOUT'; phase: LibertadoresPhase; opponentId: string; isHome: boolean }
+    | null
+  >(null);
+  const dismissLibertadoresDrawReveal = () => setLibertadoresDrawReveal(null);
 
   // Transient (not persisted) alert for the sponsor-contract modal -- fires when a deal expires
   // (a passive event during round processing, easy to miss in the news feed alone) or when the
@@ -424,7 +465,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       divisionExperience: divisionExperienceRef.current,
       formerClubName,
       lastSeasonTopSerieA,
-      libertadoresClubs: libertadoresClubsRef.current
+      libertadoresClubs: libertadoresClubsRef.current,
+      libertadoresState: libertadoresStateRef.current,
+      defendingLibertadoresChampionId
     });
 
     const slimSchedule = slimOldMatchEvents(currentSchedule, round);
@@ -499,6 +542,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCupState(startCup(updatedClubs, 2026));
+    // The Libertadores club data loads asynchronously (fetched once on mount) -- on the rare
+    // chance a brand new career starts before that fetch resolves, skip this season's edition
+    // entirely rather than drawing a broken competition with empty wildcard slots. It starts
+    // properly from the very next season rollover (acceptJobOffer/stayAtClub), by which point
+    // the fetch has certainly long since completed.
+    setLibertadoresState(libertadoresClubs.length > 0
+      ? startLibertadores(2026, libertadoresClubs, [], updatedClubs.filter(c => c.division === 'A'), null)
+      : null);
     setBoughtForeignIds([]);
     setForeignMarketPlayers(foreignPlayerPool.length > 0 ? sampleForeignPlayers(foreignPlayerPool, [], 18) : []);
 
@@ -2350,6 +2401,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null }); // Clear sponsorships for new club
 
+    const newLib = startLibertadores(currentYear + 1, libertadoresClubs, lastSeasonTopSerieA, updatedClubs.filter(c => c.division === 'A'), defendingLibertadoresChampionId);
+    setLibertadoresState(newLib);
+    setDefendingLibertadoresChampionId(null); // consumed for this draw
+
     const nextNews: NewsItem[] = [
       { id: `job_accept_${Date.now()}`, week: 0, text: `Nova Era! ${managerName} assumiu oficialmente o comando técnico do ${newClub.name}! Boa sorte na Série ${newClub.division}!`, type: 'BOARD' }
     ];
@@ -2361,6 +2416,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextNews.push({ id: `cup_seed_${currentYear + 1}`, week: 0, text: `Copa do Brasil: como um dos melhores colocados da Série A na temporada passada, o ${newClub.name} entra direto nas Oitavas de Final, sem disputar Fase 0, 1ª e 2ª Fase!`, type: 'BOARD' });
     } else if (newCup.fase1ByeClubIds.includes(clubId)) {
       nextNews.push({ id: `cup_bye_${currentYear + 1}`, week: 0, text: `Copa do Brasil: o ${newClub.name} está entre os melhores fora dos classificados diretos e ganhou um bye, entrando direto na 1ª Fase.`, type: 'INFO' });
+    }
+    if (newLib.participantIds.includes(clubId)) {
+      updatedClubs = applyCupPrize(updatedClubs, clubId, LIBERTADORES_PRIZE_FOR_REACHING.GROUPS);
+      const nameOf = (id: string) => updatedClubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? id;
+      const groupLabel = (Object.keys(newLib.groups) as LibertadoresGroupLabel[]).find(g => newLib.groups[g].includes(clubId))!;
+      const opponentIds = newLib.groups[groupLabel].filter(id => id !== clubId);
+      nextNews.push({ id: `lib_draw_${currentYear + 1}`, week: 0, text: `Copa Libertadores: o ${newClub.name} está no Grupo ${groupLabel} ao lado de ${opponentIds.map(nameOf).join(', ')}! Prêmio de participação: ${formatCurrency(LIBERTADORES_PRIZE_FOR_REACHING.GROUPS)}.`, type: 'BOARD' });
+      setLibertadoresDrawReveal({ kind: 'GROUPS', group: groupLabel, opponentIds });
     }
     setNews(nextNews);
     setGameState('PLAYING');
@@ -2403,6 +2466,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCupState(newCup);
     setOffers([]);
 
+    const newLib = startLibertadores(currentYear + 1, libertadoresClubs, lastSeasonTopSerieA, updatedClubs.filter(c => c.division === 'A'), defendingLibertadoresChampionId);
+    setLibertadoresState(newLib);
+    setDefendingLibertadoresChampionId(null); // consumed for this draw
+
     const userClubInstance = clubs.find(c => c.id === userClubId)!;
     const tvPay = userClubInstance.division === 'A' ? 8000000 : userClubInstance.division === 'B' ? 2000000 : userClubInstance.division === 'C' ? 500000 : 100000;
     const nextNews: NewsItem[] = [
@@ -2433,6 +2500,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextNews.push({ id: `cup_seed_${currentYear + 1}`, week: 0, text: `Copa do Brasil: como um dos melhores colocados da Série A na temporada passada, o ${userClubInstance.name} entra direto nas Oitavas de Final, sem disputar Fase 0, 1ª e 2ª Fase!`, type: 'BOARD' });
     } else if (newCup.fase1ByeClubIds.includes(userClubId)) {
       nextNews.push({ id: `cup_bye_${currentYear + 1}`, week: 0, text: `Copa do Brasil: o ${userClubInstance.name} está entre os melhores fora dos classificados diretos e ganhou um bye, entrando direto na 1ª Fase.`, type: 'INFO' });
+    }
+    if (newLib.participantIds.includes(userClubId)) {
+      updatedClubs = applyCupPrize(updatedClubs, userClubId, LIBERTADORES_PRIZE_FOR_REACHING.GROUPS);
+      const nameOf = (id: string) => updatedClubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? id;
+      const groupLabel = (Object.keys(newLib.groups) as LibertadoresGroupLabel[]).find(g => newLib.groups[g].includes(userClubId))!;
+      const opponentIds = newLib.groups[groupLabel].filter(id => id !== userClubId);
+      nextNews.push({ id: `lib_draw_${currentYear + 1}`, week: 0, text: `Copa Libertadores: o ${userClubInstance.name} está no Grupo ${groupLabel} ao lado de ${opponentIds.map(nameOf).join(', ')}! Prêmio de participação: ${formatCurrency(LIBERTADORES_PRIZE_FOR_REACHING.GROUPS)}.`, type: 'BOARD' });
+      setLibertadoresDrawReveal({ kind: 'GROUPS', group: groupLabel, opponentIds });
     }
 
     setActiveSponsors(nextSponsors);
@@ -2556,6 +2631,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentMatch && currentMatchResult) {
       if (currentMatch.division === 'CUP') {
         resolveCupUserLeg(currentMatch, currentMatchResult);
+      } else if (currentMatch.division === 'LIBERTADORES') {
+        resolveLibertadoresUserLeg(currentMatch, currentMatchResult);
       } else {
         // nextRound() commits a match result to `schedule` (for the points table/finances/etc.)
         // the instant "Iniciar Partida" is clicked, before the user has made any live substitutions.
@@ -2570,6 +2647,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             : m
         ));
         processCupMilestone(currentMatch.round);
+        // Checked AFTER the Copa milestone above -- per the user's explicit choice, a round
+        // where both competitions are due just means two extra fixtures that week, played in
+        // sequence (Copa do Brasil first, then Libertadores), instead of the game avoiding the
+        // collision. Each check independently no-ops if this round isn't its own milestone.
+        processLibertadoresMilestone(currentMatch.round);
       }
     }
     setCurrentMatch(null);
@@ -2863,20 +2945,374 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Called once the shootout modal has revealed the decisive kick and the user dismisses it --
-  // applies the real outcome to the cup bracket and clears the shootout state.
+  // applies the real outcome to the right competition's bracket and clears the shootout state.
   const finalizePenaltyShootout = () => {
     const shootout = penaltyShootoutRef.current;
-    const cup = cupStateRef.current;
-    if (!shootout || !cup) return;
-    const homeClubObj = clubs.find(c => c.id === shootout.homeId);
-    const awayClubObj = clubs.find(c => c.id === shootout.awayId);
+    if (!shootout) return;
+    const homeClubObj = clubs.find(c => c.id === shootout.homeId) ?? libertadoresClubs.find(c => c.id === shootout.homeId);
+    const awayClubObj = clubs.find(c => c.id === shootout.awayId) ?? libertadoresClubs.find(c => c.id === shootout.awayId);
     if (!homeClubObj || !awayClubObj) { setPenaltyShootout(null); return; }
-    finishCupTieResolution(cup, shootout.phase, shootout.homeId, shootout.awayId, homeClubObj, awayClubObj, shootout.legs, {
+    const forcedShootout = {
       homeGoals: shootout.homeGoals,
       awayGoals: shootout.awayGoals,
       homeWins: shootout.homeGoals > shootout.awayGoals
-    });
+    };
+    if (shootout.competition === 'LIBERTADORES') {
+      const lib = libertadoresStateRef.current;
+      if (lib) {
+        finishLibertadoresTieResolution(lib, shootout.phase as LibertadoresPhase, shootout.homeId, shootout.awayId, homeClubObj, awayClubObj, shootout.legs, undefined, forcedShootout);
+      }
+    } else {
+      const cup = cupStateRef.current;
+      if (cup) {
+        finishCupTieResolution(cup, shootout.phase as CupPhase, shootout.homeId, shootout.awayId, homeClubObj, awayClubObj, shootout.legs, forcedShootout);
+      }
+    }
     setPenaltyShootout(null);
+  };
+
+  // --- Copa Libertadores integration -----------------------------------------------------
+  // 32 clubes (4 vagas automáticas + campeão defensor opcional + sorteados 60/40 ARG/COL),
+  // fase de grupos (schedule fixo, 6 rodadas) seguida de mata-mata com chaveamento FIXO (ao
+  // contrário da Copa do Brasil, que resorteia a cada fase -- ver comentário em
+  // libertadoresEngine.ts). Roda em paralelo à Copa do Brasil; quando ambas caem na mesma
+  // rodada-marco, a Copa do Brasil é processada primeiro (ver clearCurrentMatch), e esta função
+  // só então processa a sua própria, o que pode significar duas partidas extras na mesma semana
+  // -- exatamente a opção que o usuário escolheu.
+
+  // Simulates every group-stage match due this milestone round except the user's own (left
+  // pending for them to play live, or simply absent if their club isn't one of the 32).
+  const processLibertadoresGroupMilestone = (lib: LibertadoresState, pushNews: (item: NewsItem) => void) => {
+    const nextGroupRound = lib.groupRoundsPlayed + 1;
+    const clubsById: Record<string, Club> = {};
+    clubs.forEach(c => { clubsById[c.id] = c; });
+    libertadoresClubs.forEach(c => { clubsById[c.id] = c; });
+    const nameOf = (id: string) => clubsById[id]?.name ?? id;
+
+    const userMatch = lib.schedule.find(m =>
+      m.round === nextGroupRound && !m.simulated && (m.homeId === userClubId || m.awayId === userClubId)
+    );
+
+    // Temporarily mark the user's own match as already simulated so simulateGroupRound skips
+    // it, then restore its real (still unsimulated) form afterward.
+    const heldSchedule = lib.schedule.map(m =>
+      (userMatch && m.round === nextGroupRound && m.homeId === userMatch.homeId && m.awayId === userMatch.awayId)
+        ? { ...m, simulated: true }
+        : m
+    );
+    const workingState: LibertadoresState = { ...lib, schedule: heldSchedule, scorers: { ...lib.scorers } };
+    const simulatedSchedule = simulateGroupRound(workingState, nextGroupRound, clubsById);
+    const finalSchedule = simulatedSchedule.map(m =>
+      (userMatch && m.round === nextGroupRound && m.homeId === userMatch.homeId && m.awayId === userMatch.awayId)
+        ? userMatch
+        : m
+    );
+
+    const updatedLib: LibertadoresState = {
+      ...lib,
+      schedule: finalSchedule,
+      scorers: workingState.scorers,
+      groupRoundsPlayed: nextGroupRound,
+      milestonesConsumed: lib.milestonesConsumed + 1
+    };
+
+    if (userMatch) {
+      updatedLib.userTie = { homeId: userMatch.homeId, awayId: userMatch.awayId, legs: [], group: userMatch.group };
+      setLibertadoresState(updatedLib);
+      const opponentId = userMatch.homeId === userClubId ? userMatch.awayId : userMatch.homeId;
+      pushNews({
+        id: `lib_group_match_${Date.now()}`,
+        week: currentRound,
+        text: `Libertadores (Grupo ${userMatch.group}, rodada ${nextGroupRound}): seu time enfrenta o ${nameOf(opponentId)}!`,
+        type: 'MATCH'
+      });
+      return;
+    }
+
+    setLibertadoresState(updatedLib);
+  };
+
+  // Called right after a LEAGUE match ends (same trigger as processCupMilestone) -- checks
+  // whether that round is one of the Libertadores' scheduled milestones and, if so, either
+  // advances the group stage by one round or plays out a knockout leg. Every tie/match except
+  // the user's own is resolved immediately.
+  const processLibertadoresMilestone = (finishedRound: number) => {
+    const lib = libertadoresStateRef.current;
+    if (!lib || lib.phaseIndex >= LIBERTADORES_PHASES.length) return;
+    const expectedRound = LIBERTADORES_MILESTONE_ROUNDS[lib.milestonesConsumed];
+    if (expectedRound !== finishedRound) return;
+
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+
+    if (lib.phase === 'GROUPS' && lib.groupRoundsPlayed < LIBERTADORES_GROUP_ROUNDS) {
+      processLibertadoresGroupMilestone(lib, pushNews);
+      return;
+    }
+
+    if (lib.phase === 'GROUPS' && lib.groupRoundsPlayed >= LIBERTADORES_GROUP_ROUNDS) {
+      // The group stage wrapped up at the previous milestone -- this one (the first knockout
+      // milestone) draws the round of 16 and immediately plays its first leg.
+      const { potOne, potTwo } = getLibertadoresAdvancement(lib);
+      const bracketOrder = drawLibertadoresKnockout(potOne, potTwo);
+      const drawnLib: LibertadoresState = { ...lib, potOne, potTwo, bracketOrder, phase: 'OITAVAS', phaseIndex: 1 };
+
+      if (bracketOrder.includes(userClubId)) {
+        pushNews({
+          id: `lib_r16_${Date.now()}`,
+          week: currentRound,
+          text: `Libertadores: seu time avançou às Oitavas de Final!`,
+          type: 'BOARD'
+        });
+      } else if (drawnLib.participantIds.includes(userClubId)) {
+        pushNews({
+          id: `lib_eliminated_groups_${Date.now()}`,
+          week: currentRound,
+          text: `Libertadores: seu time terminou a fase de grupos fora das duas primeiras colocações e está eliminado.`,
+          type: 'MATCH'
+        });
+      }
+
+      processLibertadoresKnockoutMilestone(drawnLib, pushNews);
+      return;
+    }
+
+    processLibertadoresKnockoutMilestone(lib, pushNews);
+  };
+
+  const processLibertadoresKnockoutMilestone = (lib: LibertadoresState, pushNews: (item: NewsItem) => void) => {
+    const phase = lib.phase;
+    const clubsById: Record<string, Club> = {};
+    clubs.forEach(c => { clubsById[c.id] = c; });
+    libertadoresClubs.forEach(c => { clubsById[c.id] = c; });
+    const nameOf = (id: string) => clubsById[id]?.name ?? id;
+
+    // Returning for leg 2 of a two-legged tie the user already played leg 1 of.
+    if (lib.pendingSecondLeg) {
+      setLibertadoresState({ ...lib, userTie: lib.pendingSecondLeg, pendingSecondLeg: null, milestonesConsumed: lib.milestonesConsumed + 1 });
+      return;
+    }
+
+    const pairs = getBracketPairs(lib.bracketOrder);
+    const userPair = pairs.find(p => p.homeId === userClubId || p.awayId === userClubId);
+
+    const working: LibertadoresState = {
+      ...lib,
+      history: [...lib.history],
+      scorers: { ...lib.scorers },
+      eliminatedClubIds: [...lib.eliminatedClubIds],
+      milestonesConsumed: lib.milestonesConsumed + 1
+    };
+    pairs.filter(p => p !== userPair).forEach(p => {
+      simulateFullLibertadoresTie(working, phase, p.homeId, p.awayId, clubsById);
+    });
+
+    if (userPair) {
+      working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
+      setLibertadoresState(working);
+      const opponentId = userPair.homeId === userClubId ? userPair.awayId : userPair.homeId;
+      setLibertadoresDrawReveal({ kind: 'KNOCKOUT', phase, opponentId, isHome: userPair.homeId === userClubId });
+      pushNews({
+        id: `lib_draw_${Date.now()}`,
+        week: currentRound,
+        text: `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrenta o ${nameOf(opponentId)}!`,
+        type: 'MATCH'
+      });
+      return;
+    }
+
+    finalizeLibertadoresPhase(working, phase, pairs, pushNews);
+  };
+
+  // Wraps up whichever knockout phase just fully resolved -- pays the "reached the next stage"
+  // prize, propagates winners into the FIXED bracket's next set of slots (see bracketOrder in
+  // libertadoresEngine.ts), or crowns a champion.
+  const finalizeLibertadoresPhase = (
+    lib: LibertadoresState,
+    phase: LibertadoresPhase,
+    pairs: { homeId: string; awayId: string }[],
+    pushNews: (item: NewsItem) => void
+  ) => {
+    const nameOf = (id: string) => clubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? id;
+    let nextClubs = clubs;
+    const winners = pairs.map(p => {
+      const tie = lib.history.find(t => t.phase === phase && t.homeId === p.homeId && t.awayId === p.awayId)!;
+      return tie.winnerId;
+    });
+
+    const nextLib: LibertadoresState = { ...lib, userTie: null, pendingSecondLeg: null };
+
+    if (phase === 'OITAVAS') {
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, LIBERTADORES_PRIZE_FOR_REACHING.QUARTAS); });
+      nextLib.bracketOrder = winners;
+      nextLib.phase = 'QUARTAS';
+      nextLib.phaseIndex = 2;
+    } else if (phase === 'QUARTAS') {
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, LIBERTADORES_PRIZE_FOR_REACHING.SEMI); });
+      nextLib.bracketOrder = winners;
+      nextLib.phase = 'SEMI';
+      nextLib.phaseIndex = 3;
+    } else if (phase === 'SEMI') {
+      nextLib.bracketOrder = winners;
+      nextLib.phase = 'FINAL';
+      nextLib.phaseIndex = 4;
+    } else {
+      const championId = winners[0];
+      nextClubs = applyCupPrize(nextClubs, championId, LIBERTADORES_CHAMPION_PRIZE);
+      nextLib.championId = championId;
+      nextLib.phaseIndex = LIBERTADORES_PHASES.length;
+      const topScorers = getLibertadoresTopScorers(nextLib);
+      if (topScorers.length > 0) {
+        const share = LIBERTADORES_TOP_SCORER_BONUS / topScorers.length;
+        topScorers.forEach(s => { nextClubs = applyCupPrize(nextClubs, s.clubId, share); });
+      }
+      pushNews({
+        id: `lib_champion_${Date.now()}`,
+        week: currentRound,
+        text: championId === userClubId
+          ? `🏆 CAMPEÃO DA LIBERTADORES! Seu time conquistou a Copa Libertadores e faturou ${formatCurrency(LIBERTADORES_CHAMPION_PRIZE)}!`
+          : `A Copa Libertadores terminou com o título para o ${nameOf(championId)}.`,
+        type: 'BOARD'
+      });
+      setDefendingLibertadoresChampionId(championId);
+    }
+
+    setLibertadoresState(nextLib);
+    setClubs(nextClubs);
+  };
+
+  // Kicks off the live view for the user's own pending Libertadores fixture -- group match or
+  // knockout leg, mirroring startCupMatch exactly (reuses the same currentMatch/MATCH_DAY flow).
+  const startLibertadoresMatch = (playerStarters: Player[]) => {
+    const lib = libertadoresStateRef.current;
+    if (!lib || !lib.userTie || !userClub) return;
+    const isSecondLeg = lib.phase !== 'GROUPS' && lib.userTie.legs.length === 1;
+    const homeId = isSecondLeg ? lib.userTie.awayId : lib.userTie.homeId;
+    const awayId = isSecondLeg ? lib.userTie.homeId : lib.userTie.awayId;
+    const homeClubObj = clubs.find(c => c.id === homeId) ?? libertadoresClubs.find(c => c.id === homeId);
+    const awayClubObj = clubs.find(c => c.id === awayId) ?? libertadoresClubs.find(c => c.id === awayId);
+    if (!homeClubObj || !awayClubObj) return;
+
+    const isHome = homeId === userClubId;
+    const result = isHome
+      ? simulateMatch(homeClubObj, awayClubObj, playerStarters, getAutoStarters(awayClubObj))
+      : simulateMatch(homeClubObj, awayClubObj, getAutoStarters(homeClubObj), playerStarters);
+
+    setCurrentMatch({ round: currentRound, homeId, awayId, division: 'LIBERTADORES', simulated: true, result });
+    setCurrentMatchResult(result);
+    pendingGameStateRef.current = 'PLAYING';
+    setGameState('MATCH_DAY');
+  };
+
+  // Called from clearCurrentMatch once the user's own Libertadores match/leg finishes live.
+  const resolveLibertadoresUserLeg = (matchFixture: LeagueMatch, result: MatchResult) => {
+    const lib = libertadoresStateRef.current;
+    if (!lib || !lib.userTie) return;
+    const userTie = lib.userTie;
+
+    if (lib.phase === 'GROUPS') {
+      // Single match, no aggregate/legs/penalties concept -- record the result into the fixed
+      // schedule and clear userTie.
+      const nextScorers = { ...lib.scorers };
+      result.events.forEach(e => {
+        if (e.type !== 'GOAL' || !e.player) return;
+        const clubId = e.clubId === matchFixture.homeId ? matchFixture.homeId : matchFixture.awayId;
+        const key = `${clubId}|${e.player}`;
+        if (!nextScorers[key]) nextScorers[key] = { playerName: e.player, clubId, goals: 0 };
+        nextScorers[key].goals++;
+      });
+      const nextSchedule = lib.schedule.map(m =>
+        (m.round === lib.groupRoundsPlayed && m.homeId === userTie.homeId && m.awayId === userTie.awayId)
+          ? { ...m, result, simulated: true }
+          : m
+      );
+      setLibertadoresState({ ...lib, schedule: nextSchedule, scorers: nextScorers, userTie: null });
+      return;
+    }
+
+    const phase = lib.phase;
+    const leg: LibertadoresTieLeg = { ...result, homeId: matchFixture.homeId, awayId: matchFixture.awayId };
+    const legs = [...userTie.legs, leg];
+
+    if (LIBERTADORES_TWO_LEGGED_PHASES.includes(phase) && legs.length < 2) {
+      setLibertadoresState({ ...lib, userTie: null, pendingSecondLeg: { ...userTie, legs } });
+      return;
+    }
+
+    const homeClubObj = (clubs.find(c => c.id === userTie.homeId) ?? libertadoresClubs.find(c => c.id === userTie.homeId))!;
+    const awayClubObj = (clubs.find(c => c.id === userTie.awayId) ?? libertadoresClubs.find(c => c.id === userTie.awayId))!;
+
+    let aggHome = 0;
+    let aggAway = 0;
+    legs.forEach(l => {
+      if (l.homeId === userTie.homeId) { aggHome += l.homeScore; aggAway += l.awayScore; }
+      else { aggHome += l.awayScore; aggAway += l.homeScore; }
+    });
+
+    if (aggHome === aggAway && phase !== 'FINAL') {
+      // Oitavas/Quartas/Semi: straight to the live, kick-by-kick shootout -- no extra time.
+      setPenaltyShootout({
+        competition: 'LIBERTADORES',
+        phase,
+        homeId: userTie.homeId,
+        awayId: userTie.awayId,
+        homeClubName: homeClubObj.name,
+        awayClubName: awayClubObj.name,
+        homeTakers: pickShootoutTakers(homeClubObj),
+        awayTakers: pickShootoutTakers(awayClubObj),
+        kicks: [],
+        homeGoals: 0,
+        awayGoals: 0,
+        homeKicksTaken: 0,
+        awayKicksTaken: 0,
+        decided: false,
+        legs
+      });
+      return;
+    }
+
+    // Final (tied or not -- resolveLibertadoresTie itself handles extra time then penalties
+    // if still needed, computed instantly rather than shown live since it's a rare edge case),
+    // or a non-final tie already decided in normal/aggregate time.
+    finishLibertadoresTieResolution(lib, phase, userTie.homeId, userTie.awayId, homeClubObj, awayClubObj, legs);
+  };
+
+  // Shared tail end of resolving the user's own Libertadores tie -- whether decided in normal
+  // time (called directly from resolveLibertadoresUserLeg) or via the live shootout (called from
+  // finalizePenaltyShootout once the shootout is decided).
+  const finishLibertadoresTieResolution = (
+    lib: LibertadoresState,
+    phase: LibertadoresPhase,
+    homeId: string,
+    awayId: string,
+    homeClubObj: Club,
+    awayClubObj: Club,
+    legs: LibertadoresTieLeg[],
+    forcedExtraTime?: { homeGoals: number; awayGoals: number },
+    forcedShootout?: { homeGoals: number; awayGoals: number; homeWins: boolean }
+  ) => {
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+    const working: LibertadoresState = {
+      ...lib,
+      history: [...lib.history],
+      scorers: { ...lib.scorers },
+      eliminatedClubIds: [...lib.eliminatedClubIds]
+    };
+    const tie = resolveLibertadoresTie(working, phase, homeId, awayId, homeClubObj, awayClubObj, legs, forcedExtraTime, forcedShootout);
+
+    const userWon = tie.winnerId === userClubId;
+    const extraText = tie.wentToExtraTime ? ' na prorrogação' : '';
+    const penText = tie.wentToPenalties ? ' nos pênaltis' : '';
+    pushNews({
+      id: `lib_result_${Date.now()}`,
+      week: currentRound,
+      text: userWon
+        ? `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: vitória! Seu time avança na competição${extraText}${penText}.`
+        : `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: eliminado! Seu time está fora da Libertadores${extraText}${penText}.`,
+      type: 'MATCH'
+    });
+
+    const pairs = getBracketPairs(lib.bracketOrder);
+    finalizeLibertadoresPhase(working, phase, pairs, pushNews);
   };
 
   // Re-simulates the rest of an in-progress match after the user makes a mid-match
@@ -3153,6 +3589,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setFormerClubName(data.formerClubName ?? '');
     setLastSeasonTopSerieA(data.lastSeasonTopSerieA ?? []);
     setLibertadoresClubs(data.libertadoresClubs ?? []);
+    setLibertadoresState(data.libertadoresState ?? null);
+    setDefendingLibertadoresChampionId(data.defendingLibertadoresChampionId ?? null);
   };
 
   const cheatFinances = () => {
@@ -3185,6 +3623,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startCupMatch,
       cupDrawReveal,
       dismissCupDrawReveal,
+      libertadoresState,
+      startLibertadoresMatch,
+      libertadoresDrawReveal,
+      dismissLibertadoresDrawReveal,
       sponsorAlert,
       dismissSponsorAlert,
       penaltyShootout,
