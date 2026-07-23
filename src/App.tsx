@@ -2246,17 +2246,18 @@ const AppContent: React.FC = () => {
                   style={{
                     padding: '10px 14px',
                     borderRadius: '12px',
-                    background: '#121316',
-                    borderLeft: `3px solid ${n.type === 'BOARD' ? 'var(--accent-red)' : n.type === 'TRANSFER' ? 'var(--accent-blue)' : n.type === 'OFFER' ? 'var(--accent-gold)' : 'var(--accent-gray)'}`,
+                    background: n.importance === 'HIGH' ? 'rgba(255, 193, 7, 0.08)' : '#121316',
+                    borderLeft: `3px solid ${n.importance === 'HIGH' ? 'var(--accent-gold)' : n.type === 'BOARD' ? 'var(--accent-red)' : n.type === 'TRANSFER' ? 'var(--accent-blue)' : n.type === 'OFFER' ? 'var(--accent-gold)' : 'var(--accent-gray)'}`,
+                    border: n.importance === 'HIGH' ? '1px solid rgba(255, 193, 7, 0.25)' : undefined,
                     fontSize: '0.8rem',
                     lineHeight: '1.4'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#6b7280', marginBottom: '2px', fontWeight: 700 }}>
-                    <span>{n.type.toUpperCase()}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: n.importance === 'HIGH' ? 'var(--accent-gold)' : '#6b7280', marginBottom: '2px', fontWeight: 700 }}>
+                    <span>{n.importance === 'HIGH' ? '🚨 ÚLTIMA HORA' : n.type.toUpperCase()}</span>
                     <span>RODADA {n.week}</span>
                   </div>
-                  <span style={{ color: '#d1d5db' }}>{n.text}</span>
+                  <span style={{ color: n.importance === 'HIGH' ? '#fff' : '#d1d5db', fontWeight: n.importance === 'HIGH' ? 600 : 400 }}>{n.text}</span>
                 </div>
               ))}
             </div>

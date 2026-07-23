@@ -107,6 +107,7 @@ export interface NewsItem {
   week: number;
   text: string;
   type: 'INFO' | 'TRANSFER' | 'MATCH' | 'BOARD' | 'OFFER';
+  importance?: 'HIGH'; // marks a "breaking news" item for distinct feed styling -- absent means normal
 }
 
 export interface HistoryRecord {
@@ -704,6 +705,131 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return match;
     });
 
+    // --- ROUND-WIDE MATCH FLAVOR NEWS ---
+    // Picks out the round's most notable results across every division (not just the user's own
+    // match) so the feed stays lively even on a routine week for the user's club. Each check is
+    // its own independent, capped-probability roll so the feed doesn't get flooded every round.
+    {
+      const thisRoundMatches = updatedMatches.filter(m => m.round === currentRound && m.result);
+      const nameOfClub = (id: string) => clubs.find(c => c.id === id)?.name ?? '???';
+
+      // Goleada da rodada -- biggest margin of victory, only if it's a real rout (4+ goals).
+      if (Math.random() < 0.5) {
+        let biggest: { homeId: string; awayId: string; homeScore: number; awayScore: number; margin: number } | null = null;
+        thisRoundMatches.forEach(m => {
+          const margin = Math.abs(m.result!.homeScore - m.result!.awayScore);
+          if (margin >= 4 && (!biggest || margin > biggest.margin)) {
+            biggest = { homeId: m.homeId, awayId: m.awayId, homeScore: m.result!.homeScore, awayScore: m.result!.awayScore, margin };
+          }
+        });
+        if (biggest) {
+          const b = biggest as { homeId: string; awayId: string; homeScore: number; awayScore: number; margin: number };
+          pushNews({
+            id: `goleada_${Date.now()}`,
+            week: currentRound,
+            text: `Goleada da rodada! ${nameOfClub(b.homeId)} ${b.homeScore} x ${b.awayScore} ${nameOfClub(b.awayId)}.`,
+            type: 'MATCH'
+          });
+        }
+      }
+
+      // Zebra da rodada -- a much lower-reputation club beating a much higher-reputation one.
+      if (Math.random() < 0.4) {
+        let upset: { winnerId: string; loserId: string; gap: number } | null = null;
+        thisRoundMatches.forEach(m => {
+          const home = clubs.find(c => c.id === m.homeId);
+          const away = clubs.find(c => c.id === m.awayId);
+          if (!home || !away) return;
+          if (m.result!.homeScore > m.result!.awayScore && away.reputation - home.reputation >= 20) {
+            const gap = away.reputation - home.reputation;
+            if (!upset || gap > upset.gap) upset = { winnerId: m.homeId, loserId: m.awayId, gap };
+          } else if (m.result!.awayScore > m.result!.homeScore && home.reputation - away.reputation >= 20) {
+            const gap = home.reputation - away.reputation;
+            if (!upset || gap > upset.gap) upset = { winnerId: m.awayId, loserId: m.homeId, gap };
+          }
+        });
+        if (upset) {
+          const u = upset as { winnerId: string; loserId: string; gap: number };
+          pushNews({
+            id: `zebra_${Date.now()}`,
+            week: currentRound,
+            text: `Zebra da rodada! ${nameOfClub(u.winnerId)} surpreendeu e venceu o favorito ${nameOfClub(u.loserId)}.`,
+            type: 'MATCH'
+          });
+        }
+      }
+
+      // Maior público da rodada.
+      if (Math.random() < 0.35) {
+        let biggestCrowd: { homeId: string; awayId: string; attendance: number } | null = null;
+        thisRoundMatches.forEach(m => {
+          const att = m.result!.attendance ?? 0;
+          if (!biggestCrowd || att > biggestCrowd.attendance) biggestCrowd = { homeId: m.homeId, awayId: m.awayId, attendance: att };
+        });
+        if (biggestCrowd && (biggestCrowd as { attendance: number }).attendance > 0) {
+          const c = biggestCrowd as { homeId: string; awayId: string; attendance: number };
+          pushNews({
+            id: `crowd_${Date.now()}`,
+            week: currentRound,
+            text: `Maior público da rodada: ${c.attendance.toLocaleString('pt-BR')} torcedores acompanharam ${nameOfClub(c.homeId)} x ${nameOfClub(c.awayId)}.`,
+            type: 'INFO'
+          });
+        }
+      }
+
+      // Hat-trick -- 3+ goals by the same player in a single match (only one surfaced per round).
+      if (Math.random() < 0.6) {
+        for (const m of thisRoundMatches) {
+          const goalCounts = new Map<string, number>();
+          (m.result!.events || []).filter(e => e.type === 'GOAL').forEach(e => {
+            const key = e.player ?? '';
+            goalCounts.set(key, (goalCounts.get(key) ?? 0) + 1);
+          });
+          const hatTrick = [...goalCounts.entries()].find(([, count]) => count >= 3);
+          if (hatTrick) {
+            pushNews({
+              id: `hattrick_${Date.now()}`,
+              week: currentRound,
+              text: `🚨 Hat-trick! ${hatTrick[0]} balançou as redes ${hatTrick[1]} vezes na partida entre ${nameOfClub(m.homeId)} e ${nameOfClub(m.awayId)}.`,
+              type: 'MATCH',
+              importance: 'HIGH'
+            });
+            break;
+          }
+        }
+      }
+
+      // Gol nos acréscimos -- a goal in the 88'+ window, in a match that didn't end level.
+      if (Math.random() < 0.4) {
+        for (const m of thisRoundMatches) {
+          if (m.result!.homeScore === m.result!.awayScore) continue;
+          const lateGoal = (m.result!.events || []).some(e => e.type === 'GOAL' && e.minute >= 88);
+          if (lateGoal) {
+            pushNews({
+              id: `late_goal_${Date.now()}`,
+              week: currentRound,
+              text: `Emoção até o fim! ${nameOfClub(m.homeId)} ${m.result!.homeScore} x ${m.result!.awayScore} ${nameOfClub(m.awayId)} teve gol nos acréscimos.`,
+              type: 'MATCH'
+            });
+            break;
+          }
+        }
+      }
+
+      // Clássico termina empatado.
+      if (Math.random() < 0.5) {
+        const classico = thisRoundMatches.find(m => m.result!.homeScore === m.result!.awayScore && isClassico(m.homeId, m.awayId));
+        if (classico) {
+          pushNews({
+            id: `classico_draw_${Date.now()}`,
+            week: currentRound,
+            text: `Clássico equilibrado! ${nameOfClub(classico.homeId)} ${classico.result!.homeScore} x ${classico.result!.awayScore} ${nameOfClub(classico.awayId)}.`,
+            type: 'MATCH'
+          });
+        }
+      }
+    }
+
     // Update club attributes and player stats
     const updatedClubs = clubs.map(club => {
       let finances = club.finances;
@@ -997,6 +1123,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
               isInjured = false;
               injuryWeeks = 0;
+              if (club.id === userClubId) {
+                pushNews({
+                  id: `inj_return_${player.id}_${Date.now()}`,
+                  week: currentRound,
+                  text: `${player.name} (${player.position}) está recuperado e volta a ficar à disposição do ${club.name}.`,
+                  type: 'INFO'
+                });
+              }
             }
           }
         } else {
@@ -1090,6 +1224,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Never worth less than what the user's club actually paid for him.
           value = Math.max(10000, Math.round(valBase * ageFactor * posFactor), player.purchasePrice ?? 0);
           salary = Math.round(value * 0.005);
+
+          if (club.id === userClubId && player.value > 0) {
+            const change = value / player.value;
+            if (change >= 1.08 && Math.random() < 0.5) {
+              pushNews({
+                id: `value_up_${player.id}_${Date.now()}`,
+                week: currentRound,
+                text: `📈 Valorização! O valor de mercado de ${player.name} subiu para ${formatCurrency(value)} após boas atuações.`,
+                type: 'INFO'
+              });
+            } else if (change <= 0.92 && Math.random() < 0.5) {
+              pushNews({
+                id: `value_down_${player.id}_${Date.now()}`,
+                week: currentRound,
+                text: `📉 Desvalorização! O valor de mercado de ${player.name} caiu para ${formatCurrency(value)} após uma queda de rendimento.`,
+                type: 'INFO'
+              });
+            }
+          }
         }
 
         // --- Contract weeks management ---
@@ -1280,6 +1433,112 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           week: currentRound,
           text: libChaseMessages[Math.floor(Math.random() * libChaseMessages.length)],
           type: 'BOARD'
+        });
+      }
+    }
+
+    // --- CAMPEONATO NEWS (liderança, confronto direto, título/vaga/rebaixamento matemáticos) ---
+    // Compares the user's division standings right before this round to right after it, so
+    // "assumiu a liderança" only fires on the exact round it happens (not every round he's 1st).
+    if (userClub) {
+      const div = userClub.division;
+      const standingsBefore = calculateStandings(clubs, schedule)[div];
+      const standingsAfter = calculateStandings(finalClubs, updatedMatches)[div];
+      const rankBefore = standingsBefore.findIndex(s => s.clubId === userClubId);
+      const rankAfter = standingsAfter.findIndex(s => s.clubId === userClubId);
+      const nameOfClub2 = (id: string) => finalClubs.find(c => c.id === id)?.name ?? '???';
+
+      if (rankAfter === 0 && rankBefore !== 0) {
+        pushNews({
+          id: `leader_${Date.now()}`,
+          week: currentRound,
+          text: `🔝 ${userClub.name} assume a liderança da Série ${div}!`,
+          type: 'BOARD',
+          importance: 'HIGH'
+        });
+      }
+
+      const leader = standingsAfter[0];
+      const runnerUp = standingsAfter[1];
+      if (leader && runnerUp && (leader.clubId === userClubId || runnerUp.clubId === userClubId)) {
+        const nextRoundMatches = schedule.filter(m => m.round === currentRound + 1);
+        const decider = nextRoundMatches.find(m =>
+          (m.homeId === leader.clubId && m.awayId === runnerUp.clubId) ||
+          (m.homeId === runnerUp.clubId && m.awayId === leader.clubId)
+        );
+        if (decider) {
+          pushNews({
+            id: `title_decider_${Date.now()}`,
+            week: currentRound,
+            text: `Confronto direto! Na próxima rodada, ${nameOfClub2(decider.homeId)} enfrenta ${nameOfClub2(decider.awayId)} em duelo direto pela liderança da Série ${div}.`,
+            type: 'BOARD',
+            importance: 'HIGH'
+          });
+        }
+      }
+
+      // Mathematical clinches: "unreachable" arithmetic -- nobody chasing can catch up even by
+      // winning every one of their remaining matches. Only checked in the run-in (last 10
+      // rounds) since it can never be true before then.
+      const remaining = 38 - currentRound;
+      const userRow = rankAfter >= 0 ? standingsAfter[rankAfter] : null;
+      if (userRow && remaining > 0 && remaining <= 10) {
+        if (rankAfter === 0) {
+          const second = standingsAfter[1];
+          if (second && userRow.points > second.points + remaining * 3) {
+            pushNews({
+              id: `math_champion_${Date.now()}`,
+              week: currentRound,
+              text: `🏆 MATEMATICAMENTE CAMPEÃO! O ${userClub.name} garantiu o título da Série ${div} antes mesmo do fim do campeonato!`,
+              type: 'BOARD',
+              importance: 'HIGH'
+            });
+          }
+        }
+        if (div === 'A' && rankAfter >= 0 && rankAfter < 4) {
+          const fifth = standingsAfter[4];
+          if (fifth && userRow.points > fifth.points + remaining * 3) {
+            pushNews({
+              id: `math_libertadores_${Date.now()}`,
+              week: currentRound,
+              text: `🌎 Vaga garantida! O ${userClub.name} assegurou matematicamente sua classificação para a Libertadores do ano que vem.`,
+              type: 'BOARD',
+              importance: 'HIGH'
+            });
+          }
+        }
+        if (div !== 'C' && rankAfter >= 16) {
+          const safeRow = standingsAfter[15];
+          const userMaxPoints = userRow.points + remaining * 3;
+          if (safeRow && userMaxPoints < safeRow.points) {
+            pushNews({
+              id: `math_relegation_${Date.now()}`,
+              week: currentRound,
+              text: `😔 REBAIXAMENTO CONFIRMADO! O ${userClub.name} está matematicamente rebaixado à Série ${div === 'A' ? 'B' : 'C'}.`,
+              type: 'BOARD',
+              importance: 'HIGH'
+            });
+          }
+        }
+      }
+    }
+
+    // --- ARTILHEIRO ISOLADO (division-wide top scorer, checked whenever a user's player leads) ---
+    if (userClub) {
+      const divScorers: { playerName: string; clubId: string; goals: number }[] = [];
+      finalClubs.filter(c => c.division === userClub.division).forEach(c => {
+        c.squad.forEach(p => { if (p.goals > 0) divScorers.push({ playerName: p.name, clubId: c.id, goals: p.goals }); });
+      });
+      divScorers.sort((a, b) => b.goals - a.goals);
+      const topScorer = divScorers[0];
+      const secondScorer = divScorers[1];
+      if (topScorer && topScorer.clubId === userClubId && topScorer.goals >= 8 &&
+          (!secondScorer || topScorer.goals - secondScorer.goals >= 3) && Math.random() < 0.25) {
+        pushNews({
+          id: `top_scorer_gap_${Date.now()}`,
+          week: currentRound,
+          text: `⚽ ${topScorer.playerName} (${userClub.name}) dispara na artilharia da Série ${userClub.division} com ${topScorer.goals} gols, ${secondScorer ? `${topScorer.goals - secondScorer.goals} à frente do 2º colocado` : 'isolado na liderança'}.`,
+          type: 'INFO'
         });
       }
     }
