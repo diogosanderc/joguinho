@@ -20,6 +20,26 @@ import {
 } from '../utils/libertadoresEngine';
 import type { LibertadoresState, LibertadoresPhase, LibertadoresTieLeg, LibertadoresGroupLabel } from '../utils/libertadoresEngine';
 
+// One-time migration: this game used to be called "Elifoot 2026" -- carry over any saves,
+// tactics presets and settings already sitting in the player's browser under the old key prefix
+// so renaming the game to Retrofoot doesn't silently wipe out their in-progress career. Runs
+// once at module load (before GameProvider ever reads a save slot), and is a no-op afterward
+// since it only copies a key when the new one doesn't already exist.
+(() => {
+  if (typeof localStorage === 'undefined') return;
+  const migrateKey = (oldKey: string, newKey: string) => {
+    const oldValue = localStorage.getItem(oldKey);
+    if (oldValue !== null && localStorage.getItem(newKey) === null) {
+      localStorage.setItem(newKey, oldValue);
+    }
+  };
+  for (let slot = 1; slot <= 4; slot++) {
+    migrateKey(`elifoot_2026_save_slot_${slot}`, `retrofoot_2026_save_slot_${slot}`);
+    migrateKey(`elifoot_2026_tactics_slot_${slot}`, `retrofoot_2026_tactics_slot_${slot}`);
+  }
+  migrateKey('elifoot_2026_vibration_enabled', 'retrofoot_2026_vibration_enabled');
+})();
+
 // Live, kick-by-kick penalty shootout for the user's own Copa do Brasil OR Libertadores tie
 // (every other tie in the phase is still resolved instantly). Real shootout rules: alternating
 // single kicks, home first, best of 5 then sudden death, ending the instant the outcome is
@@ -401,7 +421,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   const getFreeSlot = (): number | null => {
     for (let i = 1; i <= SAVE_SLOT_COUNT; i++) {
-      if (!localStorage.getItem(`elifoot_2026_save_slot_${i}`)) return i;
+      if (!localStorage.getItem(`retrofoot_2026_save_slot_${i}`)) return i;
     }
     return null;
   };
@@ -483,13 +503,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // that calls saveGame) has essential state transitions (like opening the live match view)
     // AFTER this call, and those must still happen even if persisting to disk didn't work out.
     try {
-      localStorage.setItem(`elifoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, feed)));
+      localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, feed)));
     } catch (e) {
       // Quota exceeded (or similar) even after slimming match events -- try once more with only
       // the most recent news items kept, since that list only ever grows.
       try {
         const trimmedNews = feed.length > 150 ? feed.slice(feed.length - 150) : feed;
-        localStorage.setItem(`elifoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, trimmedNews)));
+        localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, trimmedNews)));
       } catch (e2) {
         // Still failing -- surface it once per session instead of silently losing progress
         // every round from here on with no way for the player to know.
@@ -2639,7 +2659,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Reset/delete save game
   const resetGame = () => {
     if (currentSlotRef.current) {
-      localStorage.removeItem(`elifoot_2026_save_slot_${currentSlotRef.current}`);
+      localStorage.removeItem(`retrofoot_2026_save_slot_${currentSlotRef.current}`);
     }
     setActiveSlot(null);
     setGameState('MENU');

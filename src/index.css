@@ -709,7 +709,7 @@ body {
   animation: slide-up-fade 0.2s ease-out;
 }
 
-/* Elifoot Classic Board */
+/* Retrofoot Classic Board */
 .classic-board-container {
   flex: 1;
   background: radial-gradient(circle, #0e3013 0%, #051608 100%);

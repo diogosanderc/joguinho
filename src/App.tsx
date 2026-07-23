@@ -204,7 +204,7 @@ const AppContent: React.FC = () => {
 
   // Vibration for the live match -- off by default (no UI to toggle for now), read once from
   // its own localStorage key in case a settings UI opts a user back in later.
-  const vibrationEnabled = localStorage.getItem('elifoot_2026_vibration_enabled') === 'true';
+  const vibrationEnabled = localStorage.getItem('retrofoot_2026_vibration_enabled') === 'true';
 
   const vibrateGoal = () => {
     if (vibrationEnabled && typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -299,7 +299,7 @@ const AppContent: React.FC = () => {
     if (userClubId !== lastUserClubId) {
       let restored = false;
       if (currentSlot) {
-        const raw = localStorage.getItem(`elifoot_2026_tactics_slot_${currentSlot}`);
+        const raw = localStorage.getItem(`retrofoot_2026_tactics_slot_${currentSlot}`);
         if (raw) {
           try {
             const saved = JSON.parse(raw);
@@ -322,7 +322,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (currentSlot && userClubId) {
-      localStorage.setItem(`elifoot_2026_tactics_slot_${currentSlot}`, JSON.stringify({ userClubId, selectedTactic, startersPerTactic }));
+      localStorage.setItem(`retrofoot_2026_tactics_slot_${currentSlot}`, JSON.stringify({ userClubId, selectedTactic, startersPerTactic }));
     }
   }, [currentSlot, userClubId, selectedTactic, startersPerTactic]);
 
@@ -1030,13 +1030,13 @@ const AppContent: React.FC = () => {
   // Exporting lets the user keep a backup anywhere (Drive, email, WhatsApp to self) and restore
   // it later on any browser/device by importing the file back into a slot.
   const exportSave = (slot: number) => {
-    const raw = localStorage.getItem(`elifoot_2026_save_slot_${slot}`);
+    const raw = localStorage.getItem(`retrofoot_2026_save_slot_${slot}`);
     if (!raw) return;
-    const tacticsRaw = localStorage.getItem(`elifoot_2026_tactics_slot_${slot}`);
+    const tacticsRaw = localStorage.getItem(`retrofoot_2026_tactics_slot_${slot}`);
     const bundle = { save: JSON.parse(raw), tactics: tacticsRaw ? JSON.parse(tacticsRaw) : null };
     const data = JSON.parse(raw);
     const club = data.clubs?.find((c: any) => c.isPlayerClub);
-    const fileName = `elifoot2026_${(data.managerName || 'save').replace(/[^a-zA-Z0-9]+/g, '_')}_${club?.name?.replace(/[^a-zA-Z0-9]+/g, '_') || ''}_r${data.currentRound}.json`;
+    const fileName = `retrofoot2026_${(data.managerName || 'save').replace(/[^a-zA-Z0-9]+/g, '_')}_${club?.name?.replace(/[^a-zA-Z0-9]+/g, '_') || ''}_r${data.currentRound}.json`;
     const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1056,9 +1056,9 @@ const AppContent: React.FC = () => {
       const text = await file.text();
       const bundle = JSON.parse(text);
       const saveData = bundle.save ?? bundle; // tolerate importing a raw save export too
-      localStorage.setItem(`elifoot_2026_save_slot_${slot}`, JSON.stringify(saveData));
+      localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, JSON.stringify(saveData));
       if (bundle.tactics) {
-        localStorage.setItem(`elifoot_2026_tactics_slot_${slot}`, JSON.stringify(bundle.tactics));
+        localStorage.setItem(`retrofoot_2026_tactics_slot_${slot}`, JSON.stringify(bundle.tactics));
       }
       setSlotRefreshTick(t => t + 1);
       // If we just overwrote the slot currently being played, refresh the live state too --
@@ -1068,7 +1068,7 @@ const AppContent: React.FC = () => {
       }
       alert(`Save importado com sucesso para o Slot 0${slot}!`);
     } catch (e) {
-      alert('Não foi possível importar esse arquivo. Verifique se é um arquivo de save válido do Elifoot 2026.');
+      alert('Não foi possível importar esse arquivo. Verifique se é um arquivo de save válido do Retrofoot 2026.');
     }
   };
 
@@ -1087,7 +1087,7 @@ const AppContent: React.FC = () => {
   // --- MAIN MENU RENDER (New Game / Load Game) ---
   if (gameState === 'MENU') {
 
-    const saveSlots = [1, 2, 3, 4].map(n => ({ slot: n, key: `elifoot_2026_save_slot_${n}` }));
+    const saveSlots = [1, 2, 3, 4].map(n => ({ slot: n, key: `retrofoot_2026_save_slot_${n}` }));
 
     if (menuView === 'LOAD') {
       return (
@@ -1137,7 +1137,7 @@ const AppContent: React.FC = () => {
                         onClick={() => {
                           if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                             localStorage.removeItem(key);
-                            localStorage.removeItem(`elifoot_2026_tactics_slot_${slot}`);
+                            localStorage.removeItem(`retrofoot_2026_tactics_slot_${slot}`);
                             setSlotRefreshTick(t => t + 1);
                           }
                         }}
@@ -1213,7 +1213,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', alignItems: 'center', padding: '30px' }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>ELIFOOT 2026</h1>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>RETROFOOT 2026</h1>
           <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
         </div>
 
@@ -1255,7 +1255,7 @@ const AppContent: React.FC = () => {
           <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflow: 'hidden' }}>
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
               {[1, 2, 3, 4].map(slot => {
-                const label = getSaveLabel(`elifoot_2026_save_slot_${slot}`);
+                const label = getSaveLabel(`retrofoot_2026_save_slot_${slot}`);
                 return (
                   <div
                     key={slot}
@@ -1295,7 +1295,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>ELIFOOT 2026</h1>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>RETROFOOT 2026</h1>
           <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
         </div>
 
@@ -4655,7 +4655,7 @@ const AppContent: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               {[1, 2, 3, 4].map(slot => {
-                const saveKey = `elifoot_2026_save_slot_${slot}`;
+                const saveKey = `retrofoot_2026_save_slot_${slot}`;
                 const label = getSaveLabel(saveKey);
                 const isCurrent = currentSlot === slot;
 
@@ -4692,7 +4692,7 @@ const AppContent: React.FC = () => {
                             if (!label) return;
                             if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                               localStorage.removeItem(saveKey);
-                              localStorage.removeItem(`elifoot_2026_tactics_slot_${slot}`);
+                              localStorage.removeItem(`retrofoot_2026_tactics_slot_${slot}`);
                               setSlotRefreshTick(t => t + 1);
                             }
                           }}
