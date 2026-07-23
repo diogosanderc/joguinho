@@ -171,6 +171,14 @@ const AppContent: React.FC = () => {
   const [drawDisplayName, setDrawDisplayName] = useState('');
   useEffect(() => {
     if (!cupDrawReveal) return;
+    // The Final has no real draw -- the opponent is always whoever legitimately won the other
+    // semifinal, only the home/away side is a coin-flip -- so skip the "shuffling names" bit
+    // there, since cycling through random unrelated clubs would misleadingly suggest the
+    // opponent itself was up for chance.
+    if (cupDrawReveal.phase === 'FINAL') {
+      setDrawAnimating(false);
+      return;
+    }
     setDrawAnimating(true);
     const pool = clubs.filter(c => c.id !== userClubId && c.id !== cupDrawReveal.opponentId).map(c => c.name);
     const interval = setInterval(() => {
@@ -4165,9 +4173,13 @@ const AppContent: React.FC = () => {
         return (
           <div className="modal-overlay" style={{ zIndex: 1200 }}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
-              <span style={{ fontSize: '2.5rem' }}>🎱</span>
-              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Sorteio da Copa do Brasil</h3>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '4px 0 16px' }}>{CUP_PHASE_LABEL[cupDrawReveal.phase]}</p>
+              <span style={{ fontSize: '2.5rem' }}>{cupDrawReveal.phase === 'FINAL' ? '🏆' : '🎱'}</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>
+                {cupDrawReveal.phase === 'FINAL' ? 'Você chegou à Final!' : 'Sorteio da Copa do Brasil'}
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '4px 0 16px' }}>
+                {cupDrawReveal.phase === 'FINAL' ? 'Seu adversário na decisão é quem venceu a outra semifinal:' : CUP_PHASE_LABEL[cupDrawReveal.phase]}
+              </p>
               {drawAnimating ? (
                 <div className="match-time-pill" style={{ fontSize: '1rem', padding: '10px 20px', margin: '0 auto' }}>
                   🔀 {drawDisplayName || '...'}
