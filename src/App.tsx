@@ -58,7 +58,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, setPenaltyTaker, resolvePlayerDissatisfaction,
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
 
@@ -493,12 +493,33 @@ const AppContent: React.FC = () => {
 
       const finalMultiplier = divMultiplier * positionFactor * debtFactor;
 
+      // Série A signing bonuses are calibrated directly against real sponsorship scale (a top
+      // club's master sponsorship should read like R$45-80M, not a couple million) -- reputation
+      // interpolates across the actual A-division range (70-92) rather than reusing the shared
+      // rep²×K formula below, which was tuned for the smaller B/C economy and read far too low
+      // once applied to A. Costas/Mangas scale off Master's same curve at their usual ~32%/~19%.
+      const performanceFactor = positionFactor * debtFactor;
+      let masterSigningBonus: number;
+      let costasSigningBonus: number;
+      let mangasSigningBonus: number;
+      if (div === 'A') {
+        const repSpan = Math.max(0, Math.min(1, (rep - 70) / (92 - 70)));
+        const masterBase = 45_000_000 + repSpan * (80_000_000 - 45_000_000);
+        masterSigningBonus = Math.round(masterBase * performanceFactor);
+        costasSigningBonus = Math.round(masterBase * 0.32 * performanceFactor);
+        mangasSigningBonus = Math.round(masterBase * 0.19 * performanceFactor);
+      } else {
+        masterSigningBonus = Math.round(rep * rep * 250 * finalMultiplier);
+        costasSigningBonus = Math.round(rep * rep * 130 * finalMultiplier);
+        mangasSigningBonus = Math.round(rep * rep * 70 * finalMultiplier);
+      }
+
       const sponsors: Sponsor[] = [
         {
           id: 'sp_master',
           name: 'PixBet Master',
           type: 'MASTER',
-          signingBonus: Math.round(rep * rep * 250 * finalMultiplier),
+          signingBonus: masterSigningBonus,
           weeklyPayment: Math.round(rep * 120 * finalMultiplier),
           contractWeeks: 38
         },
@@ -506,7 +527,7 @@ const AppContent: React.FC = () => {
           id: 'sp_costas',
           name: 'SuperBet Costas',
           type: 'COSTAS',
-          signingBonus: Math.round(rep * rep * 130 * finalMultiplier),
+          signingBonus: costasSigningBonus,
           weeklyPayment: Math.round(rep * 60 * finalMultiplier),
           contractWeeks: 38
         },
@@ -514,7 +535,7 @@ const AppContent: React.FC = () => {
           id: 'sp_mangas',
           name: 'CredFácil Mangas',
           type: 'MANGAS',
-          signingBonus: Math.round(rep * rep * 70 * finalMultiplier),
+          signingBonus: mangasSigningBonus,
           weeklyPayment: Math.round(rep * 30 * finalMultiplier),
           contractWeeks: 38
         }
@@ -2641,21 +2662,6 @@ const AppContent: React.FC = () => {
                           <span>Contrato restante: <strong style={{ color: 'white' }}>{remainingWeeks} rodadas {player.contractLockYears ? `(${player.contractLockYears} Anos Trancado)` : ''}</strong></span>
                           <span>Salário: <strong style={{ color: 'white' }}>{formatCurrency(player.salary)}/sem</strong></span>
                         </div>
-                        {player.position !== 'GOL' && (
-                          <button
-                            onClick={() => setPenaltyTaker(player.id)}
-                            className="btn btn-secondary"
-                            style={{
-                              padding: '6px',
-                              fontSize: '0.72rem',
-                              background: userClub.penaltyTakerId === player.id ? 'rgba(255, 193, 7, 0.15)' : 'rgba(255,255,255,0.03)',
-                              border: userClub.penaltyTakerId === player.id ? '1px solid var(--accent-gold)' : '1px solid rgba(255,255,255,0.08)',
-                              color: userClub.penaltyTakerId === player.id ? 'var(--accent-gold)' : '#9ca3af'
-                            }}
-                          >
-                            🎯 {userClub.penaltyTakerId === player.id ? 'Cobrador de Pênalti (atual)' : 'Definir como Cobrador de Pênalti'}
-                          </button>
-                        )}
                         {player.contractLocked && (
                           <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '0 0 4px' }}>
                             🔒 Contrato já renovado e trancado -- só é possível renovar de novo depois que este vencer.
@@ -4222,6 +4228,11 @@ const AppContent: React.FC = () => {
                   style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'white', fontSize: '1.1rem', fontWeight: 700, textAlign: 'right' }}
                 />
               </div>
+              {sellPriceDigits && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 700, marginBottom: '10px' }}>
+                  {formatCurrency(Number(sellPriceDigits))}
+                </p>
+              )}
               {sellPriceInputError && (
                 <p style={{ fontSize: '0.72rem', color: 'var(--accent-red)', marginBottom: '10px' }}>{sellPriceInputError}</p>
               )}
