@@ -45,7 +45,8 @@ import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
 import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
 import { CUP_PHASE_LABEL, TWO_LEGGED_PHASES, PHASES } from './utils/cupEngine';
-import { LIBERTADORES_PHASE_LABEL, LIBERTADORES_GROUP_ROUNDS } from './utils/libertadoresEngine';
+import { LIBERTADORES_PHASE_LABEL, LIBERTADORES_GROUP_ROUNDS, LIBERTADORES_GROUP_LABELS, calculateGroupStandings } from './utils/libertadoresEngine';
+import type { LibertadoresGroupLabel } from './utils/libertadoresEngine';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -87,6 +88,8 @@ const AppContent: React.FC = () => {
 
   // Standings filter states
   const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C'>('C');
+  const [standingsCompetition, setStandingsCompetition] = useState<'NACIONAL' | 'LIBERTADORES'>('NACIONAL');
+  const [libertadoresStandingsGroup, setLibertadoresStandingsGroup] = useState<LibertadoresGroupLabel>('A');
   const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'GAMES' | 'HISTORY'>('TABLE');
 
   // Whenever the user's club actually changes division (promotion/relegation at season
@@ -1006,6 +1009,19 @@ const AppContent: React.FC = () => {
   // UI calculations
   const standings = getStandingsData();
   const currentStandings = standings[standingsTab];
+
+  // Libertadores group-stage standings, computed live off whatever matches have been played so
+  // far -- valid during the group stage itself and still readable afterward (groups/schedule
+  // stick around for the rest of the season even once the knockout phase takes over).
+  const libertadoresGroupStandings = libertadoresState
+    ? calculateGroupStandings(
+        libertadoresState.groups[libertadoresStandingsGroup] ?? [],
+        libertadoresState.schedule.filter(m => m.group === libertadoresStandingsGroup),
+        libertadoresState.tiebreakSeeds
+      )
+    : [];
+  const findClubName = (id: string) => clubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? '???';
+  const findClubColor = (id: string) => clubs.find(c => c.id === id)?.primaryColor ?? libertadoresClubs.find(c => c.id === id)?.primaryColor ?? '#555';
 
   // Top scorers calculation by division
   const getTopScorers = () => {
@@ -3877,59 +3893,138 @@ const AppContent: React.FC = () => {
 
             {statsView === 'TABLE' && (
               <>
-                {/* Division selectors */}
-                <div className="sub-tabs" style={{ padding: '0 0 12px 0' }}>
-                  {(['A', 'B', 'C'] as const).map(div => (
+                {/* Competition selector -- only shown once the Libertadores is actually running
+                    this season, so the toggle doesn't appear before it exists or linger visible
+                    with nothing behind it. */}
+                {libertadoresState && (
+                  <div className="sub-tabs" style={{ padding: '0 0 8px 0' }}>
                     <button
-                      key={div}
-                      onClick={() => setStandingsTab(div)}
-                      className={`sub-tab-btn ${standingsTab === div ? 'active' : ''}`}
+                      onClick={() => setStandingsCompetition('NACIONAL')}
+                      className={`sub-tab-btn ${standingsCompetition === 'NACIONAL' ? 'active' : ''}`}
                       style={{ flex: 1 }}
                     >
-                      Série {div}
+                      Nacional
                     </button>
-                  ))}
-                </div>
-
-                <div className="card" style={{ padding: '0px', overflow: 'hidden' }}>
-                  <div className="table-header">
-                    <span>#</span>
-                    <span>Time</span>
-                    <span>J</span>
-                    <span>V</span>
-                    <span>SG</span>
-                    <span>Pts</span>
+                    <button
+                      onClick={() => setStandingsCompetition('LIBERTADORES')}
+                      className={`sub-tab-btn ${standingsCompetition === 'LIBERTADORES' ? 'active' : ''}`}
+                      style={{ flex: 1 }}
+                    >
+                      🌎 Libertadores
+                    </button>
                   </div>
+                )}
 
-                  {currentStandings.map((entry, idx) => {
-                    const isUser = entry.clubId === userClubId;
-                    
-                    // Highlight colors
-                    let highlightClass = '';
-                    if (idx < 4) highlightClass = 'pos-green-highlight'; // Promotion
-                    else if (idx >= 16 && standingsTab !== 'C') highlightClass = 'pos-red-highlight'; // Relegation
+                {standingsCompetition === 'LIBERTADORES' && libertadoresState ? (
+                  <>
+                    {/* Group selectors -- 8 groups (A-H), wraps onto a second line on narrow screens */}
+                    <div className="sub-tabs" style={{ padding: '0 0 12px 0', flexWrap: 'wrap' }}>
+                      {LIBERTADORES_GROUP_LABELS.map(g => (
+                        <button
+                          key={g}
+                          onClick={() => setLibertadoresStandingsGroup(g)}
+                          className={`sub-tab-btn ${libertadoresStandingsGroup === g ? 'active' : ''}`}
+                          style={{ flex: '1 0 22%' }}
+                        >
+                          Grupo {g}
+                        </button>
+                      ))}
+                    </div>
 
-                    return (
-                      <div
-                        key={entry.clubId}
-                        className={`table-row ${highlightClass} ${isUser ? 'user-team-row' : ''}`}
-                      >
-                        <span style={{ fontWeight: 800 }}>{idx + 1}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span className="club-badge-mini" style={{ backgroundColor: clubs.find(c=>c.id===entry.clubId)?.primaryColor }} />
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.clubName}</span>
-                          {isUser && <span style={{ fontSize: '0.65rem', background: 'var(--accent-gold)', color: 'black', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, flexShrink: 0 }}>VOCÊ</span>}
-                        </div>
-                        <span>{entry.played}</span>
-                        <span>{entry.wins}</span>
-                        <span style={{ color: entry.gd > 0 ? 'var(--accent-green)' : entry.gd < 0 ? 'var(--accent-red)' : '' }}>
-                          {entry.gd > 0 ? '+' : ''}{entry.gd}
-                        </span>
-                        <span style={{ fontWeight: 800 }}>{entry.points}</span>
+                    <div className="card" style={{ padding: '0px', overflow: 'hidden' }}>
+                      <div className="table-header">
+                        <span>#</span>
+                        <span>Time</span>
+                        <span>J</span>
+                        <span>V</span>
+                        <span>SG</span>
+                        <span>Pts</span>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {libertadoresGroupStandings.map((entry, idx) => {
+                        const isUser = entry.clubId === userClubId;
+                        // Top 2 of every group advance to the round of 16.
+                        const highlightClass = idx < 2 ? 'pos-green-highlight' : '';
+
+                        return (
+                          <div
+                            key={entry.clubId}
+                            className={`table-row ${highlightClass} ${isUser ? 'user-team-row' : ''}`}
+                          >
+                            <span style={{ fontWeight: 800 }}>{idx + 1}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="club-badge-mini" style={{ backgroundColor: findClubColor(entry.clubId) }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{findClubName(entry.clubId)}</span>
+                              {isUser && <span style={{ fontSize: '0.65rem', background: 'var(--accent-gold)', color: 'black', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, flexShrink: 0 }}>VOCÊ</span>}
+                            </div>
+                            <span>{entry.played}</span>
+                            <span>{entry.wins}</span>
+                            <span style={{ color: entry.gd > 0 ? 'var(--accent-green)' : entry.gd < 0 ? 'var(--accent-red)' : '' }}>
+                              {entry.gd > 0 ? '+' : ''}{entry.gd}
+                            </span>
+                            <span style={{ fontWeight: 800 }}>{entry.points}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Division selectors */}
+                    <div className="sub-tabs" style={{ padding: '0 0 12px 0' }}>
+                      {(['A', 'B', 'C'] as const).map(div => (
+                        <button
+                          key={div}
+                          onClick={() => setStandingsTab(div)}
+                          className={`sub-tab-btn ${standingsTab === div ? 'active' : ''}`}
+                          style={{ flex: 1 }}
+                        >
+                          Série {div}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="card" style={{ padding: '0px', overflow: 'hidden' }}>
+                      <div className="table-header">
+                        <span>#</span>
+                        <span>Time</span>
+                        <span>J</span>
+                        <span>V</span>
+                        <span>SG</span>
+                        <span>Pts</span>
+                      </div>
+
+                      {currentStandings.map((entry, idx) => {
+                        const isUser = entry.clubId === userClubId;
+
+                        // Highlight colors
+                        let highlightClass = '';
+                        if (idx < 4) highlightClass = 'pos-green-highlight'; // Promotion
+                        else if (idx >= 16 && standingsTab !== 'C') highlightClass = 'pos-red-highlight'; // Relegation
+
+                        return (
+                          <div
+                            key={entry.clubId}
+                            className={`table-row ${highlightClass} ${isUser ? 'user-team-row' : ''}`}
+                          >
+                            <span style={{ fontWeight: 800 }}>{idx + 1}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="club-badge-mini" style={{ backgroundColor: clubs.find(c=>c.id===entry.clubId)?.primaryColor }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.clubName}</span>
+                              {isUser && <span style={{ fontSize: '0.65rem', background: 'var(--accent-gold)', color: 'black', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, flexShrink: 0 }}>VOCÊ</span>}
+                            </div>
+                            <span>{entry.played}</span>
+                            <span>{entry.wins}</span>
+                            <span style={{ color: entry.gd > 0 ? 'var(--accent-green)' : entry.gd < 0 ? 'var(--accent-red)' : '' }}>
+                              {entry.gd > 0 ? '+' : ''}{entry.gd}
+                            </span>
+                            <span style={{ fontWeight: 800 }}>{entry.points}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             )}
 
