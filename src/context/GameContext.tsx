@@ -2656,7 +2656,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const takers = side === 'home' ? shootout.homeTakers : shootout.awayTakers;
     const kicksTaken = side === 'home' ? shootout.homeKicksTaken : shootout.awayKicksTaken;
     const taker = takers[kicksTaken % takers.length];
-    const scored = resolvePenaltyOutcome(taker.rating, side === 'home').scored;
+    const scored = resolvePenaltyOutcome(taker.rating, taker.energy, side === 'home').scored;
 
     const homeGoals = shootout.homeGoals + (side === 'home' && scored ? 1 : 0);
     const awayGoals = shootout.awayGoals + (side === 'away' && scored ? 1 : 0);
@@ -2761,7 +2761,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const taker = userClubObj?.squad.find(p => p.id === takerId);
     if (!taker) return null;
 
-    const { scored, saved } = resolvePenaltyOutcome(taker.rating, isHome);
+    const { scored, saved } = resolvePenaltyOutcome(taker.rating, taker.energy, isHome);
     const type: MatchEvent['type'] = scored ? 'GOAL' : saved ? 'SHOT_SAVED' : 'MISS';
     const description = scored
       ? `Pênalti! ${taker.name} cobra e converte em gol!`

@@ -158,12 +158,16 @@ export const calculateTeamForces = (starters: Player[]) => {
 // real-world penalty conversion rates. Rating and home advantage nudge it a little either way.
 // Exported standalone so a live, user-chosen taker (picked from the in-match "escolher batedor"
 // modal) can be resolved the same way as the auto-picked taker inside simulateMatch.
-export const resolvePenaltyOutcome = (takerRating: number, isHome: boolean): { scored: boolean; saved: boolean } => {
+export const resolvePenaltyOutcome = (takerRating: number, takerEnergy: number, isHome: boolean): { scored: boolean; saved: boolean } => {
   const ratingAdj = (takerRating - 75) * 0.0015;
+  // Tired legs hurt penalty composure/technique too, just less than raw skill -- smaller
+  // coefficient than ratingAdj so a gassed star is still better than a fresh scrub, but a
+  // rested taker gets a real (if modest) edge over an exhausted one at the same rating.
+  const energyAdj = (takerEnergy - 75) * 0.001;
   const homeBonus = isHome ? 0.02 : 0;
 
-  let missChance = 0.10 - ratingAdj * 0.4 - homeBonus * 0.3; // off-target portion of the 25%
-  let savedChance = 0.15 - ratingAdj * 0.4 - homeBonus * 0.3; // keeper-save portion of the 25%
+  let missChance = 0.10 - ratingAdj * 0.4 - energyAdj * 0.4 - homeBonus * 0.3; // off-target portion of the 25%
+  let savedChance = 0.15 - ratingAdj * 0.4 - energyAdj * 0.4 - homeBonus * 0.3; // keeper-save portion of the 25%
   missChance = Math.max(0.04, Math.min(0.15, missChance));
   savedChance = Math.max(0.06, Math.min(0.20, savedChance));
 
@@ -327,7 +331,7 @@ export const simulateMatch = (
     const designated = club.penaltyTakerId ? pool.find(p => p.id === club.penaltyTakerId) : undefined;
     const taker = designated || choosePlayer(pool.length > 0 ? pool : starters, ['CA', 'PON', 'MEI', 'VOL']);
 
-    const { scored, saved } = resolvePenaltyOutcome(taker.rating, isHome);
+    const { scored, saved } = resolvePenaltyOutcome(taker.rating, taker.energy, isHome);
     return { taker, scored, saved };
   };
 

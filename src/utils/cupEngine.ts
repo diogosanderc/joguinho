@@ -206,8 +206,8 @@ const runShootout = (homeClub: Club, awayClub: Club): { homeGoals: number; awayG
   while (round < 30) { // safety cap; a real shootout essentially never runs this long
     const homeTaker = homeTakers[round % homeTakers.length];
     const awayTaker = awayTakers[round % awayTakers.length];
-    if (resolvePenaltyOutcome(homeTaker.rating, true).scored) homeGoals++;
-    if (resolvePenaltyOutcome(awayTaker.rating, false).scored) awayGoals++;
+    if (resolvePenaltyOutcome(homeTaker.rating, homeTaker.energy, true).scored) homeGoals++;
+    if (resolvePenaltyOutcome(awayTaker.rating, awayTaker.energy, false).scored) awayGoals++;
     round++;
     if (round >= 5 && homeGoals !== awayGoals) break;
   }
