@@ -831,6 +831,8 @@ const AppContent: React.FC = () => {
     setVarModalOpen(false);
     setIncomingProposal(null);
     setUnhappyPlayer(null);
+    setRedCardPlayer(null);
+    setLastRedCardMinute(-1);
   };
 
   // Helper to make substitution in current match
@@ -1858,6 +1860,15 @@ const AppContent: React.FC = () => {
                 </div>
 
                 <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '12px' }}>Ajuste seus titulares. Você pode fazer várias trocas nesta mesma janela — uma, duas, três, até {MAX_SUBS} — sem precisar reabrir a cada substituição.</p>
+
+                {redCardPlayer && !midMatchStarters.some(s => s.id === redCardPlayer.id) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', background: 'rgba(255,23,68,0.08)', border: '1px solid rgba(255,23,68,0.25)' }}>
+                    <span style={{ fontSize: '1rem' }}>🟥</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-red)' }}>
+                      Expulso: <strong>{redCardPlayer.name}</strong> ({redCardPlayer.position})
+                    </span>
+                  </div>
+                )}
 
                 <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo ({midMatchStarters.length}):</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', marginBottom: '14px' }}>
