@@ -985,7 +985,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const isVeteran = player.age >= 33;
           if (wasStarter) {
             const veteranPenalty = isVeteran ? Math.floor(Math.random() * 4) + 3 : 0; // extra 3-6 energy lost
-            energy = Math.max(30, energy - Math.floor(Math.random() * 6) - 4 - veteranPenalty);
+            const energyLoss = Math.floor(Math.random() * 6) + 4 + veteranPenalty;
+            energy = Math.max(30, energy - (player.eliteStamina ? Math.round(energyLoss * 0.5) : energyLoss));
           } else {
             energy = Math.min(100, energy + (isVeteran ? 14 : 20)); // recover energy faster on bench/rest (was 15)
           }

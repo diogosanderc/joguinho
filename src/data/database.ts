@@ -36,6 +36,7 @@ export interface Player {
   seasonGoodRounds?: number; // Of those, rounds where condition was "Bom"/"Otimo" (not "Ruim")
   renewalBoostMatchesLeft?: number; // Matches still carrying the post-renewal morale boost (counts down as he starts)
   renewalBoostPercent?: number; // Size of that temporary effective-rating boost, e.g. 0.08 for +8%
+  eliteStamina?: boolean; // World-class foreign stars whose fitness holds up far better -- lose energy 50% slower after playing than everyone else
 }
 
 // A player is fit to be selected: not injured, and not serving a card suspension.
