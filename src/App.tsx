@@ -45,6 +45,7 @@ import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
 import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterestRate, getAvailableCredit, calculateInstallment, calculatePayoffAmount, getBankEventForYear } from './utils/loanEngine';
 import { CUP_PHASE_LABEL, TWO_LEGGED_PHASES, PHASES } from './utils/cupEngine';
+import { LIBERTADORES_PHASE_LABEL, LIBERTADORES_GROUP_ROUNDS } from './utils/libertadoresEngine';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -56,7 +57,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -1441,6 +1442,8 @@ const AppContent: React.FC = () => {
             <span>
               {currentMatch.division === 'CUP' && cupState
                 ? `🏆 COPA • ${CUP_PHASE_LABEL[PHASES[cupState.phaseIndex]]}`
+                : currentMatch.division === 'LIBERTADORES' && libertadoresState
+                ? `🌎 LIBERTADORES • ${libertadoresState.phase === 'GROUPS' ? 'Fase de Grupos' : LIBERTADORES_PHASE_LABEL[libertadoresState.phase]}`
                 : `SEU JOGO • SÉRIE ${userClub.division}`} • 🔄 {subsUsed}/{MAX_SUBS}
             </span>
             <span style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}>
@@ -1553,6 +1556,11 @@ const AppContent: React.FC = () => {
             🏆 Copa do Brasil — {CUP_PHASE_LABEL[PHASES[cupState?.phaseIndex ?? 0]]}<br />
             Os demais confrontos desta fase já foram decididos.
           </div>
+        ) : currentMatch.division === 'LIBERTADORES' ? (
+          <div className="classic-board-container" style={{ scrollBehavior: 'smooth', padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.8rem' }}>
+            🌎 Copa Libertadores — {libertadoresState?.phase === 'GROUPS' ? 'Fase de Grupos' : LIBERTADORES_PHASE_LABEL[libertadoresState?.phase ?? 'OITAVAS']}<br />
+            Os demais confrontos desta rodada já foram decididos.
+          </div>
         ) : (
         <div className="classic-board-container" style={{ scrollBehavior: 'smooth' }}>
           {(['A', 'B', 'C'] as const).map(div => {
@@ -1637,7 +1645,7 @@ const AppContent: React.FC = () => {
               className="btn btn-primary"
               onClick={() => {
                 clearCurrentMatch();
-                if (currentMatch.division === 'CUP') {
+                if (currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES') {
                   setActiveTab(1);
                 } else {
                   setStandingsTab(userClub.division as 'A' | 'B' | 'C');
@@ -1647,7 +1655,7 @@ const AppContent: React.FC = () => {
               }}
               style={{ height: '44px' }}
             >
-              {currentMatch.division === 'CUP' ? 'Fim de Jogo (Continuar)' : 'Fim de Rodada (Ver Classificação)'}
+              {currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES' ? 'Fim de Jogo (Continuar)' : 'Fim de Rodada (Ver Classificação)'}
             </button>
           </div>
         )}
@@ -2188,8 +2196,11 @@ const AppContent: React.FC = () => {
         {/* --- TAB 1: ELENCO & TÁTICA --- */}
         {activeTab === 1 && (
           <>
-            {/* Round info + Iniciar Partida -- a pending Copa tie gates the league: the extra
-                midweek fixture has to be played before the next Brasileirão round unlocks. */}
+            {/* Round info + Iniciar Partida -- a pending Copa tie OR Libertadores fixture gates
+                the league: the extra midweek fixture has to be played before the next
+                Brasileirão round unlocks. Copa do Brasil takes priority when both are due the
+                same week (per the user's choice, that just means two extra matches, played in
+                sequence, instead of the game avoiding the collision). */}
             {cupState && cupState.userTie ? (() => {
               const phase = PHASES[cupState.phaseIndex];
               const tie = cupState.userTie;
@@ -2225,6 +2236,45 @@ const AppContent: React.FC = () => {
                     style={{ marginTop: '16px', height: '48px', background: 'var(--accent-gold)' }}
                   >
                     <Play size={18} fill="#000" /> Iniciar Partida da Copa
+                  </button>
+                </div>
+              );
+            })() : libertadoresState && libertadoresState.userTie ? (() => {
+              const phase = libertadoresState.phase;
+              const tie = libertadoresState.userTie;
+              const isSecondLeg = phase !== 'GROUPS' && tie.legs.length === 1;
+              const legHomeId = isSecondLeg ? tie.awayId : tie.homeId;
+              const legAwayId = isSecondLeg ? tie.homeId : tie.awayId;
+              const isHomeThisLeg = legHomeId === userClubId;
+              const opponentId = isHomeThisLeg ? legAwayId : legHomeId;
+              const opponent = clubs.find(c => c.id === opponentId) ?? libertadoresClubs.find(c => c.id === opponentId);
+              const isTwoLegged = phase !== 'GROUPS' && phase !== 'FINAL';
+              const phaseLabel = phase === 'GROUPS' ? `Fase de Grupos (Grupo ${tie.group})` : LIBERTADORES_PHASE_LABEL[phase];
+              return (
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(0, 150, 220, 0.14) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid rgba(0, 150, 220, 0.4)' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#4db8ff', fontWeight: 700, textTransform: 'uppercase' }}>🌎 Copa Libertadores</span>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>
+                      {phaseLabel}{isTwoLegged ? (isSecondLeg ? ' (Jogo de Volta)' : ' (Jogo de Ida)') : ''}
+                    </h2>
+                  </div>
+                  {opponent && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name} ({isHomeThisLeg ? 'Casa' : 'Fora'})</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                        <span>{opponent.country ?? `Série ${opponent.division}`}</span>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => { beginMatchKickoff(); startLibertadoresMatch(starters); }}
+                    style={{ marginTop: '16px', height: '48px', background: '#0096dc' }}
+                  >
+                    <Play size={18} fill="#000" /> Iniciar Partida da Libertadores
                   </button>
                 </div>
               );
@@ -3948,6 +3998,78 @@ const AppContent: React.FC = () => {
               </div>
             )}
 
+            {statsView === 'GAMES' && libertadoresState && (
+              <div className="card" style={{ marginTop: '10px' }}>
+                <div className="card-title">🌎 Copa Libertadores - {libertadoresState.year}</div>
+                <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '10px' }}>
+                  {libertadoresState.championId
+                    ? (libertadoresState.championId === userClubId ? '🏆 Seu time é o CAMPEÃO da Libertadores!' : `Campeão: ${clubs.find(c => c.id === libertadoresState.championId)?.name ?? libertadoresClubs.find(c => c.id === libertadoresState.championId)?.name ?? '???'}`)
+                    : !libertadoresState.participantIds.includes(userClubId)
+                    ? 'Seu time não se classificou para a Libertadores nesta temporada.'
+                    : libertadoresState.phase === 'GROUPS'
+                    ? `Seu time disputa a Fase de Grupos (rodada ${libertadoresState.groupRoundsPlayed} de ${LIBERTADORES_GROUP_ROUNDS}).`
+                    : libertadoresState.userTie || libertadoresState.pendingSecondLeg || libertadoresState.bracketOrder.includes(userClubId)
+                    ? `Seu time segue vivo na competição -- fase atual: ${LIBERTADORES_PHASE_LABEL[libertadoresState.phase]}.`
+                    : 'Seu time foi eliminado da Libertadores nesta temporada.'}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {(() => {
+                    const myGroupMatches = libertadoresState.schedule.filter(m => m.simulated && (m.homeId === userClubId || m.awayId === userClubId));
+                    const myTies = libertadoresState.history.filter(t => t.homeId === userClubId || t.awayId === userClubId);
+                    if (myGroupMatches.length === 0 && myTies.length === 0) {
+                      return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Nenhum confronto de Libertadores disputado ainda.</p>;
+                    }
+                    return (
+                      <>
+                        {myGroupMatches.map(m => {
+                          const isHome = m.homeId === userClubId;
+                          const oppId = isHome ? m.awayId : m.homeId;
+                          const opponent = clubs.find(c => c.id === oppId) ?? libertadoresClubs.find(c => c.id === oppId);
+                          const myScore = isHome ? m.result!.homeScore : m.result!.awayScore;
+                          const oppScore = isHome ? m.result!.awayScore : m.result!.homeScore;
+                          const outcome = myScore > oppScore ? 'V' : myScore < oppScore ? 'D' : 'E';
+                          const outcomeColor = outcome === 'V' ? 'var(--accent-green)' : outcome === 'D' ? 'var(--accent-red)' : 'var(--accent-gold)';
+                          return (
+                            <div key={`${m.group}-${m.round}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#121316', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)', fontSize: '0.8rem' }}>
+                              <span style={{ width: '70px', color: '#9ca3af', fontWeight: 700, fontSize: '0.68rem' }}>Grupo {m.group}</span>
+                              <span style={{
+                                width: '22px', height: '22px', borderRadius: '6px', background: outcomeColor, color: 'black',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem', flexShrink: 0
+                              }}>{outcome}</span>
+                              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {isHome ? 'vs' : '@'} {opponent?.name ?? '???'}
+                              </span>
+                              <span style={{ fontWeight: 800 }}>{myScore} - {oppScore}</span>
+                            </div>
+                          );
+                        })}
+                        {myTies.map(t => {
+                          const won = t.winnerId === userClubId;
+                          const opponentId = t.homeId === userClubId ? t.awayId : t.homeId;
+                          const opponent = clubs.find(c => c.id === opponentId) ?? libertadoresClubs.find(c => c.id === opponentId);
+                          const myAgg = t.homeId === userClubId ? t.aggregateHomeGoals : t.aggregateAwayGoals;
+                          const oppAgg = t.homeId === userClubId ? t.aggregateAwayGoals : t.aggregateHomeGoals;
+                          return (
+                            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#121316', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)', fontSize: '0.8rem' }}>
+                              <span style={{ width: '70px', color: '#9ca3af', fontWeight: 700, fontSize: '0.68rem' }}>{LIBERTADORES_PHASE_LABEL[t.phase]}</span>
+                              <span style={{
+                                width: '22px', height: '22px', borderRadius: '6px', background: won ? 'var(--accent-green)' : 'var(--accent-red)', color: 'black',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem', flexShrink: 0
+                              }}>{won ? 'V' : 'D'}</span>
+                              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                vs {opponent?.name ?? '???'}
+                              </span>
+                              <span style={{ fontWeight: 800 }}>{myAgg} - {oppAgg}{t.wentToPenalties ? ' (pên.)' : t.wentToExtraTime ? ' (pror.)' : ''}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
             {statsView === 'HISTORY' && (
               <div className="card">
                 <div className="card-title"><Trophy size={18} color="var(--accent-gold)" /> Histórico da Carreira</div>
@@ -4061,13 +4183,58 @@ const AppContent: React.FC = () => {
         );
       })()}
 
+      {libertadoresDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && !cupDrawReveal && (() => {
+        if (libertadoresDrawReveal.kind === 'GROUPS') {
+          const opponents = libertadoresDrawReveal.opponentIds.map(id => clubs.find(c => c.id === id) ?? libertadoresClubs.find(c => c.id === id));
+          return (
+            <div className="modal-overlay" style={{ zIndex: 1200 }}>
+              <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+                <span style={{ fontSize: '2.5rem' }}>🌎</span>
+                <h3 style={{ fontWeight: 800, marginTop: '8px', color: '#4db8ff' }}>Sorteio da Libertadores</h3>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '4px 0 16px' }}>Grupo {libertadoresDrawReveal.group}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '10px 0 20px' }}>
+                  {opponents.map(o => o && (
+                    <div key={o.id} style={{ fontSize: '0.95rem', fontWeight: 700, background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px' }}>{o.name}</div>
+                  ))}
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissLibertadoresDrawReveal}>
+                  Continuar
+                </button>
+              </div>
+            </div>
+          );
+        }
+        const opponentClub = clubs.find(c => c.id === libertadoresDrawReveal.opponentId) ?? libertadoresClubs.find(c => c.id === libertadoresDrawReveal.opponentId);
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1200 }}>
+            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2.5rem' }}>🌎</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: '#4db8ff' }}>Sorteio da Libertadores</h3>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '4px 0 16px' }}>{LIBERTADORES_PHASE_LABEL[libertadoresDrawReveal.phase]}</p>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, margin: '10px 0' }}>
+                {libertadoresDrawReveal.isHome ? userClub?.name : opponentClub?.name}
+                <span style={{ color: '#4db8ff' }}> x </span>
+                {libertadoresDrawReveal.isHome ? opponentClub?.name : userClub?.name}
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: '0 0 20px' }}>
+                {libertadoresDrawReveal.isHome ? '🏠 Você manda o jogo de volta em casa' : '✈️ O adversário manda o jogo de volta em casa'}
+              </p>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissLibertadoresDrawReveal}>
+                Continuar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* UNHAPPY PLAYER DISSATISFACTION MODAL -- gated to gameState !== 'MATCH_DAY' because
           its trigger effect can still land its state update after the user has already
           tapped into a new match: without this guard it renders on top of the live match
           screen, hiding the whole thing (sim keeps ticking underneath) until dismissed. Also
-          deferred behind cupDrawReveal so these auto-popup modals queue one at a time instead
-          of stacking when more than one triggers on the same round transition. */}
-      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !penaltyShootout && (
+          deferred behind cupDrawReveal/libertadoresDrawReveal so these auto-popup modals queue
+          one at a time instead of stacking when more than one triggers on the same round
+          transition. */}
+      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !penaltyShootout && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>😠</span>
@@ -4102,7 +4269,7 @@ const AppContent: React.FC = () => {
       {/* SPONSOR CONTRACT ALERT MODAL -- fires when a deal expires (passive, during round
           processing, easy to miss in the news feed alone) or when the user signs a new one
           (explicit confirmation on top of the news item). */}
-      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && !penaltyShootout && (
+      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !penaltyShootout && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{sponsorAlert.kind === 'SIGNED' ? '🤝' : '📉'}</span>
@@ -4124,7 +4291,7 @@ const AppContent: React.FC = () => {
       {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
           above: guard against rendering over a live match that's already in progress, and
           queue behind the other two auto-popup modals instead of stacking on top of them. */}
-      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && (
+      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
