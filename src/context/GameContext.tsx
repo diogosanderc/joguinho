@@ -3588,7 +3588,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDivisionExperience(data.divisionExperience ?? { A: 0, B: 0, C: 0 });
     setFormerClubName(data.formerClubName ?? '');
     setLastSeasonTopSerieA(data.lastSeasonTopSerieA ?? []);
-    setLibertadoresClubs(data.libertadoresClubs ?? []);
+    // Older saves (from before the Libertadores feature) have no libertadoresClubs field --
+    // fall back to whatever the seed fetch has loaded so far instead of wiping it to empty
+    // (which would otherwise never get re-seeded, since the seeding effect only re-fires when
+    // the seed itself changes, not when libertadoresClubs is reset). If the seed fetch hasn't
+    // resolved yet either, this still ends up empty for a moment, but the seeding effect picks
+    // it up correctly the instant it does (it only checks the ref, not this call).
+    setLibertadoresClubs(data.libertadoresClubs && data.libertadoresClubs.length > 0 ? data.libertadoresClubs : libertadoresSeed);
     setLibertadoresState(data.libertadoresState ?? null);
     setDefendingLibertadoresChampionId(data.defendingLibertadoresChampionId ?? null);
   };
