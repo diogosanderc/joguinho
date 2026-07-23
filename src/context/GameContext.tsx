@@ -1741,9 +1741,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
+    // The exact threshold/odds are intentionally not surfaced to the player -- a rejection
+    // always reads the same regardless of whether it's the hard 15%-over cutoff or just an
+    // unlucky roll below it, so the mechanic isn't reverse-engineerable from the message alone.
     const ratio = player.value > 0 ? askingPrice / player.value : 1;
     if (ratio > 1.15) {
-      alert(`Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name} -- mais de 15% acima do valor de mercado (${formatCurrency(player.value)}). Peça um valor menor.`);
+      alert(`Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name}. Peça um valor menor.`);
       return false;
     }
 
@@ -1752,7 +1755,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     chance = Math.max(0, Math.min(1, chance));
 
     if (Math.random() >= chance) {
-      alert(`Nenhum clube aceitou pagar ${formatCurrency(askingPrice)} por ${player.name} desta vez. Tente um valor menor ou espere uma nova proposta.`);
+      alert(`Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name}. Peça um valor menor.`);
       return false;
     }
 

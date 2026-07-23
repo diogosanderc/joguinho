@@ -4167,7 +4167,6 @@ const AppContent: React.FC = () => {
           showing a raw unbroken digit string like "10919340". */}
       {sellPriceModal && (() => {
         const player = sellPriceModal;
-        const maxPrice = Math.round(player.value * 1.15);
         return (
           <div className="modal-overlay" style={{ zIndex: 1260 }}>
             <div className="modal-content" style={{ width: '340px', padding: '18px', textAlign: 'center' }}>
@@ -4175,7 +4174,7 @@ const AppContent: React.FC = () => {
               <h3 style={{ fontWeight: 800, marginTop: '8px' }}>Vender {player.name}</h3>
               <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '8px 0 14px', lineHeight: '1.4' }}>
                 Valor de mercado: <strong style={{ color: 'white' }}>{formatCurrency(player.value)}</strong>.
-                Pedir mais de 15% acima disso ({formatCurrency(maxPrice)}) e nenhum clube compra.
+                Quanto mais alto o valor pedido, menor a chance de algum clube aceitar.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', background: '#121316', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px' }}>
                 <span style={{ color: '#9ca3af', fontWeight: 700, marginRight: '4px' }}>R$</span>
