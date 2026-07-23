@@ -993,6 +993,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // --- Suspension (red card / 3rd accumulated yellow) countdown ---
         if (suspendedMatches > 0 && !justSuspended) {
           suspendedMatches -= 1;
+          if (suspendedMatches === 0) {
+            yellowCards = 0;
+            redCards = 0;
+          }
         }
 
         // --- Post-renewal morale boost countdown -- only ticks down on matches he actually started ---
