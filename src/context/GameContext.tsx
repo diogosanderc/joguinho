@@ -1243,6 +1243,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // 3. Move clubs to their new divisions & pay prizes
+    // Real careers end -- rolled per player, per club (league-wide, not just the user's), once
+    // they age past 38. Outfield players (not GOL/ZAG) are quickest to hang up the boots once
+    // they hit 39; goalkeepers hold on a bit longer; centre-backs (ZAG) longest of all, matching
+    // how those positions actually age out in real football. Hard-capped a little past each
+    // group's expected window so nobody just plays forever.
+    const rollRetirement = (position: PlayerPosition, age: number): boolean => {
+      if (age < 39) return false;
+      const chanceByAge: Record<number, number> = position === 'ZAG'
+        ? { 39: 0.08, 40: 0.18, 41: 0.32, 42: 0.55, 43: 0.80 }
+        : position === 'GOL'
+        ? { 39: 0.10, 40: 0.25, 41: 0.45, 42: 0.70, 43: 0.90 }
+        : { 39: 0.35, 40: 0.60, 41: 0.85 };
+      const hardCap = position === 'ZAG' || position === 'GOL' ? 44 : 42;
+      if (age >= hardCap) return true;
+      return Math.random() < (chanceByAge[age] ?? 1);
+    };
+    const retirementNews: NewsItem[] = [];
+
     const finalClubs = currentClubs.map(club => {
       let div = club.division;
       const divStandings = standings[club.division];
@@ -1292,7 +1310,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // a relegation costs it.
       const nextConfidence = isChampion ? 85 : isPromoted ? 78 : isRelegated ? 55 : 70;
 
-      const squad = club.squad.map(p => {
+      const agedSquad = club.squad.map(p => {
         const posGroup = getPositionGroup(p.position);
         const isMF_FW = posGroup === 'MF' || posGroup === 'FW';
         let isStar = p.isStar;
@@ -1383,6 +1401,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           seasonStartedRounds: 0,
           seasonGoodRounds: 0
         };
+      });
+
+      const squad = agedSquad.filter(p => {
+        if (!rollRetirement(p.position, p.age)) return true;
+        if (club.id === userClubId) {
+          retirementNews.push({
+            id: `retire_auto_${p.id}_${Date.now()}`,
+            week: 0,
+            text: `${p.name} (${p.position}, ${p.age} anos) se aposentou do futebol.`,
+            type: 'INFO'
+          });
+        }
+        return false;
       });
 
       return {
@@ -1485,7 +1516,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         week: 38,
         text: `Premiação da Liga! O ${playerClubFinal.name} terminou em ${userRankIndex + 1}º lugar na Série ${playerDiv} e recebeu R$ ${userPrize.toLocaleString()} em premiações.`,
         type: 'BOARD'
-      }
+      },
+      ...retirementNews
     ];
     setNews(prev => [...prev, ...summaryNews]);
 
