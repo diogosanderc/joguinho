@@ -149,6 +149,8 @@ const AppContent: React.FC = () => {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [sellPriceModal, setSellPriceModal] = useState<Player | null>(null);
   const [sellPriceDigits, setSellPriceDigits] = useState('');
+  const [sellPriceInputError, setSellPriceInputError] = useState('');
+  const [sellResult, setSellResult] = useState<{ success: boolean; text: string } | null>(null);
 
   // Penalty and VAR suspense modals. For the user's own penalties, 'CHOOSE' comes first so the
   // manager picks who takes it live; then (for both sides) 'WAITING' shows the setup/analysis
@@ -4167,6 +4169,39 @@ const AppContent: React.FC = () => {
           showing a raw unbroken digit string like "10919340". */}
       {sellPriceModal && (() => {
         const player = sellPriceModal;
+
+        if (sellResult) {
+          return (
+            <div className="modal-overlay" style={{ zIndex: 1260 }}>
+              <div className="modal-content" style={{ width: '340px', padding: '18px', textAlign: 'center' }}>
+                <span style={{ fontSize: '2rem' }}>{sellResult.success ? '✅' : '❌'}</span>
+                <h3 style={{ fontWeight: 800, marginTop: '8px', color: sellResult.success ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                  {sellResult.success ? 'Venda concluída!' : 'Proposta recusada'}
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: '#d1d5db', margin: '10px 0 18px', lineHeight: '1.4' }}>
+                  {sellResult.text}
+                </p>
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
+                  onClick={() => {
+                    if (sellResult.success) {
+                      setSellResult(null);
+                      setSellPriceModal(null);
+                      setSelectedManagePlayerId(null);
+                    } else {
+                      // Back to the input form for another attempt, same modal still open.
+                      setSellResult(null);
+                    }
+                  }}
+                >
+                  {sellResult.success ? 'Continuar' : 'Tentar outro valor'}
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="modal-overlay" style={{ zIndex: 1260 }}>
             <div className="modal-content" style={{ width: '340px', padding: '18px', textAlign: 'center' }}>
@@ -4176,22 +4211,25 @@ const AppContent: React.FC = () => {
                 Valor de mercado: <strong style={{ color: 'white' }}>{formatCurrency(player.value)}</strong>.
                 Quanto mais alto o valor pedido, menor a chance de algum clube aceitar.
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#121316', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#121316', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', marginBottom: sellPriceInputError ? '6px' : '16px' }}>
                 <span style={{ color: '#9ca3af', fontWeight: 700, marginRight: '4px' }}>R$</span>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={formatDigitsWithSeparators(sellPriceDigits)}
-                  onChange={(e) => setSellPriceDigits(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => { setSellPriceDigits(e.target.value.replace(/\D/g, '')); setSellPriceInputError(''); }}
                   autoFocus
                   style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'white', fontSize: '1.1rem', fontWeight: 700, textAlign: 'right' }}
                 />
               </div>
+              {sellPriceInputError && (
+                <p style={{ fontSize: '0.72rem', color: 'var(--accent-red)', marginBottom: '10px' }}>{sellPriceInputError}</p>
+              )}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   className="btn btn-secondary"
                   style={{ flex: 1 }}
-                  onClick={() => setSellPriceModal(null)}
+                  onClick={() => { setSellPriceModal(null); setSellPriceInputError(''); }}
                 >
                   Cancelar
                 </button>
@@ -4200,10 +4238,9 @@ const AppContent: React.FC = () => {
                   style={{ flex: 1 }}
                   onClick={() => {
                     const askingPrice = Number(sellPriceDigits);
-                    if (!askingPrice || askingPrice <= 0) { alert('Valor inválido.'); return; }
-                    const sold = attemptSellPlayer(player, askingPrice);
-                    setSellPriceModal(null);
-                    if (sold) setSelectedManagePlayerId(null);
+                    if (!askingPrice || askingPrice <= 0) { setSellPriceInputError('Digite um valor válido.'); return; }
+                    const result = attemptSellPlayer(player, askingPrice);
+                    setSellResult({ success: result.success, text: result.message ?? '' });
                   }}
                 >
                   Vender

@@ -120,7 +120,7 @@ interface GameContextType {
   nextRound: (starters: Player[]) => void;
   buyPlayer: (player: Player) => void;
   sellPlayer: (player: Player) => void;
-  attemptSellPlayer: (player: Player, askingPrice: number) => boolean;
+  attemptSellPlayer: (player: Player, askingPrice: number) => { success: boolean; message?: string };
   retirePlayer: (player: Player) => void;
   upgradeStadium: (capacity: number) => void;
   buildVipBoxes: () => void;
@@ -1725,29 +1725,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Lists a player at a manager-chosen asking price instead of the instant fixed-90% sale
   // above. Clubs are less likely to bite the higher above market value the price is asked --
   // above 115% of value nobody bites at all -- while a star player draws extra interest at any
-  // price. Returns true if a buyer was found (and the sale went through), false otherwise.
-  const attemptSellPlayer = (player: Player, askingPrice: number): boolean => {
-    if (!userClub) return false;
+  // price. Returns a result object (rather than alert()ing directly) so the caller can show the
+  // outcome in its own styled modal instead of a native browser popup.
+  const attemptSellPlayer = (player: Player, askingPrice: number): { success: boolean; message?: string } => {
+    if (!userClub) return { success: false };
 
     if (userClub.squad.length <= MIN_SQUAD_SIZE) {
-      alert(`Elenco muito reduzido! Você precisa manter pelo menos ${MIN_SQUAD_SIZE} jogadores no elenco (11 titulares + 5 reservas).`);
-      return false;
+      return { success: false, message: `Elenco muito reduzido! Você precisa manter pelo menos ${MIN_SQUAD_SIZE} jogadores no elenco (11 titulares + 5 reservas).` };
     }
 
     const squadAfterSale = userClub.squad.filter(p => p.id !== player.id);
     const violation = findDepthViolation(squadAfterSale, player.position);
     if (violation) {
-      alert(`Impossível vender! O elenco precisa manter pelo menos ${violation.min} jogador(es) de ${violation.pos}.`);
-      return false;
+      return { success: false, message: `Impossível vender! O elenco precisa manter pelo menos ${violation.min} jogador(es) de ${violation.pos}.` };
     }
 
     // The exact threshold/odds are intentionally not surfaced to the player -- a rejection
     // always reads the same regardless of whether it's the hard 15%-over cutoff or just an
     // unlucky roll below it, so the mechanic isn't reverse-engineerable from the message alone.
+    const rejectionMessage = `Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name}. Peça um valor menor.`;
     const ratio = player.value > 0 ? askingPrice / player.value : 1;
     if (ratio > 1.15) {
-      alert(`Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name}. Peça um valor menor.`);
-      return false;
+      return { success: false, message: rejectionMessage };
     }
 
     let chance = ratio <= 1.0 ? 0.85 + (1 - ratio) * 0.15 : 0.85 * (1 - (ratio - 1.0) / 0.15);
@@ -1755,8 +1754,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     chance = Math.max(0, Math.min(1, chance));
 
     if (Math.random() >= chance) {
-      alert(`Nenhum clube topa pagar ${formatCurrency(askingPrice)} por ${player.name}. Peça um valor menor.`);
-      return false;
+      return { success: false, message: rejectionMessage };
     }
 
     const updatedClubs = clubs.map(club => {
@@ -1777,7 +1775,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }];
     setNews(prev => [...prev, ...nextNews]);
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, [...news, ...nextNews], history, stadiumUpgrade, activeSponsors);
-    return true;
+    return { success: true, message: `Vendido! O ${buyerClub.name} comprou ${player.name} por ${formatCurrency(askingPrice)}.` };
   };
 
   // Retires a player from the game entirely -- unlike sellPlayer, no other club acquires them
