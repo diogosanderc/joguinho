@@ -4264,6 +4264,18 @@ const AppContent: React.FC = () => {
                           <span>🏆 Campeão Série A: **{hist.champions.A}**</span>
                           <span>🏆 Campeão Série B: **{hist.champions.B}**</span>
                           <span>🏆 Campeão Série C: **{hist.champions.C}**</span>
+                          {hist.cupChampion && (
+                            <span>
+                              🏆 Campeão Copa do Brasil: **{hist.cupChampion}**
+                              {!!hist.cupEarnings && <span style={{ color: 'var(--accent-green)' }}> ({formatCurrency(hist.cupEarnings)})</span>}
+                            </span>
+                          )}
+                          {hist.libertadoresChampion && (
+                            <span>
+                              🌎 Campeão Libertadores: **{hist.libertadoresChampion}**
+                              {!!hist.libertadoresEarnings && <span style={{ color: 'var(--accent-green)' }}> ({formatCurrency(hist.libertadoresEarnings)})</span>}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))

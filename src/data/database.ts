@@ -123,6 +123,8 @@ export interface Club {
   lastSeasonRevenue?: number; // Basis for the bank credit limit calculation
   seasonRevenueAccum?: number; // Running total of this season's income, becomes lastSeasonRevenue at season end
   seasonStartFinances?: number; // Cash snapshot at the start of the season, to detect profit/loss for the Score Financeiro
+  cupEarningsSeason?: number; // Total R$ earned from the Copa do Brasil this season (reset at season start)
+  libertadoresEarningsSeason?: number; // Total R$ earned from the Libertadores this season (reset at season start)
 }
 
 export interface ClubDefinition {

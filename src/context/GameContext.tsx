@@ -116,6 +116,10 @@ export interface HistoryRecord {
   userClub: string;
   userDivision: 'A' | 'B' | 'C';
   userFinish: number;
+  cupChampion?: string; // Copa do Brasil champion this season -- the Cup always finishes within the same season it starts
+  cupEarnings?: number; // R$ the user's club earned from the Copa do Brasil this season
+  libertadoresChampion?: string; // Libertadores champion this season -- filled in once the Final actually resolves (see finalizeLibertadoresPhase), which can happen slightly after endSeason builds this record
+  libertadoresEarnings?: number; // R$ the user's club earned from the Libertadores this season
 }
 
 interface GameContextType {
@@ -1909,13 +1913,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const playerDiv = playerClubFinal.division;
     const playerStandingIndex = standings[playerDiv].findIndex(s => s.clubId === userClubId) + 1;
 
-    // Record history
+    // Record history. The Copa do Brasil always finishes well before round 38 (its last
+    // milestone is round 34), so its champion/earnings are already final here -- but the
+    // Libertadores Final's own milestone IS round 38 and can still be pending at this exact
+    // point (see the season-end deferral in clearCurrentMatch), so those two fields get filled
+    // in later, by finalizeLibertadoresPhase, once the Final actually resolves.
+    const cupChampionClub = cupState?.championId
+      ? (currentClubs.find(c => c.id === cupState.championId)?.name ?? libertadoresClubs.find(c => c.id === cupState.championId)?.name)
+      : undefined;
     const record: HistoryRecord = {
       year: currentYear,
       champions: divisionChampions,
       userClub: playerClubFinal.name,
       userDivision: playerDiv,
-      userFinish: playerStandingIndex
+      userFinish: playerStandingIndex,
+      cupChampion: cupChampionClub,
+      cupEarnings: playerClubFinal.cupEarningsSeason ?? 0
     };
     const nextHistory = [...history, record];
     setHistory(nextHistory);
@@ -2704,14 +2717,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Accept job offer from another club at season end
   const acceptJobOffer = (clubId: string) => {
     // Reset player flag on current club
-    let updatedClubs = clubs.map(c => {
+    let updatedClubs: Club[] = clubs.map(c => {
       const isPlayer = c.id === clubId;
       const tvMoney = c.division === 'A' ? 8000000 : c.division === 'B' ? 2000000 : c.division === 'C' ? 500000 : 100000;
-      return { 
-        ...c, 
-        isPlayerClub: isPlayer, 
-        confidence: isPlayer ? 80 : 70, 
-        finances: c.finances + tvMoney 
+      return {
+        ...c,
+        isPlayerClub: isPlayer,
+        confidence: isPlayer ? 80 : 70,
+        finances: c.finances + tvMoney,
+        cupEarningsSeason: 0,
+        libertadoresEarningsSeason: 0
       };
     });
 
@@ -2763,7 +2778,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextNews.push({ id: `cup_bye_${currentYear + 1}`, week: 0, text: `Copa do Brasil: o ${newClub.name} está entre os melhores fora dos classificados diretos e ganhou um bye, entrando direto na 1ª Fase.`, type: 'INFO' });
     }
     if (newLib.participantIds.includes(clubId)) {
-      updatedClubs = applyCupPrize(updatedClubs, clubId, LIBERTADORES_PRIZE_FOR_REACHING.GROUPS);
+      updatedClubs = applyCupPrize(updatedClubs, clubId, LIBERTADORES_PRIZE_FOR_REACHING.GROUPS, 'LIBERTADORES');
       const nameOf = (id: string) => updatedClubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? id;
       const groupLabel = (Object.keys(newLib.groups) as LibertadoresGroupLabel[]).find(g => newLib.groups[g].includes(clubId))!;
       const opponentIds = newLib.groups[groupLabel].filter(id => id !== clubId);
@@ -2779,11 +2794,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Stay at the current club for another year
   const stayAtClub = () => {
     // Regenerate schedule for next year
-    let updatedClubs = clubs.map(c => {
+    let updatedClubs: Club[] = clubs.map(c => {
       const tvMoney = c.division === 'A' ? 8000000 : c.division === 'B' ? 2000000 : 500000;
       return {
         ...c,
-        finances: c.finances + tvMoney
+        finances: c.finances + tvMoney,
+        cupEarningsSeason: 0,
+        libertadoresEarningsSeason: 0
       };
     });
     setClubs(updatedClubs);
@@ -2847,7 +2864,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextNews.push({ id: `cup_bye_${currentYear + 1}`, week: 0, text: `Copa do Brasil: o ${userClubInstance.name} está entre os melhores fora dos classificados diretos e ganhou um bye, entrando direto na 1ª Fase.`, type: 'INFO' });
     }
     if (newLib.participantIds.includes(userClubId)) {
-      updatedClubs = applyCupPrize(updatedClubs, userClubId, LIBERTADORES_PRIZE_FOR_REACHING.GROUPS);
+      updatedClubs = applyCupPrize(updatedClubs, userClubId, LIBERTADORES_PRIZE_FOR_REACHING.GROUPS, 'LIBERTADORES');
       const nameOf = (id: string) => updatedClubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? id;
       const groupLabel = (Object.keys(newLib.groups) as LibertadoresGroupLabel[]).find(g => newLib.groups[g].includes(userClubId))!;
       const opponentIds = newLib.groups[groupLabel].filter(id => id !== userClubId);
@@ -3031,9 +3048,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // gating the next league round until it's resolved -- exactly the "extra midweek fixture,
   // less rest" rhythm real football has. See src/utils/cupEngine.ts for the bracket rules.
 
-  const applyCupPrize = (clubsList: Club[], clubId: string, amount: number): Club[] => {
+  const applyCupPrize = (clubsList: Club[], clubId: string, amount: number, competition: 'CUP' | 'LIBERTADORES'): Club[] => {
     if (amount <= 0) return clubsList;
-    return clubsList.map(c => (c.id === clubId ? { ...c, finances: c.finances + amount } : c));
+    return clubsList.map(c => (c.id === clubId ? {
+      ...c,
+      finances: c.finances + amount,
+      ...(competition === 'CUP'
+        ? { cupEarningsSeason: (c.cupEarningsSeason ?? 0) + amount }
+        : { libertadoresEarningsSeason: (c.libertadoresEarningsSeason ?? 0) + amount })
+    } : c));
   };
 
   // Wraps up whichever phase just fully resolved (every tie in it, including the user's own if
@@ -3056,20 +3079,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextCup.fase1ByeClubIds = [];
       nextCup.phaseIndex = 1;
     } else if (phase === 'FASE1') {
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.FASE2); });
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.FASE2, 'CUP'); });
       nextCup.aliveClubIds = winners;
       nextCup.phaseIndex = 2;
     } else if (phase === 'FASE2') {
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.OITAVAS); });
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.OITAVAS, 'CUP'); });
       nextCup.aliveClubIds = [...winners, ...cup.oitavasSeeds];
       nextCup.oitavasSeeds = [];
       nextCup.phaseIndex = 3;
     } else if (phase === 'OITAVAS') {
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.QUARTAS); });
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.QUARTAS, 'CUP'); });
       nextCup.aliveClubIds = winners;
       nextCup.phaseIndex = 4;
     } else if (phase === 'QUARTAS') {
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.SEMI); });
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, CUP_PRIZE_FOR_REACHING.SEMI, 'CUP'); });
       nextCup.aliveClubIds = winners;
       nextCup.phaseIndex = 5;
     } else if (phase === 'SEMI') {
@@ -3077,13 +3100,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextCup.phaseIndex = 6;
     } else {
       const championId = winners[0];
-      nextClubs = applyCupPrize(nextClubs, championId, CUP_CHAMPION_PRIZE);
+      nextClubs = applyCupPrize(nextClubs, championId, CUP_CHAMPION_PRIZE, 'CUP');
       nextCup.championId = championId;
       nextCup.phaseIndex = PHASES.length;
       const topScorers = getCupTopScorers(nextCup);
       if (topScorers.length > 0) {
         const share = CUP_TOP_SCORER_BONUS / topScorers.length;
-        topScorers.forEach(s => { nextClubs = applyCupPrize(nextClubs, s.clubId, share); });
+        topScorers.forEach(s => { nextClubs = applyCupPrize(nextClubs, s.clubId, share, 'CUP'); });
       }
       pushNews({
         id: `cup_champion_${Date.now()}`,
@@ -3514,12 +3537,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const nextLib: LibertadoresState = { ...lib, userTie: null, pendingSecondLeg: null };
 
     if (phase === 'OITAVAS') {
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, LIBERTADORES_PRIZE_FOR_REACHING.QUARTAS); });
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, LIBERTADORES_PRIZE_FOR_REACHING.QUARTAS, 'LIBERTADORES'); });
       nextLib.bracketOrder = winners;
       nextLib.phase = 'QUARTAS';
       nextLib.phaseIndex = 2;
     } else if (phase === 'QUARTAS') {
-      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, LIBERTADORES_PRIZE_FOR_REACHING.SEMI); });
+      winners.forEach(w => { nextClubs = applyCupPrize(nextClubs, w, LIBERTADORES_PRIZE_FOR_REACHING.SEMI, 'LIBERTADORES'); });
       nextLib.bracketOrder = winners;
       nextLib.phase = 'SEMI';
       nextLib.phaseIndex = 3;
@@ -3529,13 +3552,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextLib.phaseIndex = 4;
     } else {
       const championId = winners[0];
-      nextClubs = applyCupPrize(nextClubs, championId, LIBERTADORES_CHAMPION_PRIZE);
+      nextClubs = applyCupPrize(nextClubs, championId, LIBERTADORES_CHAMPION_PRIZE, 'LIBERTADORES');
       nextLib.championId = championId;
       nextLib.phaseIndex = LIBERTADORES_PHASES.length;
       const topScorers = getLibertadoresTopScorers(nextLib);
       if (topScorers.length > 0) {
         const share = LIBERTADORES_TOP_SCORER_BONUS / topScorers.length;
-        topScorers.forEach(s => { nextClubs = applyCupPrize(nextClubs, s.clubId, share); });
+        topScorers.forEach(s => { nextClubs = applyCupPrize(nextClubs, s.clubId, share, 'LIBERTADORES'); });
       }
       pushNews({
         id: `lib_champion_${Date.now()}`,
@@ -3546,6 +3569,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         type: 'BOARD'
       });
       setDefendingLibertadoresChampionId(championId);
+      // The Final's own milestone round (38) is also the season's last -- endSeason() already
+      // pushed this year's history record by the time this resolves (see the season-end
+      // deferral in clearCurrentMatch), so patch the champion/earnings into it here instead of
+      // trying to know them up front.
+      const userLibEarnings = nextClubs.find(c => c.id === userClubId)?.libertadoresEarningsSeason ?? 0;
+      const championName = nameOf(championId);
+      setHistory(prev => prev.map(rec => rec.year === currentYear
+        ? { ...rec, libertadoresChampion: championName, libertadoresEarnings: userLibEarnings }
+        : rec));
     }
 
     setLibertadoresState(nextLib);
