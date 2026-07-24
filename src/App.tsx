@@ -1980,6 +1980,19 @@ const AppContent: React.FC = () => {
                   </div>
                 )}
 
+                {/* An injured player isn't auto-removed from midMatchStarters the way a red card
+                    is -- he's only actually swapped out once the manager picks his replacement
+                    below -- so without this banner it wasn't obvious, looking at this modal alone,
+                    which of the 11 names is the one who needs to come off. */}
+                {injuryPlayer && midMatchStarters.some(s => s.id === injuryPlayer.id) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.25)' }}>
+                    <span style={{ fontSize: '1rem' }}>🚑</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
+                      Lesionado: <strong>{injuryPlayer.name}</strong> ({injuryPlayer.position})
+                    </span>
+                  </div>
+                )}
+
                 <h4 style={{ fontSize: '0.85rem', marginBottom: '6px', color: 'var(--accent-gold)', fontWeight: 700 }}>Titulares em Campo ({midMatchStarters.length}):</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', marginBottom: '14px' }}>
                   {midMatchStarters.map(star => {
