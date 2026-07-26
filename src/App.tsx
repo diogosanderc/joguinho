@@ -53,6 +53,25 @@ import {
   PlusCircle, FolderOpen
 } from 'lucide-react';
 
+// Shared styling for the Mercado tab's filter dropdowns (source/position/league/club selects) --
+// a single consistent look instead of each one hand-rolling its own inline style object.
+const marketSelectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px',
+  background: '#121316',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px',
+  color: 'white',
+  fontSize: '0.85rem'
+};
+const marketSelectLabelStyle: React.CSSProperties = {
+  fontSize: '0.68rem',
+  color: '#9ca3af',
+  fontWeight: 700,
+  letterSpacing: '0.3px',
+  textTransform: 'uppercase'
+};
+
 // Wrapper to enable context access
 const AppContent: React.FC = () => {
   const {
@@ -2936,43 +2955,35 @@ const AppContent: React.FC = () => {
         {/* --- TAB 2: MERCADO --- */}
         {activeTab === 2 && (
           <>
-            {/* View Mode Toggle */}
-            <div className="card" style={{ padding: '8px', marginBottom: '14px', display: 'flex', gap: '8px' }}>
-              <button
-                className={`btn ${marketViewMode === 'FREE_AGENTS' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
-                onClick={() => setMarketViewMode('FREE_AGENTS')}
-              >
-                Jogadores Livres
-              </button>
-              <button
-                className={`btn ${marketViewMode === 'CLUBS' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
-                onClick={() => setMarketViewMode('CLUBS')}
-              >
-                Jogadores BR
-              </button>
-              <button
-                className={`btn ${marketViewMode === 'FOREIGN' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
-                onClick={() => setMarketViewMode('FOREIGN')}
-              >
-                Outras ligas
-              </button>
-            </div>
-
-            {/* General Position filter buttons (used by both Free Agents and Club Squad view) */}
-            <div style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-              {(['ALL', 'GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'] as const).map(pos => (
-                <button
-                  key={pos}
-                  onClick={() => setMarketPosFilter(pos)}
-                  className={`sub-tab-btn ${marketPosFilter === pos ? 'active' : ''}`}
-                  style={{ padding: '7px 4px', fontSize: '0.75rem', textAlign: 'center' }}
+            {/* Filters -- all dropdowns instead of button grids, laid out two per row so the
+                actual player list starts much closer to the top instead of after a wall of
+                buttons. */}
+            <div className="card" style={{ padding: '10px', marginBottom: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={marketSelectLabelStyle}>Fonte</label>
+                <select
+                  value={marketViewMode}
+                  onChange={(e) => setMarketViewMode(e.target.value as typeof marketViewMode)}
+                  style={marketSelectStyle}
                 >
-                  {pos === 'ALL' ? 'Todos' : pos}
-                </button>
-              ))}
+                  <option value="FREE_AGENTS">Jogadores Livres</option>
+                  <option value="CLUBS">Jogadores BR</option>
+                  <option value="FOREIGN">Outras ligas</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={marketSelectLabelStyle}>Posição</label>
+                <select
+                  value={marketPosFilter}
+                  onChange={(e) => setMarketPosFilter(e.target.value as typeof marketPosFilter)}
+                  style={marketSelectStyle}
+                >
+                  {(['ALL', 'GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'] as const).map(pos => (
+                    <option key={pos} value={pos}>{pos === 'ALL' ? 'Todos' : pos}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {marketViewMode === 'FREE_AGENTS' ? (
@@ -3016,42 +3027,37 @@ const AppContent: React.FC = () => {
               </>
             ) : marketViewMode === 'CLUBS' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {(['A', 'B', 'C'] as const).map(div => (
-                    <button
-                      key={div}
-                      className={`sub-tab-btn ${selectedSearchDiv === div ? 'active' : ''}`}
-                      style={{ flex: 1 }}
-                      onClick={() => setSelectedSearchDiv(div)}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={marketSelectLabelStyle}>Série</label>
+                    <select
+                      value={selectedSearchDiv}
+                      onChange={(e) => setSelectedSearchDiv(e.target.value as typeof selectedSearchDiv)}
+                      style={marketSelectStyle}
                     >
-                      Série {div}
-                    </button>
-                  ))}
+                      {(['A', 'B', 'C'] as const).map(div => (
+                        <option key={div} value={div}>Série {div}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={marketSelectLabelStyle}>Clube</label>
+                    <select
+                      value={selectedSearchClubId}
+                      onChange={(e) => setSelectedSearchClubId(e.target.value)}
+                      style={marketSelectStyle}
+                    >
+                      <option value="" disabled>Escolha um clube...</option>
+                      {clubs
+                        .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
-                
-                {/* Club selector dropdown */}
-                <select
-                  value={selectedSearchClubId}
-                  onChange={(e) => setSelectedSearchClubId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    background: '#121316',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontSize: '0.85rem',
-                    marginBottom: '10px'
-                  }}
-                >
-                  <option value="" disabled>Escolha um clube...</option>
-                  {clubs
-                    .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
 
                 {(() => {
                   const searchedClub = clubs.find(c => c.id === selectedSearchClubId);
@@ -3130,54 +3136,48 @@ const AppContent: React.FC = () => {
                   Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Libertadores). Custam bem mais caro que o mercado nacional.
                 </p>
 
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                  <button
-                    className={`sub-tab-btn ${foreignBrowseMode === 'SAMPLE' ? 'active' : ''}`}
-                    style={{ flex: 1 }}
-                    onClick={() => setForeignBrowseMode('SAMPLE')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '12px' }}>
+                  <label style={marketSelectLabelStyle}>Modo de Busca</label>
+                  <select
+                    value={foreignBrowseMode}
+                    onChange={(e) => setForeignBrowseMode(e.target.value as typeof foreignBrowseMode)}
+                    style={marketSelectStyle}
                   >
-                    Sorteio do Dia
-                  </button>
-                  <button
-                    className={`sub-tab-btn ${foreignBrowseMode === 'BY_CLUB' ? 'active' : ''}`}
-                    style={{ flex: 1 }}
-                    onClick={() => setForeignBrowseMode('BY_CLUB')}
-                  >
-                    Por Clube
-                  </button>
+                    <option value="SAMPLE">Sorteio do Dia</option>
+                    <option value="BY_CLUB">Por Clube</option>
+                  </select>
                 </div>
 
                 {foreignBrowseMode === 'BY_CLUB' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {FOREIGN_LEAGUES.map(lg => (
-                        <button
-                          key={lg}
-                          className={`sub-tab-btn ${selectedForeignLeague === lg ? 'active' : ''}`}
-                          style={{ flex: '1 1 30%', fontSize: '0.72rem', padding: '7px 4px' }}
-                          onClick={() => { setSelectedForeignLeague(lg); setSelectedForeignClub(''); }}
-                        >
-                          {lg}
-                        </button>
-                      ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '10px', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={marketSelectLabelStyle}>Liga</label>
+                      <select
+                        value={selectedForeignLeague}
+                        onChange={(e) => { setSelectedForeignLeague(e.target.value as typeof selectedForeignLeague); setSelectedForeignClub(''); }}
+                        style={marketSelectStyle}
+                      >
+                        {FOREIGN_LEAGUES.map(lg => (
+                          <option key={lg} value={lg}>{lg}</option>
+                        ))}
+                      </select>
                     </div>
 
-                    <select
-                      value={selectedForeignClub}
-                      onChange={(e) => setSelectedForeignClub(e.target.value)}
-                      style={{
-                        width: '100%', padding: '10px', background: '#121316',
-                        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px',
-                        color: 'white', fontSize: '0.85rem', marginBottom: '4px'
-                      }}
-                    >
-                      <option value="" disabled>Escolha um clube...</option>
-                      {[...new Set(combinedForeignPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
-                        .sort((a, b) => a.localeCompare(b))
-                        .map(clubName => (
-                          <option key={clubName} value={clubName}>{clubName}</option>
-                        ))}
-                    </select>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={marketSelectLabelStyle}>Clube</label>
+                      <select
+                        value={selectedForeignClub}
+                        onChange={(e) => setSelectedForeignClub(e.target.value)}
+                        style={marketSelectStyle}
+                      >
+                        <option value="" disabled>Escolha um clube...</option>
+                        {[...new Set(combinedForeignPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
+                          .sort((a, b) => a.localeCompare(b))
+                          .map(clubName => (
+                            <option key={clubName} value={clubName}>{clubName}</option>
+                          ))}
+                      </select>
+                    </div>
                   </div>
                 )}
 
