@@ -962,6 +962,36 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           confidence = Math.max(0, confidence - 10);
         }
+
+        // Torcedor do Jogo (Man of the Match) -- picks a standout among the user's starters:
+        // goals score heavily, a clean sheet highlights the defense/goalkeeper, with a small
+        // random tie-break so a quiet 0x0 still names someone instead of always the same player.
+        const clubGoalEvents = playerMatchResult.events.filter(e => e.clubId === club.id && e.type === 'GOAL' && e.player);
+        const goalsByPlayerName: Record<string, number> = {};
+        clubGoalEvents.forEach(e => { goalsByPlayerName[e.player!] = (goalsByPlayerName[e.player!] ?? 0) + 1; });
+        const redCardedNamesThisMatch = new Set(
+          playerMatchResult.events.filter(e => e.clubId === club.id && e.type === 'RED' && e.player).map(e => e.player!)
+        );
+        const cleanSheet = oppScore === 0;
+        let motmPlayer: Player | null = null;
+        let motmScore = -1;
+        playerStarters.forEach(p => {
+          if (redCardedNamesThisMatch.has(p.name)) return;
+          let score = (goalsByPlayerName[p.name] ?? 0) * 3;
+          if (cleanSheet && getPositionGroup(p.position) !== 'FW' && getPositionGroup(p.position) !== 'MF') score += 2;
+          score += Math.random() * 0.5;
+          if (score > motmScore) { motmScore = score; motmPlayer = p; }
+        });
+        if (motmPlayer) {
+          const mp = motmPlayer as Player;
+          const resultLabel = userScore > oppScore ? `vitória por ${userScore} x ${oppScore}` : userScore === oppScore ? `empate em ${userScore} x ${oppScore}` : `derrota por ${oppScore} x ${userScore}`;
+          pushNews({
+            id: `motm_${currentRound}_${Date.now()}`,
+            week: currentRound,
+            text: `🌟 Craque da Partida: ${mp.name} (${mp.position}) foi o destaque na ${resultLabel} contra o ${opponent.name}.`,
+            type: 'MATCH'
+          });
+        }
       }
 
       // Handle match day revenue for home club
