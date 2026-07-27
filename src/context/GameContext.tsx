@@ -155,6 +155,21 @@ const rollInjuryWeeks = (medicalDeptLevel: number): number => {
   return Math.max(1, Math.round(base * (1 - reduction)));
 };
 
+// Rare, severe long-term injury (ACL tear or another serious injury) -- independent of the
+// normal injury system above, checked once per round for the user's own squad. Calibrated so a
+// given player has ~1% chance of suffering one of these over a 2-year span (76 rounds):
+// 1 - (1 - r)^76 = 0.01  =>  r ≈ 0.000132 per round.
+const SEVERE_INJURY_CHANCE_PER_ROUND = 0.000132;
+const rollSevereInjury = (medicalDeptLevel: number): { label: string; weeks: number } | null => {
+  if (Math.random() >= SEVERE_INJURY_CHANCE_PER_ROUND) return null;
+  const reduction = MEDICAL_DEPT_REDUCTION_BY_LEVEL[medicalDeptLevel] ?? 0;
+  const isACL = Math.random() < 0.5;
+  // ACL (LCA): 6 a 9 meses (~4 rodadas/mês -> 24-36 rodadas). Outra lesão grave: 3 a 4 meses (~12-16 rodadas).
+  const baseWeeks = isACL ? 24 + Math.floor(Math.random() * 13) : 12 + Math.floor(Math.random() * 5);
+  const weeks = Math.max(4, Math.round(baseWeeks * (1 - reduction)));
+  return { label: isACL ? 'rompeu o ligamento cruzado (LCA)' : 'sofreu uma lesão grave', weeks };
+};
+
 export interface JobOffer {
   clubId: string;
   clubName: string;
@@ -1261,6 +1276,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
               }
             }
+          });
+        }
+
+        // Rare, severe long-term injury (ACL tear or similarly serious) -- checked before the
+        // normal injury roll below so the two are mutually exclusive for this round.
+        const severeInjury = (!isInjured && club.id === userClubId) ? rollSevereInjury(club.medicalDeptLevel ?? 0) : null;
+        if (severeInjury) {
+          isInjured = true;
+          justInjured = true;
+          injuryWeeks = severeInjury.weeks;
+          energy = 100;
+          pushNews({
+            id: `inj_severe_${player.id}_${Date.now()}`,
+            week: currentRound,
+            text: `😰 ${player.name} (${player.position}) ${severeInjury.label} e ficará afastado por ${injuryWeeks} rodadas -- uma lesão grave e rara.`,
+            type: 'MATCH',
+            importance: 'HIGH'
           });
         }
 
