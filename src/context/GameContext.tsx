@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality, rollYouthPotential } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality, rollYouthPotential, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, YOUTH_ACADEMY_REPUTATION_BOOST_BY_LEVEL, YOUTH_ACADEMY_MAX_SQUAD_SIZE } from '../data/database';
 import type { CareerStats } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
@@ -108,6 +108,12 @@ export interface MedicalDeptUpgrade {
   weeksLeft: number;
 }
 
+export interface YouthAcademyUpgrade {
+  level: number; // nível alvo da obra em andamento
+  cost: number;
+  weeksLeft: number;
+}
+
 // Rolls how many weeks an injury keeps a player out, then applies the Departamento Médico's
 // duration reduction for the given level (0 = nenhum, no reduction). Shared by both places an
 // injury can be generated (a live match INJURY event, and the random per-round chance) so the
@@ -164,6 +170,7 @@ interface GameContextType {
   stadiumUpgrade: StadiumUpgrade | null;
   vipBoxUpgrade: VipBoxUpgrade | null;
   medicalDeptUpgrade: MedicalDeptUpgrade | null;
+  youthAcademyUpgrade: YouthAcademyUpgrade | null;
   activeSponsors: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>;
   currentMatch: LeagueMatch | null;
   currentMatchResult: MatchResult | null;
@@ -203,6 +210,7 @@ interface GameContextType {
   buildVipBoxes: () => void;
   upgradeVipBoxes: (capacityAdded: number) => void;
   upgradeMedicalDept: () => void;
+  upgradeYouthAcademy: () => void;
   requestLoan: (amount: number, totalRounds: number, purpose: string) => void;
   payOffLoanEarly: (loanId: string) => void;
   renegotiateLoanAction: (loanId: string) => void;
@@ -317,6 +325,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setMedicalDeptUpgrade = (next: MedicalDeptUpgrade | null) => {
     medicalDeptUpgradeRef.current = next;
     setMedicalDeptUpgradeRaw(next);
+  };
+  // Categoria de Base upgrade in progress (same ref-backed pattern as medicalDeptUpgrade above).
+  const [youthAcademyUpgrade, setYouthAcademyUpgradeRaw] = useState<YouthAcademyUpgrade | null>(null);
+  const youthAcademyUpgradeRef = useRef<YouthAcademyUpgrade | null>(null);
+  const setYouthAcademyUpgrade = (next: YouthAcademyUpgrade | null) => {
+    youthAcademyUpgradeRef.current = next;
+    setYouthAcademyUpgradeRaw(next);
   };
   // Copa Mata-Mata state. Kept in a ref too so saveGame() (which reads it synchronously outside
   // of any state-setter callback) always sees the latest value, the same pattern as currentSlotRef.
@@ -556,6 +571,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stadiumUpgrade: upgrade,
       vipBoxUpgrade: vipBoxUpgradeRef.current,
       medicalDeptUpgrade: medicalDeptUpgradeRef.current,
+      youthAcademyUpgrade: youthAcademyUpgradeRef.current,
       careerStats: careerStatsRef.current,
       activeSponsors: sponsorsList,
       cupState: cupStateRef.current,
@@ -642,6 +658,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
     setMedicalDeptUpgrade(null);
+    setYouthAcademyUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCupState(startCup(updatedClubs, 2026));
     // The Libertadores club data loads asynchronously (fetched once on mount) -- on the rare
@@ -907,7 +924,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Update club attributes and player stats
-    const updatedClubs = clubs.map(club => {
+    const updatedClubs: Club[] = clubs.map(club => {
       let finances = club.finances;
       let confidence = club.confidence;
       let roundRevenue = 0; // accumulates this round's gross income (excludes wages/loans) for the bank's "receita anual" basis
@@ -1525,6 +1542,55 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // Handle Categoria de Base level upgrades -- advances one level at a time (0 -> 1 -> 2 -> 3),
+    // shortening how often the base produces a new young prospect (see the generation block below).
+    let nextYouthUpgrade = youthAcademyUpgrade;
+    if (youthAcademyUpgrade) {
+      if (youthAcademyUpgrade.weeksLeft > 1) {
+        nextYouthUpgrade = { ...youthAcademyUpgrade, weeksLeft: youthAcademyUpgrade.weeksLeft - 1 };
+      } else {
+        finalClubs = finalClubs.map(c => {
+          if (c.id === userClubId) {
+            return { ...c, youthAcademyLevel: youthAcademyUpgrade.level };
+          }
+          return c;
+        });
+        nextYouthUpgrade = null;
+        pushNews({
+          id: `youth_academy_${Date.now()}`,
+          week: currentRound,
+          text: `Obras concluídas! Categoria de base avançou para o nível ${MEDICAL_DEPT_LEVEL_NAMES[youthAcademyUpgrade.level]}. Novos talentos vão surgir com mais frequência.`,
+          type: 'INFO'
+        });
+      }
+    }
+
+    // Categoria de Base: periodically promotes a new young prospect straight to the user's
+    // squad, at the position that needs it most -- frequency and starting quality both scale
+    // with the academy's level (see YOUTH_ACADEMY_INTERVAL_BY_LEVEL/REPUTATION_BOOST_BY_LEVEL).
+    const userYouthAcademyLevel = finalClubs.find(c => c.id === userClubId)?.youthAcademyLevel ?? 0;
+    if (userYouthAcademyLevel > 0) {
+      const interval = YOUTH_ACADEMY_INTERVAL_BY_LEVEL[userYouthAcademyLevel] ?? 10;
+      if (currentRound % interval === 0) {
+        finalClubs = finalClubs.map(c => {
+          if (c.id !== userClubId) return c;
+          if (c.squad.length >= YOUTH_ACADEMY_MAX_SQUAD_SIZE) return c;
+          const positions: PlayerPosition[] = ['GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'];
+          const counts = positions.map(pos => ({ pos, count: c.squad.filter(p => p.position === pos).length }));
+          counts.sort((a, b) => a.count - b.count);
+          const boostedReputation = c.reputation * (YOUTH_ACADEMY_REPUTATION_BOOST_BY_LEVEL[userYouthAcademyLevel] ?? 1);
+          const prospect = generateYouthPlayer(c.id, counts[0].pos, boostedReputation, false);
+          pushNews({
+            id: `youth_prospect_${Date.now()}`,
+            week: currentRound,
+            text: `🌱 Categoria de base revelou um novo talento! ${prospect.name} (${prospect.position}), ${prospect.age} anos, se junta ao elenco do ${c.name}.`,
+            type: 'INFO'
+          });
+          return { ...c, squad: [...c.squad, prospect] };
+        });
+      }
+    }
+
     // Decrement sponsors contract weeks
     const updatedSponsors = { ...activeSponsors };
     Object.keys(updatedSponsors).forEach(key => {
@@ -1794,6 +1860,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(nextUpgrade);
     setVipBoxUpgrade(nextVipUpgrade);
     setMedicalDeptUpgrade(nextMedicalUpgrade);
+    setYouthAcademyUpgrade(nextYouthUpgrade);
     setActiveSponsors(updatedSponsors);
     setMarketPlayers(nextMarket);
     setOffers(nextOffers);
@@ -2924,6 +2991,51 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
+  // Advance the Categoria de Base one level at a time (0 -> 1 -> 2 -> 3), shortening how often
+  // it produces a new prospect and improving his starting quality. 5 rounds of construction per level.
+  const upgradeYouthAcademy = () => {
+    if (!userClub) return;
+
+    const currentLevel = userClub.youthAcademyLevel ?? 0;
+    if (currentLevel >= 3) {
+      alert('Sua categoria de base já está no nível máximo.');
+      return;
+    }
+    if (youthAcademyUpgrade) {
+      alert('A categoria de base já está em obras.');
+      return;
+    }
+
+    const nextLevel = currentLevel + 1;
+    const cost = MEDICAL_DEPT_COST_BY_LEVEL_DIV[nextLevel]?.[userClub.division] ?? 500000;
+    if (userClub.finances < cost) {
+      alert('Finanças insuficientes para ampliar a categoria de base.');
+      return;
+    }
+
+    const weeksLeft = 5;
+    const nextUpgrade: YouthAcademyUpgrade = { level: nextLevel, cost, weeksLeft };
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances - cost };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+    setYouthAcademyUpgrade(nextUpgrade);
+
+    setNews(prev => [...prev, {
+      id: `youth_academy_start_${Date.now()}`,
+      week: currentRound,
+      text: `Obras iniciadas! Categoria de base avançando para o nível ${MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (${weeksLeft} rodadas).`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
   // Request a bank loan for the user's club. Amount and term are validated against the
   // credit limit (Score Financeiro × last season's revenue) and the bank refuses outright
   // below a minimum score, or if too many past installments have gone late.
@@ -3080,6 +3192,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
     setMedicalDeptUpgrade(null);
+    setYouthAcademyUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null }); // Clear sponsorships for new club
 
     const newLib = startLibertadores(currentYear + 1, libertadoresClubs, lastSeasonTopSerieA, updatedClubs.filter(c => c.division === 'A'), defendingLibertadoresChampionId);
@@ -3305,6 +3418,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
     setMedicalDeptUpgrade(null);
+    setYouthAcademyUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCurrentMatch(null);
     setCurrentMatchResult(null);
@@ -4309,6 +4423,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(data.stadiumUpgrade);
     setVipBoxUpgrade(data.vipBoxUpgrade ?? null);
     setMedicalDeptUpgrade(data.medicalDeptUpgrade ?? null);
+    setYouthAcademyUpgrade(data.youthAcademyUpgrade ?? null);
     setCareerStats(data.careerStats ?? DEFAULT_CAREER_STATS);
     setActiveSponsors(data.activeSponsors);
     if (data.cupState && data.cupState.fase1ByeClubIds) {
@@ -4363,6 +4478,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stadiumUpgrade,
       vipBoxUpgrade,
       medicalDeptUpgrade,
+      youthAcademyUpgrade,
       careerStats,
       activeSponsors,
       currentMatch,
@@ -4400,6 +4516,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buildVipBoxes,
       upgradeVipBoxes,
       upgradeMedicalDept,
+      upgradeYouthAcademy,
       requestLoan,
       payOffLoanEarly,
       renegotiateLoanAction,

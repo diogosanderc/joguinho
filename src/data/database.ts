@@ -166,6 +166,19 @@ export const MEDICAL_DEPT_COST_BY_LEVEL_DIV: Record<number, Record<string, numbe
   3: { A: 12000000, B: 6000000, C: 3000000 }
 };
 
+// Categoria de Base: same 3-level building pattern (reuses MEDICAL_DEPT_LEVEL_NAMES for the
+// level names and MEDICAL_DEPT_COST_BY_LEVEL_DIV for the cost table -- same kind of investment,
+// same price tag). Each level shortens how often the base produces a new young prospect.
+export const YOUTH_ACADEMY_INTERVAL_BY_LEVEL: Record<number, number> = {
+  1: 10, 2: 7, 3: 5
+};
+// Multiplies the club's reputation before rolling the prospect's rating (see generateYouthPlayer)
+// -- a stronger academy produces better-starting talent, not just more frequent talent.
+export const YOUTH_ACADEMY_REPUTATION_BOOST_BY_LEVEL: Record<number, number> = {
+  1: 1.0, 2: 1.15, 3: 1.3
+};
+export const YOUTH_ACADEMY_MAX_SQUAD_SIZE = 30;
+
 export interface Club {
   id: string;
   name: string;
@@ -191,6 +204,7 @@ export interface Club {
   vipBoxCapacity?: number; // Seats in the camarote, once built -- starts at VIP_BOX_BASE_CAPACITY (200), expandable up to VIP_BOX_MAX_CAPACITY (1000)
   vipTicketPrice?: number; // Premium seating price per home match -- defaults to the division baseline when unset
   medicalDeptLevel?: number; // 0 (nenhum) a 3 (avançado) -- reduz a duração das lesões dos jogadores do clube do usuário
+  youthAcademyLevel?: number; // 0 (nenhum) a 3 (avançado) -- gera novos jovens talentos periodicamente pro clube do usuário
   financialScore?: number; // 0-100 "Score Financeiro" driving bank loan terms
   loans?: Loan[]; // Active bank loans
   lateStrikes?: number; // Cumulative missed installments -- 3+ blocks new loans
