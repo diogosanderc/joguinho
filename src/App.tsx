@@ -4401,6 +4401,11 @@ const AppContent: React.FC = () => {
                               {!!hist.libertadoresEarnings && <span style={{ color: 'var(--accent-green)' }}> ({formatCurrency(hist.libertadoresEarnings)})</span>}
                             </span>
                           )}
+                          {hist.seasonTopScorerName && (
+                            <span>
+                              🏅 Craque do Ano: **{hist.seasonTopScorerName}** ({hist.seasonTopScorerGoals} gols)
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))

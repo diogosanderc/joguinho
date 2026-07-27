@@ -142,6 +142,8 @@ export interface HistoryRecord {
   cupEarnings?: number; // R$ the user's club earned from the Copa do Brasil this season
   libertadoresChampion?: string; // Libertadores champion this season -- filled in once the Final actually resolves (see finalizeLibertadoresPhase), which can happen slightly after endSeason builds this record
   libertadoresEarnings?: number; // R$ the user's club earned from the Libertadores this season
+  seasonTopScorerName?: string; // Craque do Ano -- top scorer of the user's own squad this season
+  seasonTopScorerGoals?: number;
 }
 
 interface GameContextType {
@@ -1685,6 +1687,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // --- CRAQUE DO MÊS (a cada 4 rodadas, artilheiro do elenco do usuário na janela) ---
+    if (userClub && currentRound % 4 === 0 && currentRound <= 36) {
+      const windowStart = currentRound - 3;
+      const windowMatches = updatedMatches.filter(m =>
+        m.round >= windowStart && m.round <= currentRound &&
+        (m.homeId === userClubId || m.awayId === userClubId) && m.result
+      );
+      const goalsByPlayerNameMonth: Record<string, number> = {};
+      windowMatches.forEach(m => {
+        m.result!.events
+          .filter(e => e.clubId === userClubId && e.type === 'GOAL' && e.player)
+          .forEach(e => { goalsByPlayerNameMonth[e.player!] = (goalsByPlayerNameMonth[e.player!] ?? 0) + 1; });
+      });
+      const monthEntries = Object.entries(goalsByPlayerNameMonth).sort((a, b) => b[1] - a[1]);
+      if (monthEntries.length > 0) {
+        const [topName, topGoals] = monthEntries[0];
+        const topPlayer = finalClubs.find(c => c.id === userClubId)?.squad.find(p => p.name === topName);
+        pushNews({
+          id: `craque_mes_${currentRound}_${Date.now()}`,
+          week: currentRound,
+          text: `📅 Craque do Mês: ${topName}${topPlayer ? ` (${topPlayer.position})` : ''} foi o artilheiro do ${userClub.name} nas últimas 4 rodadas, com ${topGoals} gol(s).`,
+          type: 'INFO',
+          importance: 'HIGH'
+        });
+      }
+    }
+
     // --- MID-SEASON OFFERS FROM HIGHER DIVISION BOTS IN CRISIS ---
     // If player club is doing very well (confidence > 75) and there's a club in a higher division in crisis (confidence < 35)
     if (userClub && userClub.confidence >= 75 && Math.random() < 0.18) {
@@ -2053,6 +2082,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cupChampionClub = cupState?.championId
       ? (currentClubs.find(c => c.id === cupState.championId)?.name ?? libertadoresClubs.find(c => c.id === cupState.championId)?.name)
       : undefined;
+
+    // Craque do Ano -- top scorer of the user's own squad this season (guarded to only exist if
+    // someone actually scored, so a squad with zero goals doesn't get a bogus "top scorer").
+    const seasonTopScorer = [...playerClubFinal.squad].sort((a, b) => b.goals - a.goals)[0];
+    const hasSeasonTopScorer = !!seasonTopScorer && seasonTopScorer.goals > 0;
+
     const record: HistoryRecord = {
       year: currentYear,
       champions: divisionChampions,
@@ -2060,7 +2095,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userDivision: playerDiv,
       userFinish: playerStandingIndex,
       cupChampion: cupChampionClub,
-      cupEarnings: playerClubFinal.cupEarningsSeason ?? 0
+      cupEarnings: playerClubFinal.cupEarningsSeason ?? 0,
+      seasonTopScorerName: hasSeasonTopScorer ? seasonTopScorer.name : undefined,
+      seasonTopScorerGoals: hasSeasonTopScorer ? seasonTopScorer.goals : undefined
     };
     const nextHistory = [...history, record];
     setHistory(nextHistory);
@@ -2150,6 +2187,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         text: `Premiação da Liga! O ${playerClubFinal.name} terminou em ${userRankIndex + 1}º lugar na Série ${playerDiv} e recebeu R$ ${userPrize.toLocaleString()} em premiações.`,
         type: 'BOARD'
       },
+      ...(hasSeasonTopScorer ? [{
+        id: `craque_ano_${Date.now()}`,
+        week: 38,
+        text: `🏅 Craque do Ano: ${seasonTopScorer.name} (${seasonTopScorer.position}) foi o artilheiro do ${playerClubFinal.name} na temporada, com ${seasonTopScorer.goals} gol(s).`,
+        type: 'BOARD' as const,
+        importance: 'HIGH' as const
+      }] : []),
       ...retirementNews
     ];
     setNews(prev => [...prev, ...summaryNews]);
