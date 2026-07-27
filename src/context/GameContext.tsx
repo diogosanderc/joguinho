@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality, rollYouthPotential, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, YOUTH_ACADEMY_REPUTATION_BOOST_BY_LEVEL, YOUTH_ACADEMY_MAX_SQUAD_SIZE } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, isPlayerAvailable, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality, rollYouthPotential, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, YOUTH_ACADEMY_REPUTATION_BOOST_BY_LEVEL, YOUTH_ACADEMY_MAX_SQUAD_SIZE } from '../data/database';
 import type { CareerStats } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
@@ -118,6 +118,15 @@ export interface YouthAcademyUpgrade {
 // duration reduction for the given level (0 = nenhum, no reduction). Shared by both places an
 // injury can be generated (a live match INJURY event, and the random per-round chance) so the
 // medical department's effect is guaranteed to apply consistently everywhere.
+// Seleção Brasileira call-up rounds (roughly evenly spread through the 38-round season, standing
+// in for real Data-FIFA international breaks) and the rules governing who gets called and what
+// happens to them.
+const SELECAO_CALL_UP_ROUNDS = [6, 15, 24, 33];
+const SELECAO_MIN_RATING = 78;
+const SELECAO_MAX_CALLED = 2;
+const SELECAO_INJURY_CHANCE = 0.08;
+const SELECAO_VALUE_BOOST = 0.10;
+
 const rollInjuryWeeks = (medicalDeptLevel: number): number => {
   const base = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
   const reduction = MEDICAL_DEPT_REDUCTION_BY_LEVEL[medicalDeptLevel] ?? 0;
@@ -1589,6 +1598,49 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { ...c, squad: [...c.squad, prospect] };
         });
       }
+    }
+
+    // Seleção Brasileira: on fixed Data-FIFA rounds, the user's best-performing players get
+    // called up. Simplification: eligibility is rating-only (the game has no explicit player
+    // nationality field), so any high-rated squad member can be called, including a bought
+    // foreign star -- acceptable since it's a flavor/motivation mechanic, not a strict simulation.
+    // Each call-up carries a small injury risk (Departamento Médico still applies) and otherwise
+    // returns the player boosted in value and rating, reflecting the exposure/experience gained.
+    if (SELECAO_CALL_UP_ROUNDS.includes(currentRound)) {
+      finalClubs = finalClubs.map(c => {
+        if (c.id !== userClubId) return c;
+        const eligible = c.squad
+          .filter(p => p.rating >= SELECAO_MIN_RATING && isPlayerAvailable(p))
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, SELECAO_MAX_CALLED);
+        if (eligible.length === 0) return c;
+        const calledIds = new Set(eligible.map(p => p.id));
+        const medicalLevel = c.medicalDeptLevel ?? 0;
+        const nextSquad = c.squad.map(p => {
+          if (!calledIds.has(p.id)) return p;
+          const injured = Math.random() < SELECAO_INJURY_CHANCE;
+          if (injured) {
+            const injuryWeeks = rollInjuryWeeks(medicalLevel);
+            pushNews({
+              id: `selecao_injury_${p.id}_${Date.now()}`,
+              week: currentRound,
+              text: `📯 ${p.name} (${p.position}) foi convocado para a Seleção Brasileira e voltou lesionado, desfalcando o ${c.name} por ${injuryWeeks} semana(s).`,
+              type: 'INFO'
+            });
+            return { ...p, isInjured: true, injuryWeeks, energy: 100 };
+          }
+          const growthCap = Math.max(99, p.rating);
+          const value = Math.max(p.value, Math.round(p.value * (1 + SELECAO_VALUE_BOOST)), p.purchasePrice ?? 0);
+          pushNews({
+            id: `selecao_${p.id}_${Date.now()}`,
+            week: currentRound,
+            text: `📯 ${p.name} (${p.position}) defendeu a Seleção Brasileira na Data-FIFA e voltou valorizado após a boa exibição.`,
+            type: 'INFO'
+          });
+          return { ...p, value, rating: Math.min(growthCap, p.rating + 1) };
+        });
+        return { ...c, squad: nextSquad };
+      });
     }
 
     // Decrement sponsors contract weeks
