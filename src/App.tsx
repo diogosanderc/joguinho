@@ -136,6 +136,7 @@ const AppContent: React.FC = () => {
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
   const [selectedStartDivision, setSelectedStartDivision] = useState<'A' | 'B' | 'C'>('C');
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  const [showPressConference, setShowPressConference] = useState(false);
 
   // Squad selection states
   const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '3-5-2' | '4-3-3'>('4-4-2');
@@ -2509,7 +2510,7 @@ const AppContent: React.FC = () => {
 
                 <button
                   className="btn btn-primary"
-                  onClick={() => { beginMatchKickoff(); nextRound(starters); }}
+                  onClick={() => setShowPressConference(true)}
                   style={{ marginTop: '16px', height: '48px' }}
                 >
                   <Play size={18} fill="#000" /> Iniciar Partida
@@ -4605,6 +4606,50 @@ const AppContent: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* ENTREVISTA COLETIVA -- shown right before kicking off the league match, letting the
+          player pick a tone that nudges the confidence swing from the result: Confiante risks
+          bigger ups and downs, Provocador also knocks the opponent's confidence regardless of
+          the result, Cauteloso is the safe/neutral baseline (today's existing behavior). */}
+      {showPressConference && gameState !== 'MATCH_DAY' && (
+        <div className="modal-overlay" style={{ zIndex: 1400 }}>
+          <div className="modal-content" style={{ maxWidth: '360px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+              <span style={{ fontSize: '2.2rem' }}>🎤</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Entrevista Coletiva</h3>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>
+                Qual vai ser o tom antes do jogo?
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ textAlign: 'left', padding: '12px' }}
+                onClick={() => { setShowPressConference(false); beginMatchKickoff(); nextRound(starters, 'CONFIANTE'); }}
+              >
+                <strong>😤 Confiante</strong>
+                <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Promete a vitória. Se ganhar, confiança extra. Se perder, o tombo é maior.</p>
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ textAlign: 'left', padding: '12px' }}
+                onClick={() => { setShowPressConference(false); beginMatchKickoff(); nextRound(starters, 'CAUTELOSO'); }}
+              >
+                <strong>😐 Cauteloso</strong>
+                <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Não cria expectativa nem arma o adversário. Sem efeito extra.</p>
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ textAlign: 'left', padding: '12px' }}
+                onClick={() => { setShowPressConference(false); beginMatchKickoff(); nextRound(starters, 'PROVOCADOR'); }}
+              >
+                <strong>😏 Provocador</strong>
+                <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Mexe com a confiança do adversário, ganhe ou perca. Mas se perder, também dói na sua.</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CHAMPION CELEBRATION MODAL -- top priority in the modal queue, since it's a one-off
           highlight (Copa do Brasil title, decided mid-season) that shouldn't get buried behind

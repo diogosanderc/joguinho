@@ -210,7 +210,7 @@ interface GameContextType {
   currentSlot: number | null;
   getFreeSlot: () => number | null;
   startGame: (name: string, chosenClubId: string, slot?: number) => void;
-  nextRound: (starters: Player[]) => void;
+  nextRound: (starters: Player[], pressConferenceTone?: 'CONFIANTE' | 'CAUTELOSO' | 'PROVOCADOR') => void;
   buyPlayer: (player: Player) => void;
   sellPlayer: (player: Player) => void;
   attemptSellPlayer: (player: Player, askingPrice: number) => { success: boolean; message?: string };
@@ -743,17 +743,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Play the current round (simulates all matches including player's)
-  const nextRound = (playerStarters: Player[]) => {
+  const nextRound = (playerStarters: Player[], pressConferenceTone?: 'CONFIANTE' | 'CAUTELOSO' | 'PROVOCADOR') => {
     if (!userClub || isProcessingRoundRef.current) return;
     isProcessingRoundRef.current = true;
     try {
-      nextRoundImpl(playerStarters);
+      nextRoundImpl(playerStarters, pressConferenceTone);
     } finally {
       isProcessingRoundRef.current = false;
     }
   };
 
-  const nextRoundImpl = (playerStarters: Player[]) => {
+  const nextRoundImpl = (playerStarters: Player[], pressConferenceTone?: 'CONFIANTE' | 'CAUTELOSO' | 'PROVOCADOR') => {
     if (!userClub) return;
 
     // Tracks how many rounds this manager has coached in each division, used to weight which
@@ -1000,10 +1000,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               type: 'INFO'
             });
           }
+          // Entrevista coletiva: quem prometeu vitória (Confiante) colhe um bônus extra por ter cumprido a palavra.
+          if (pressConferenceTone === 'CONFIANTE') confidence = Math.min(100, confidence + 3);
         } else if (userScore === oppScore) {
           confidence = Math.min(100, Math.max(0, confidence + 2));
         } else {
           confidence = Math.max(0, confidence - 10);
+          // Quem se garantiu (Confiante) ou provocou (Provocador) e depois perdeu leva um golpe extra na confiança.
+          if (pressConferenceTone === 'CONFIANTE' || pressConferenceTone === 'PROVOCADOR') {
+            confidence = Math.max(0, confidence - 5);
+          }
         }
 
         // Conquistas: lifetime win/draw/loss + unbeaten streak counters.
@@ -1048,6 +1054,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             type: 'MATCH'
           });
         }
+      } else if (club.id === opponentId && pressConferenceTone === 'PROVOCADOR') {
+        // Entrevista coletiva: um tom provocador mexe com o adversário independente do resultado.
+        confidence = Math.max(0, confidence - 3);
       }
 
       // Handle match day revenue for home club
