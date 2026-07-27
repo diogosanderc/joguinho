@@ -205,6 +205,7 @@ export interface Club {
   vipTicketPrice?: number; // Premium seating price per home match -- defaults to the division baseline when unset
   medicalDeptLevel?: number; // 0 (nenhum) a 3 (avançado) -- reduz a duração das lesões dos jogadores do clube do usuário
   youthAcademyLevel?: number; // 0 (nenhum) a 3 (avançado) -- gera novos jovens talentos periodicamente pro clube do usuário
+  investorDealActive?: boolean; // Aceitou o aporte do investidor nesta temporada -- expectativas da diretoria ficam mais agressivas (demissão/aviso com confiança mais alta) até o fim da temporada
   financialScore?: number; // 0-100 "Score Financeiro" driving bank loan terms
   loans?: Loan[]; // Active bank loans
   lateStrikes?: number; // Cumulative missed installments -- 3+ blocks new loans

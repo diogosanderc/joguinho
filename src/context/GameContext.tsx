@@ -198,6 +198,9 @@ interface GameContextType {
   dismissLibertadoresDrawReveal: () => void;
   sponsorAlert: { kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null;
   dismissSponsorAlert: () => void;
+  investorOffer: { amount: number } | null;
+  acceptInvestorDeal: () => void;
+  declineInvestorDeal: () => void;
   penaltyShootout: PenaltyShootoutState | null;
   takePenaltyShootoutKick: () => void;
   finalizePenaltyShootout: () => void;
@@ -392,6 +395,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // user signs/renews one (an explicit confirmation on top of the news item).
   const [sponsorAlert, setSponsorAlert] = useState<{ kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null>(null);
   const dismissSponsorAlert = () => setSponsorAlert(null);
+
+  // Transient (not persisted) Investidor/SAF offer -- fires once per season (see nextRoundImpl).
+  // Accepting injects cash but makes the board's sacking/warning thresholds stricter for the
+  // rest of the season (see the Board Confidence check); declining just dismisses it.
+  const [investorOffer, setInvestorOffer] = useState<{ amount: number } | null>(null);
 
   // Live penalty shootout for the user's own Copa do Brasil tie. Kept in a ref too (same
   // pattern as cupStateRef) since takePenaltyShootoutKick() is called repeatedly on a timer from
@@ -1673,12 +1681,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Check Board Confidence / Sacking (Immediate or Warning)
+    // Check Board Confidence / Sacking (Immediate or Warning). An active Investidor/SAF deal
+    // (see acceptInvestorDeal) raises the board's expectations for the rest of the season --
+    // both thresholds move up, so the same confidence level that used to be safe now isn't.
     let nextOffers = offers;
     let nextGameState = gameState;
     const userConfidence = finalClubs.find(c => c.id === userClubId)!.confidence;
-    
-    if (userConfidence <= 0) {
+    const hasInvestorDeal = finalClubs.find(c => c.id === userClubId)?.investorDealActive ?? false;
+    const sackThreshold = hasInvestorDeal ? 20 : 0;
+    const warnThreshold = hasInvestorDeal ? 35 : 20;
+
+    if (userConfidence <= sackThreshold) {
       // SACKED!
       pushNews({
         id: `sack_${Date.now()}`,
@@ -1703,7 +1716,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       nextOffers = generatedOffers;
       nextGameState = 'SEASON_END'; // Go to decision screen
-    } else if (userConfidence < 20) {
+    } else if (userConfidence < warnThreshold) {
       pushNews({
         id: `warn_${Date.now()}`,
         week: currentRound,
@@ -1717,6 +1730,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         text: `A diretoria está muito satisfeita com seu trabalho à frente do ${userClub.name}!`,
         type: 'BOARD'
       });
+    }
+
+    // Investidor/SAF: once per season, a fixed-round opportunity to take an investor's cash in
+    // exchange for tougher board expectations (see sackThreshold/warnThreshold above).
+    if (currentRound === 10 && !hasInvestorDeal) {
+      const investorAmountByDiv: Record<string, number> = { A: 15000000, B: 6000000, C: 2500000 };
+      setInvestorOffer({ amount: investorAmountByDiv[userClub.division] ?? 2500000 });
     }
 
     // --- LIBERTADORES-CHASING MOTIVATIONAL NEWS (Série A, mid-season, while in the G4) ---
@@ -2880,6 +2900,37 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     alert('Contrato de patrocínio rescindido!');
   };
 
+  // Accept the Investidor/SAF offer: cash now, tougher board expectations for the rest of the
+  // season (see sackThreshold/warnThreshold in nextRoundImpl).
+  const acceptInvestorDeal = () => {
+    if (!userClub || !investorOffer) return;
+    const amount = investorOffer.amount;
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances + amount, investorDealActive: true };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+    setInvestorOffer(null);
+
+    const nextNews = [{
+      id: `investor_accept_${Date.now()}`,
+      week: currentRound,
+      text: `💰 Acordo fechado! Um investidor aportou ${formatCurrency(amount)} no ${userClub.name} -- a diretoria agora espera muito mais em troca.`,
+      type: 'BOARD' as const
+    }];
+    setNews(prev => [...prev, ...nextNews]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, [...news, ...nextNews], history, stadiumUpgrade, activeSponsors);
+  };
+
+  const declineInvestorDeal = () => {
+    setInvestorOffer(null);
+  };
+
   // Stadium seating upgrade
   const upgradeStadium = (capacityAdded: number) => {
     if (!userClub) return;
@@ -3218,7 +3269,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         confidence: isPlayer ? 80 : 70,
         finances: c.finances + tvMoney,
         cupEarningsSeason: 0,
-        libertadoresEarningsSeason: 0
+        libertadoresEarningsSeason: 0,
+        investorDealActive: false
       };
     });
 
@@ -3295,7 +3347,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...c,
         finances: c.finances + tvMoney,
         cupEarningsSeason: 0,
-        libertadoresEarningsSeason: 0
+        libertadoresEarningsSeason: 0,
+        investorDealActive: false
       };
     });
     setClubs(updatedClubs);
@@ -4556,6 +4609,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dismissLibertadoresDrawReveal,
       sponsorAlert,
       dismissSponsorAlert,
+      investorOffer,
+      acceptInvestorDeal,
+      declineInvestorDeal,
       penaltyShootout,
       takePenaltyShootoutKick,
       finalizePenaltyShootout,
