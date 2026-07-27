@@ -44,6 +44,7 @@ export interface SimulateMatchOptions {
   initialAwayStats?: MatchStats;
   priorEvents?: MatchEvent[];
   priorYellowCardCounts?: Record<string, number>;
+  isHighStakes?: boolean; // Cup final / Libertadores knockout -- activates the DECISIVO personality bonus
 }
 
 // Auto-selects 11 starters for non-player clubs (default 4-4-2: 2 ZAG, 1 LD, 1 LE, 2 VOL, 2 MEI, 2 CA)
@@ -110,7 +111,9 @@ export const getEffectiveRating = (p: Player): number => {
   return p.rating * energyFactor * boostFactor;
 };
 
-export const calculateTeamForces = (starters: Player[]) => {
+// isHighStakes: Cup final / Libertadores knockout matches -- a DECISIVO player performs a
+// little above his nominal rating specifically in these, never in a routine league round.
+export const calculateTeamForces = (starters: Player[], isHighStakes: boolean = false) => {
   let defSum = 0, defWeight = 0;
   let midSum = 0, midWeight = 0;
   let atkSum = 0, atkWeight = 0;
@@ -120,7 +123,8 @@ export const calculateTeamForces = (starters: Player[]) => {
   const addAtk = (rating: number, weight: number) => { atkSum += rating * weight; atkWeight += weight; };
 
   starters.forEach(p => {
-    const rating = getEffectiveRating(p);
+    let rating = getEffectiveRating(p);
+    if (isHighStakes && p.personality === 'DECISIVO') rating *= 1.08;
     if (p.position === 'GOL' || p.position === 'ZAG') {
       addDef(rating, 1);
     } else if (p.position === 'LD' || p.position === 'LE') {
@@ -141,14 +145,22 @@ export const calculateTeamForces = (starters: Player[]) => {
   // Volantes: the best one anchors the defense, extra volantes reinforce midfield
   const vols = starters.filter(p => p.position === 'VOL').sort((a, b) => b.rating - a.rating);
   vols.forEach((v, idx) => {
-    const rating = getEffectiveRating(v);
+    let rating = getEffectiveRating(v);
+    if (isHighStakes && v.personality === 'DECISIVO') rating *= 1.08;
     if (idx === 0) addDef(rating, 1);
     else addMid(rating, 1);
   });
 
-  const defense = defWeight > 0 ? Math.round(defSum / defWeight) : 40;
-  const midfield = midWeight > 0 ? Math.round(midSum / midWeight) : 40;
-  const attack = atkWeight > 0 ? Math.round(atkSum / atkWeight) : 40;
+  let defense = defWeight > 0 ? Math.round(defSum / defWeight) : 40;
+  let midfield = midWeight > 0 ? Math.round(midSum / midWeight) : 40;
+  let attack = atkWeight > 0 ? Math.round(atkSum / atkWeight) : 40;
+
+  // LIDER: having one on the pitch lifts the whole team's organization a little, regardless of
+  // which line he plays in.
+  if (starters.some(p => p.personality === 'LIDER')) {
+    defense += 2; midfield += 2; attack += 2;
+  }
+
   const overall = Math.round((defense + midfield + attack) / 3);
 
   return { defense, midfield, attack, overall };
@@ -190,8 +202,8 @@ export const simulateMatch = (
   const homeStarters = homeStartersInput || getAutoStarters(homeClub);
   const awayStarters = awayStartersInput || getAutoStarters(awayClub);
 
-  const homeForces = calculateTeamForces(homeStarters);
-  const awayForces = calculateTeamForces(awayStarters);
+  const homeForces = calculateTeamForces(homeStarters, options.isHighStakes ?? false);
+  const awayForces = calculateTeamForces(awayStarters, options.isHighStakes ?? false);
 
   // A player whose rating clears the bar for the division ABOVE their own club is playing
   // beneath his level and stands out for it -- extra weight in the moments that matter (goals).
@@ -275,19 +287,22 @@ export const simulateMatch = (
   const yellowCards: Record<string, number> = { ...(options.priorYellowCardCounts ?? {}) };
   const redCarded = new Set<string>();
 
-  // Helper to choose a player for an event (weighted by rating and star status)
-  const choosePlayer = (players: Player[], posFilter?: string[]) => {
-    const list = posFilter 
+  // Helper to choose a player for an event (weighted by rating and star status). forCards
+  // additionally leans the pick toward TEMPERAMENTAL players -- only used for YELLOW/RED events,
+  // never for goals/shots, so the trait means "picks up more cards", not "plays worse".
+  const choosePlayer = (players: Player[], posFilter?: string[], forCards: boolean = false) => {
+    const list = posFilter
       ? players.filter(p => posFilter.includes(p.position) && !redCarded.has(p.id))
       : players.filter(p => !redCarded.has(p.id));
-    
+
     if (list.length === 0) return players[Math.floor(Math.random() * players.length)];
-    
+
     // Weighted selection (stars get double weight + additional boost; a player who's clearly
     // playing above his division's level also stands out more, though less than a full star)
     const getWeight = (p: Player) => {
-      if (p.isStar) return p.rating * 3.5;
-      return standoutIds.has(p.id) ? p.rating * 1.6 : p.rating;
+      let w = p.isStar ? p.rating * 3.5 : (standoutIds.has(p.id) ? p.rating * 1.6 : p.rating);
+      if (forCards && p.personality === 'TEMPERAMENTAL') w *= 1.8;
+      return w;
     };
     const totalWeight = list.reduce((sum, p) => sum + getWeight(p), 0);
     let rand = Math.random() * totalWeight;
@@ -578,7 +593,7 @@ export const simulateMatch = (
       const cardRoll = Math.random();
 
       if (cardRoll < 0.40) { // Yellow Card
-        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA']);
+        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'], true);
         const cards = (yellowCards[player.id] || 0) + 1;
         yellowCards[player.id] = cards;
 
@@ -602,7 +617,7 @@ export const simulateMatch = (
           });
         }
       } else if (cardRoll < 0.43) { // Direct Red Card (very rare)
-        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA']);
+        const player = choosePlayer(offendingStarters, ['ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'], true);
         redCarded.add(player.id);
         events.push({
           minute: min,

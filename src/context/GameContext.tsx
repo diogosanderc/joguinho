@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality } from '../data/database';
 import type { CareerStats } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
@@ -257,7 +257,8 @@ const generateYouthPlayer = (clubId: string, position: PlayerPosition, clubReput
   return {
     id: `youth_${clubId}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
     name, age, position, rating, energy: 100, value, salary,
-    goals: 0, yellowCards: 0, redCards: 0, isInjured: false, isStar: false, contractLocked: false
+    goals: 0, yellowCards: 0, redCards: 0, isInjured: false, isStar: false, contractLocked: false,
+    personality: rollPersonality()
   };
 };
 
@@ -707,7 +708,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redCards: 0,
         isInjured: false,
         isStar: false,
-        contractLocked: false
+        contractLocked: false,
+        personality: rollPersonality()
       });
     }
     return list;
@@ -3505,9 +3507,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!homeClubObj || !awayClubObj) return;
 
     const isHome = homeId === userClubId;
+    const isHighStakes = PHASES[cup.phaseIndex] === 'FINAL';
     const result = isHome
-      ? simulateMatch(homeClubObj, awayClubObj, playerStarters, getAutoStarters(awayClubObj))
-      : simulateMatch(homeClubObj, awayClubObj, getAutoStarters(homeClubObj), playerStarters);
+      ? simulateMatch(homeClubObj, awayClubObj, playerStarters, getAutoStarters(awayClubObj), { isHighStakes })
+      : simulateMatch(homeClubObj, awayClubObj, getAutoStarters(homeClubObj), playerStarters, { isHighStakes });
 
     setCurrentMatch({ round: currentRound, homeId, awayId, division: 'CUP', simulated: true, result });
     setCurrentMatchResult(result);
@@ -3910,9 +3913,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!homeClubObj || !awayClubObj) return;
 
     const isHome = homeId === userClubId;
+    const isHighStakes = lib.phase !== 'GROUPS'; // any knockout phase (Oitavas até Final)
     const result = isHome
-      ? simulateMatch(homeClubObj, awayClubObj, playerStarters, getAutoStarters(awayClubObj))
-      : simulateMatch(homeClubObj, awayClubObj, getAutoStarters(homeClubObj), playerStarters);
+      ? simulateMatch(homeClubObj, awayClubObj, playerStarters, getAutoStarters(awayClubObj), { isHighStakes })
+      : simulateMatch(homeClubObj, awayClubObj, getAutoStarters(homeClubObj), playerStarters, { isHighStakes });
 
     setCurrentMatch({ round: currentRound, homeId, awayId, division: 'LIBERTADORES', simulated: true, result });
     setCurrentMatchResult(result);

@@ -57,6 +57,15 @@ import {
 
 // Shared styling for the Mercado tab's filter dropdowns (source/position/league/club selects) --
 // a single consistent look instead of each one hand-rolling its own inline style object.
+const PERSONALITY_ICON: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> = {
+  LIDER: '🧢', TEMPERAMENTAL: '🌶️', DECISIVO: '🃏'
+};
+const PERSONALITY_LABEL: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> = {
+  LIDER: 'Líder: dá um pequeno bônus de força ao time quando titular',
+  TEMPERAMENTAL: 'Temperamental: mais propenso a cartões',
+  DECISIVO: 'Decisivo: rende mais em finais e mata-matas'
+};
+
 const marketSelectStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px',
@@ -2855,6 +2864,7 @@ const AppContent: React.FC = () => {
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                          {player.personality && <span style={{ fontSize: '0.75rem' }} title={PERSONALITY_LABEL[player.personality]}>{PERSONALITY_ICON[player.personality]}</span>}
                           {player.yellowCards > 0 && <span title={`${player.yellowCards} cartão(ões) amarelo(s) na temporada`} style={{ fontSize: '0.72rem' }}>🟨{player.yellowCards > 1 ? ` x${player.yellowCards}` : ''}</span>}
                           {player.redCards > 0 && <span title={`${player.redCards} cartão(ões) vermelho(s) na temporada`} style={{ fontSize: '0.72rem' }}>🟥{player.redCards > 1 ? ` x${player.redCards}` : ''}</span>}
                           <ConditionBadge trend={player.performanceTrend} />

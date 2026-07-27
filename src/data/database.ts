@@ -62,7 +62,19 @@ export interface Player {
   renewalBoostPercent?: number; // Size of that temporary effective-rating boost, e.g. 0.08 for +8%
   eliteStamina?: boolean; // World-class foreign stars whose fitness holds up far better -- lose energy 50% slower after playing than everyone else
   purchasePrice?: number; // What the user's club actually paid for this player, if bought -- their market value never drops below this afterward
+  personality?: 'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO'; // LIDER: small team-force bonus when he starts. TEMPERAMENTAL: more likely to pick up cards. DECISIVO: rating bonus in high-stakes matches (ver isHighStakes em calculateTeamForces/simulateMatch)
 }
+
+// Rolls a personality for a newly created player -- ~15% of players have one, split evenly
+// across the 3 kinds. Called at every point a Player object gets created (squad generation,
+// market players, youth replenishment) so the trait shows up organically across the whole game.
+export const rollPersonality = (): Player['personality'] => {
+  const r = Math.random();
+  if (r < 0.05) return 'LIDER';
+  if (r < 0.10) return 'TEMPERAMENTAL';
+  if (r < 0.15) return 'DECISIVO';
+  return undefined;
+};
 
 // A player is fit to be selected: not injured, and not serving a card suspension.
 export const isPlayerAvailable = (p: Player): boolean =>
@@ -2153,7 +2165,8 @@ export const generateSquad = (clubId: string, stars: { name: string; position: P
       redCards: 0,
       isInjured: false,
       isStar: star.rating >= 80,
-      contractLocked: star.rating >= 83
+      contractLocked: star.rating >= 83,
+      personality: rollPersonality()
     });
   });
 
