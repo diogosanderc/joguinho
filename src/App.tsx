@@ -72,6 +72,17 @@ const marketSelectLabelStyle: React.CSSProperties = {
   textTransform: 'uppercase'
 };
 
+// First-time interactive tutorial: one step per bottom-nav tab, in tour order. Each step names
+// the tab the player is currently looking at (tabIndex) and the one they must tap next to
+// advance (nextTabIndex), so the tour is driven by real navigation instead of a "Next" button.
+const TUTORIAL_STEPS: { tabIndex: number; title: string; text: string; nextTabIndex: number | null }[] = [
+  { tabIndex: 0, title: 'Escritório', text: 'Aqui você acompanha o feed de notícias do seu clube e do campeonato, e inicia a partida da rodada.', nextTabIndex: 1 },
+  { tabIndex: 1, title: 'Elenco', text: 'Monte sua escalação, mude a tática, renove contratos e cuide da condição dos jogadores.', nextTabIndex: 2 },
+  { tabIndex: 2, title: 'Mercado', text: 'Compre e venda jogadores livres, de times brasileiros ou de ligas estrangeiras.', nextTabIndex: 3 },
+  { tabIndex: 3, title: 'Finanças', text: 'Controle o caixa do clube, ingressos, patrocínios, empréstimos e o estádio.', nextTabIndex: 4 },
+  { tabIndex: 4, title: 'Classificação', text: 'Veja a tabela do campeonato, artilheiros e o histórico da sua carreira. Pronto, agora é com você!', nextTabIndex: null }
+];
+
 // Wrapper to enable context access
 const AppContent: React.FC = () => {
   const {
@@ -99,7 +110,7 @@ const AppContent: React.FC = () => {
   const [inputName, setInputName] = useState('');
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
   const [selectedStartDivision, setSelectedStartDivision] = useState<'A' | 'B' | 'C'>('C');
-  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
 
   // Squad selection states
   const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '3-5-2' | '4-3-3'>('4-4-2');
@@ -874,14 +885,24 @@ const AppContent: React.FC = () => {
     }
   }, [currentRound, gameState]);
 
+  // Advances the interactive tutorial the moment the player actually taps the tab it's pointing
+  // at, instead of requiring a generic "Next" button -- the tour tracks real navigation.
+  useEffect(() => {
+    if (tutorialStep === null) return;
+    const step = TUTORIAL_STEPS[tutorialStep];
+    if (step?.nextTabIndex !== null && step?.nextTabIndex !== undefined && activeTab === step.nextTabIndex) {
+      setTutorialStep(step.nextTabIndex);
+    }
+  }, [activeTab, tutorialStep]);
+
   // Kicks off a brand new career and, the very first time this player has ever done so on this
-  // browser, queues the tutorial modal right behind it -- a global flag (not tied to any save
-  // slot), so it's a true "first time playing" thing rather than "first time in this campaign".
+  // browser, queues the interactive tutorial tour right behind it -- a global flag (not tied to
+  // any save slot), so it's a true "first time playing" thing rather than "first time in this campaign".
   const beginNewCareer = (name: string, clubId: string, slot: number) => {
     startGame(name, clubId, slot);
     if (!localStorage.getItem('retrofoot_2026_tutorial_seen')) {
       localStorage.setItem('retrofoot_2026_tutorial_seen', 'true');
-      setShowTutorial(true);
+      setTutorialStep(0);
     }
   };
 
@@ -4366,67 +4387,34 @@ const AppContent: React.FC = () => {
         );
       })()}
 
-      {/* FIRST-TIME TUTORIAL MODAL -- shown once ever on this browser, right after a brand new
-          career is created (see beginNewCareer), giving a quick tour of the main tabs before the
-          player is left alone on the office screen. */}
-      {showTutorial && gameState !== 'MATCH_DAY' && (
-        <div className="modal-overlay" style={{ zIndex: 1500 }}>
-          <div className="modal-content" style={{ maxWidth: '380px', maxHeight: '85vh', overflowY: 'auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <span style={{ fontSize: '2.5rem' }}>🏆</span>
-              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Seja um verdadeiro campeão!</h3>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Conheça rapidinho as principais áreas do jogo:</p>
+      {/* FIRST-TIME INTERACTIVE TUTORIAL -- a small floating banner (not a blocking modal) that
+          points at the exact nav tab the player should tap next (see the tutorial-target/
+          tutorial-dimmed classes on the bottom nav below), advancing automatically once they
+          actually navigate there (see the useEffect watching activeTab/tutorialStep). */}
+      {tutorialStep !== null && gameState !== 'MATCH_DAY' && (() => {
+        const step = TUTORIAL_STEPS[tutorialStep];
+        const isLastStep = step.nextTabIndex === null;
+        return (
+          <div style={{ position: 'fixed', left: '12px', right: '12px', bottom: '84px', zIndex: 1500, display: 'flex', justifyContent: 'center' }}>
+            <div className="card" style={{ maxWidth: '380px', width: '100%', border: '1px solid var(--accent-gold)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <strong style={{ fontSize: '0.85rem', color: 'var(--accent-gold)' }}>{step.title}</strong>
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{tutorialStep + 1}/{TUTORIAL_STEPS.length}</span>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: '#d1d5db', margin: '0 0 10px' }}>{step.text}</p>
+              {isLastStep ? (
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setTutorialStep(null)}>
+                  Vamos jogar!
+                </button>
+              ) : (
+                <p style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', margin: 0, textAlign: 'center' }}>
+                  👇 Toque em "{TUTORIAL_STEPS[step.nextTabIndex!].title}" para continuar
+                </p>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '18px' }}>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <Home size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ fontSize: '0.85rem' }}>Escritório</strong>
-                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Acompanhe o feed de notícias do seu clube e do campeonato, e inicie a partida da rodada.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <Users size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ fontSize: '0.85rem' }}>Elenco</strong>
-                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Monte sua escalação, mude a tática, renove contratos e cuide da condição dos jogadores.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <TrendingUp size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ fontSize: '0.85rem' }}>Mercado</strong>
-                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Compre e venda jogadores livres, de times brasileiros ou de ligas estrangeiras.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <DollarSign size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ fontSize: '0.85rem' }}>Finanças</strong>
-                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Controle o caixa do clube, ingressos, patrocínios, empréstimos e o estádio.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <Trophy size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ fontSize: '0.85rem' }}>Classificação</strong>
-                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Veja a tabela do campeonato, artilheiros e o histórico da sua carreira.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <Play size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ fontSize: '0.85rem' }}>Partidas ao vivo</strong>
-                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Assista aos jogos rodada a rodada, faça substituições e mude a tática no intervalo.</p>
-                </div>
-              </div>
-            </div>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowTutorial(false)}>
-              Vamos começar!
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* CHAMPION CELEBRATION MODAL -- top priority in the modal queue, since it's a one-off
           highlight (Copa do Brasil title, decided mid-season) that shouldn't get buried behind
@@ -4983,28 +4971,42 @@ const AppContent: React.FC = () => {
       )}
 
       {/* BOTTOM NAVIGATION TABS */}
-      <div className="bottom-nav">
-        <button className={`nav-item ${activeTab === 0 ? 'active' : ''}`} onClick={() => setActiveTab(0)}>
-          <Home />
-          <span>Escritório</span>
-        </button>
-        <button className={`nav-item ${activeTab === 1 ? 'active' : ''}`} onClick={() => setActiveTab(1)}>
-          <Users />
-          <span>Elenco</span>
-        </button>
-        <button className={`nav-item ${activeTab === 2 ? 'active' : ''}`} onClick={() => setActiveTab(2)}>
-          <TrendingUp />
-          <span>Mercado</span>
-        </button>
-        <button className={`nav-item ${activeTab === 3 ? 'active' : ''}`} onClick={() => setActiveTab(3)}>
-          <DollarSign />
-          <span>Finanças</span>
-        </button>
-        <button className={`nav-item ${activeTab === 4 ? 'active' : ''}`} onClick={() => setActiveTab(4)}>
-          <Trophy />
-          <span>Classif.</span>
-        </button>
-      </div>
+      {(() => {
+        // While the interactive tutorial is running, highlight only the single tab the player is
+        // being guided to tap next and dim the rest so it's unmistakable which one to press.
+        const tutorialTargetTab = tutorialStep !== null ? TUTORIAL_STEPS[tutorialStep].nextTabIndex : null;
+        const navClass = (i: number) => {
+          let cls = `nav-item ${activeTab === i ? 'active' : ''}`;
+          if (tutorialTargetTab !== null) {
+            cls += tutorialTargetTab === i ? ' tutorial-target' : ' tutorial-dimmed';
+          }
+          return cls;
+        };
+        return (
+          <div className="bottom-nav">
+            <button className={navClass(0)} onClick={() => setActiveTab(0)}>
+              <Home />
+              <span>Escritório</span>
+            </button>
+            <button className={navClass(1)} onClick={() => setActiveTab(1)}>
+              <Users />
+              <span>Elenco</span>
+            </button>
+            <button className={navClass(2)} onClick={() => setActiveTab(2)}>
+              <TrendingUp />
+              <span>Mercado</span>
+            </button>
+            <button className={navClass(3)} onClick={() => setActiveTab(3)}>
+              <DollarSign />
+              <span>Finanças</span>
+            </button>
+            <button className={navClass(4)} onClick={() => setActiveTab(4)}>
+              <Trophy />
+              <span>Classif.</span>
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 };

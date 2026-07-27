@@ -183,6 +183,26 @@ body {
   stroke: var(--accent-green);
 }
 
+/* First-time interactive tutorial: highlights the exact nav tab the player is being guided to
+   tap next, dimming the others so it's unmistakable which one to press. */
+.nav-item.tutorial-target {
+  color: var(--accent-gold);
+  animation: tutorial-pulse 1.4s ease-in-out infinite;
+}
+
+.nav-item.tutorial-target svg {
+  stroke: var(--accent-gold);
+}
+
+.nav-item.tutorial-dimmed {
+  opacity: 0.35;
+}
+
+@keyframes tutorial-pulse {
+  0%, 100% { transform: scale(1); text-shadow: 0 0 6px rgba(255, 193, 7, 0.4); }
+  50% { transform: scale(1.12); text-shadow: 0 0 16px rgba(255, 193, 7, 0.8); }
+}
+
 /* Main Dashboard Elements */
 .header-bar {
   display: flex;
