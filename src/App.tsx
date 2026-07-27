@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
@@ -34,12 +34,13 @@ const estimateVipIncome = (club: Club): number => {
   const basePrice = VIP_BASE_PRICE_BY_DIV[club.division] ?? 200;
   const price = club.vipTicketPrice ?? basePrice;
   const baseIncome = VIP_BASE_INCOME_BY_DIV[club.division] ?? 20000;
+  const capacity = club.vipBoxCapacity ?? VIP_BOX_BASE_CAPACITY;
   let priceFactor = 1.0;
   if (club.confidence < 95) {
     const ratio = price / basePrice;
     priceFactor = Math.max(0, Math.min(1, 1 - (ratio - 1) / 2));
   }
-  return Math.round(baseIncome * (price / basePrice) * priceFactor);
+  return Math.round(baseIncome * (capacity / VIP_BOX_BASE_CAPACITY) * (price / basePrice) * priceFactor);
 };
 import { calculateTeamForces } from './utils/matchEngine';
 import type { MatchEvent } from './utils/matchEngine';
@@ -87,9 +88,9 @@ const TUTORIAL_STEPS: { tabIndex: number; title: string; text: string; nextTabIn
 const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
-    schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors,
+    schedule, marketPlayers, offers, news, history, stadiumUpgrade, vipBoxUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
-    upgradeStadium, buildVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
+    upgradeStadium, buildVipBoxes, upgradeVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
@@ -3652,16 +3653,22 @@ const AppContent: React.FC = () => {
             <div className="card">
               <div className="card-title"><DollarSign size={18} color="var(--accent-gold)" /> Camarotes VIP</div>
               {(() => {
-                const costByDiv: Record<string, number> = { A: 4000000, B: 2000000, C: 1000000 };
-                const cost = costByDiv[userClub.division] ?? 1000000;
+                const seatCost = VIP_SEAT_COST_BY_DIV[userClub.division] ?? 5000;
+                const cost = seatCost * VIP_BOX_BASE_CAPACITY;
                 const basePrice = VIP_BASE_PRICE_BY_DIV[userClub.division] ?? 200;
                 const income = estimateVipIncome(userClub);
+                const capacity = userClub.vipBoxCapacity ?? VIP_BOX_BASE_CAPACITY;
 
                 if (userClub.hasVipBoxes) {
+                  const expansionOptions = [100, 200].filter(add => capacity + add <= VIP_BOX_MAX_CAPACITY);
                   return (
                     <>
                       <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)', marginBottom: '10px' }}>
                         ✅ Camarotes VIP concluídos! Gerando +{formatCurrency(income)} projetados a cada jogo em casa.
+                      </div>
+                      <div className="stat-box" style={{ marginBottom: '8px' }}>
+                        <span className="stat-label">Capacidade do Camarote</span>
+                        <span className="stat-value">{capacity.toLocaleString()} lugares</span>
                       </div>
                       <div className="stat-box" style={{ marginBottom: '8px' }}>
                         <span className="stat-label">Preço do Camarote</span>
@@ -3677,9 +3684,32 @@ const AppContent: React.FC = () => {
                           >+</button>
                         </div>
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: '12px' }}>
                         💡 Preço alto demais afasta a clientela VIP e a ocupação cai -- assim como o ingresso comum.
                       </div>
+
+                      {vipBoxUpgrade ? (
+                        <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
+                          🚧 Ampliação em andamento: +{vipBoxUpgrade.capacityAdded.toLocaleString()} lugares ({vipBoxUpgrade.weeksLeft} rodadas restantes).
+                        </div>
+                      ) : capacity >= VIP_BOX_MAX_CAPACITY ? (
+                        <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                          🏆 Capacidade máxima do camarote atingida ({VIP_BOX_MAX_CAPACITY.toLocaleString()} lugares).
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {expansionOptions.map(add => (
+                            <button
+                              key={add}
+                              onClick={() => upgradeVipBoxes(add)}
+                              className="btn btn-secondary"
+                              style={{ fontSize: '0.8rem', padding: '10px' }}
+                            >
+                              Ampliar +{add} (Custo: {formatCurrency(add * seatCost)})
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </>
                   );
                 }
@@ -3693,7 +3723,7 @@ const AppContent: React.FC = () => {
                 return (
                   <>
                     <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: '10px' }}>
-                      Construa camarotes VIP para gerar até +{formatCurrency(income)} extras a cada jogo em casa, dependendo do preço cobrado.
+                      Construa camarotes VIP (começando com {VIP_BOX_BASE_CAPACITY} lugares, ampliáveis depois até {VIP_BOX_MAX_CAPACITY.toLocaleString()}) para gerar até +{formatCurrency(income)} extras a cada jogo em casa, dependendo do preço cobrado. O custo por assento do camarote é sempre maior que o do estádio comum, por ser uma estrutura premium.
                     </div>
                     <button
                       onClick={() => buildVipBoxes()}

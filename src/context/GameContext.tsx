@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
@@ -95,6 +95,12 @@ export interface StadiumUpgrade {
   weeksLeft: number;
 }
 
+export interface VipBoxUpgrade {
+  capacityAdded: number;
+  cost: number;
+  weeksLeft: number;
+}
+
 export interface JobOffer {
   clubId: string;
   clubName: string;
@@ -136,6 +142,7 @@ interface GameContextType {
   news: NewsItem[];
   history: HistoryRecord[];
   stadiumUpgrade: StadiumUpgrade | null;
+  vipBoxUpgrade: VipBoxUpgrade | null;
   activeSponsors: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>;
   currentMatch: LeagueMatch | null;
   currentMatchResult: MatchResult | null;
@@ -173,6 +180,7 @@ interface GameContextType {
   retirePlayer: (player: Player) => void;
   upgradeStadium: (capacity: number) => void;
   buildVipBoxes: () => void;
+  upgradeVipBoxes: (capacityAdded: number) => void;
   requestLoan: (amount: number, totalRounds: number, purpose: string) => void;
   payOffLoanEarly: (loanId: string) => void;
   renegotiateLoanAction: (loanId: string) => void;
@@ -262,6 +270,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [news, setNews] = useState<NewsItem[]>([]);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [stadiumUpgrade, setStadiumUpgrade] = useState<StadiumUpgrade | null>(null);
+  // VIP box capacity expansions (200 -> up to 1000 seats). Kept in a ref too, the same pattern
+  // as cupStateRef, so saveGame() (which reads it synchronously outside any state-setter
+  // callback) always sees the latest value without needing to thread it through every call site.
+  const [vipBoxUpgrade, setVipBoxUpgradeRaw] = useState<VipBoxUpgrade | null>(null);
+  const vipBoxUpgradeRef = useRef<VipBoxUpgrade | null>(null);
+  const setVipBoxUpgrade = (next: VipBoxUpgrade | null) => {
+    vipBoxUpgradeRef.current = next;
+    setVipBoxUpgradeRaw(next);
+  };
   // Copa Mata-Mata state. Kept in a ref too so saveGame() (which reads it synchronously outside
   // of any state-setter callback) always sees the latest value, the same pattern as currentSlotRef.
   const [cupState, setCupStateRaw] = useState<CupState | null>(null);
@@ -498,6 +515,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       news: newsFeed,
       history: past,
       stadiumUpgrade: upgrade,
+      vipBoxUpgrade: vipBoxUpgradeRef.current,
       activeSponsors: sponsorsList,
       cupState: cupStateRef.current,
       foreignMarketPlayers: foreignMarketRef.current,
@@ -580,6 +598,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentYear(2026);
     setHistory([]);
     setStadiumUpgrade(null);
+    setVipBoxUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCupState(startCup(updatedClubs, 2026));
     // The Libertadores club data loads asynchronously (fetched once on mount) -- on the rare
@@ -852,6 +871,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Handle user's stadium progress
       let hasVipBoxes = club.hasVipBoxes;
       let vipBoxesWeeksLeft = club.vipBoxesWeeksLeft;
+      let vipBoxCapacity = club.vipBoxCapacity;
       if (club.id === userClubId) {
         // Player wages expense
         const wages = club.squad.reduce((sum, p) => sum + p.salary, 0);
@@ -882,6 +902,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             vipBoxesWeeksLeft = 0;
             hasVipBoxes = true;
+            vipBoxCapacity = VIP_BOX_BASE_CAPACITY;
             pushNews({
               id: `vip_done_${Date.now()}`,
               week: currentRound,
@@ -946,9 +967,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           roundRevenue += ticketIncome;
 
           // VIP boxes: premium revenue per home match, price-adjustable like the regular ticket
-          // (too far above the baseline price and occupancy falls off, same formula as tickets).
+          // (too far above the baseline price and occupancy falls off, same formula as tickets),
+          // and scaling linearly with how many camarote seats the club has built.
           const effectiveHasVip = club.id === userClubId ? hasVipBoxes : club.hasVipBoxes;
           if (effectiveHasVip) {
+            const effectiveVipCapacity = (club.id === userClubId ? vipBoxCapacity : club.vipBoxCapacity) ?? VIP_BOX_BASE_CAPACITY;
             const baseVipPrice = VIP_BASE_PRICE_BY_DIV[club.division] ?? 200;
             const vipPrice = club.vipTicketPrice ?? baseVipPrice;
             const baseVipIncome = VIP_BASE_INCOME_BY_DIV[club.division] ?? 20000;
@@ -957,7 +980,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const ratio = vipPrice / baseVipPrice;
               vipPriceFactor = Math.max(0, Math.min(1, 1 - (ratio - 1) / 2));
             }
-            const vipIncome = Math.round(baseVipIncome * (vipPrice / baseVipPrice) * vipPriceFactor);
+            const vipIncome = Math.round(baseVipIncome * (effectiveVipCapacity / VIP_BOX_BASE_CAPACITY) * (vipPrice / baseVipPrice) * vipPriceFactor);
             finances += vipIncome;
             roundRevenue += vipIncome;
           }
@@ -1329,7 +1352,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches, seasonStartedRounds, seasonGoodRounds, renewalBoostMatchesLeft, renewalBoostPercent };
       });
 
-      return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft, financialScore, lateStrikes, loans, seasonRevenueAccum };
+      return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft, vipBoxCapacity, financialScore, lateStrikes, loans, seasonRevenueAccum };
     });
 
     // Handle stadium upgrades for player
@@ -1354,6 +1377,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: `stad_${Date.now()}`,
           week: currentRound,
           text: `Obras concluídas! A capacidade do seu estádio aumentou em ${stadiumUpgrade.capacityAdded.toLocaleString()} lugares!`,
+          type: 'INFO'
+        });
+      }
+    }
+
+    // Handle VIP box (camarote) capacity expansions for the player -- separate from the initial
+    // construction (which uses vipBoxesWeeksLeft above), this only ever runs once a camarote
+    // already exists and the user has chosen to expand it further (up to VIP_BOX_MAX_CAPACITY).
+    let nextVipUpgrade = vipBoxUpgrade;
+    if (vipBoxUpgrade) {
+      if (vipBoxUpgrade.weeksLeft > 1) {
+        nextVipUpgrade = { ...vipBoxUpgrade, weeksLeft: vipBoxUpgrade.weeksLeft - 1 };
+      } else {
+        finalClubs = finalClubs.map(c => {
+          if (c.id === userClubId) {
+            return {
+              ...c,
+              vipBoxCapacity: (c.vipBoxCapacity ?? VIP_BOX_BASE_CAPACITY) + vipBoxUpgrade.capacityAdded
+            };
+          }
+          return c;
+        });
+        nextVipUpgrade = null;
+        pushNews({
+          id: `vip_expand_${Date.now()}`,
+          week: currentRound,
+          text: `Obras concluídas! A capacidade dos camarotes VIP aumentou em ${vipBoxUpgrade.capacityAdded.toLocaleString()} lugares!`,
           type: 'INFO'
         });
       }
@@ -1599,6 +1649,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClubs(finalClubs);
     setSchedule(updatedMatches);
     setStadiumUpgrade(nextUpgrade);
+    setVipBoxUpgrade(nextVipUpgrade);
     setActiveSponsors(updatedSponsors);
     setMarketPlayers(nextMarket);
     setOffers(nextOffers);
@@ -2565,8 +2616,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, nextUpgrade, activeSponsors);
   };
 
-  // Build premium VIP boxes -- a flat revenue bonus on every home match, separate from
-  // and stackable with regular ticket income and capacity upgrades.
+  // Build premium VIP boxes (starting at VIP_BOX_BASE_CAPACITY seats, expandable later via
+  // upgradeVipBoxes) -- a revenue bonus on every home match, separate from and stackable with
+  // regular ticket income and stadium capacity upgrades. Per seat this always costs more than
+  // the regular stadium (R$350/seat) since it's a premium amenity, not just more bleachers.
   const buildVipBoxes = () => {
     if (!userClub) return;
 
@@ -2579,8 +2632,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const costByDiv: Record<string, number> = { A: 4000000, B: 2000000, C: 1000000 };
-    const cost = costByDiv[userClub.division] ?? 1000000;
+    const cost = (VIP_SEAT_COST_BY_DIV[userClub.division] ?? 5000) * VIP_BOX_BASE_CAPACITY;
     if (userClub.finances < cost) {
       alert('Finanças insuficientes para construir os camarotes VIP.');
       return;
@@ -2600,6 +2652,56 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `vip_start_${Date.now()}`,
       week: currentRound,
       text: `Obras iniciadas! Construção de camarotes VIP no ${userClub.stadiumName} vai levar ${weeksLeft} rodadas.`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
+  // Expand an already-built camarote VIP, up to VIP_BOX_MAX_CAPACITY seats total. Same
+  // per-seat cost as the initial build -- always pricier than the regular stadium (R$350/seat).
+  const upgradeVipBoxes = (capacityAdded: number) => {
+    if (!userClub) return;
+
+    if (!userClub.hasVipBoxes) {
+      alert('Você ainda não tem camarotes VIP construídos.');
+      return;
+    }
+    if (vipBoxUpgrade) {
+      alert('Os camarotes VIP já estão em ampliação.');
+      return;
+    }
+
+    const currentCapacity = userClub.vipBoxCapacity ?? VIP_BOX_BASE_CAPACITY;
+    if (currentCapacity + capacityAdded > VIP_BOX_MAX_CAPACITY) {
+      alert(`Os camarotes VIP já estão no limite de ${VIP_BOX_MAX_CAPACITY.toLocaleString()} lugares.`);
+      return;
+    }
+
+    const cost = capacityAdded * (VIP_SEAT_COST_BY_DIV[userClub.division] ?? 5000);
+    if (userClub.finances < cost) {
+      alert('Finanças insuficientes para ampliar os camarotes VIP.');
+      return;
+    }
+
+    const weeksLeft = Math.ceil(capacityAdded / 100) * 3; // same construction pace as the initial 200-seat build (6 weeks)
+
+    const nextUpgrade: VipBoxUpgrade = { capacityAdded, cost, weeksLeft };
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances - cost };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+    setVipBoxUpgrade(nextUpgrade);
+
+    setNews(prev => [...prev, {
+      id: `vip_expand_start_${Date.now()}`,
+      week: currentRound,
+      text: `Obras iniciadas! Ampliação dos camarotes VIP para mais ${capacityAdded.toLocaleString()} lugares vai levar ${weeksLeft} rodadas.`,
       type: 'INFO'
     }]);
 
@@ -2760,6 +2862,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCupState(newCup);
     setOffers([]);
     setStadiumUpgrade(null);
+    setVipBoxUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null }); // Clear sponsorships for new club
 
     const newLib = startLibertadores(currentYear + 1, libertadoresClubs, lastSeasonTopSerieA, updatedClubs.filter(c => c.division === 'A'), defendingLibertadoresChampionId);
@@ -2982,6 +3085,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNews([]);
     setHistory([]);
     setStadiumUpgrade(null);
+    setVipBoxUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCurrentMatch(null);
     setCurrentMatchResult(null);
@@ -3979,6 +4083,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNews(data.news);
     setHistory(data.history);
     setStadiumUpgrade(data.stadiumUpgrade);
+    setVipBoxUpgrade(data.vipBoxUpgrade ?? null);
     setActiveSponsors(data.activeSponsors);
     if (data.cupState && data.cupState.fase1ByeClubIds) {
       setCupState(data.cupState);
@@ -4030,6 +4135,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       news,
       history,
       stadiumUpgrade,
+      vipBoxUpgrade,
       activeSponsors,
       currentMatch,
       currentMatchResult,
@@ -4064,6 +4170,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       retirePlayer,
       upgradeStadium,
       buildVipBoxes,
+      upgradeVipBoxes,
       requestLoan,
       payOffLoanEarly,
       renegotiateLoanAction,

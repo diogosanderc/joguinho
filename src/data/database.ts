@@ -88,11 +88,19 @@ export interface ForeignPlayer extends Player {
 // (the actual purchase price is `value`, on the game's own rating-based economy -- unrelated).
 export const EUR_TO_BRL_RATE = 6.2;
 
-// VIP box baseline price and income per division (income at this exact price and full VIP
-// occupancy) -- price is user-adjustable via updateVipPrice, income scales with the price the
-// same way regular ticket income does (too far above baseline drives occupancy down).
+// VIP box baseline price and income per division (income at this exact price, full VIP
+// occupancy, and VIP_BOX_BASE_CAPACITY seats) -- price is user-adjustable via updateVipPrice,
+// income scales with the price the same way regular ticket income does (too far above baseline
+// drives occupancy down), and also scales linearly with the club's built VIP capacity.
 export const VIP_BASE_PRICE_BY_DIV: Record<string, number> = { A: 800, B: 400, C: 200 };
 export const VIP_BASE_INCOME_BY_DIV: Record<string, number> = { A: 80000, B: 40000, C: 20000 };
+
+// A camarote starts at 200 seats once built and can be expanded up to 1000. Building/expanding
+// it is always pricier per seat than the regular stadium (R$350/seat, see upgradeStadium) --
+// it's a premium amenity, not just more bleachers.
+export const VIP_BOX_BASE_CAPACITY = 200;
+export const VIP_BOX_MAX_CAPACITY = 1000;
+export const VIP_SEAT_COST_BY_DIV: Record<string, number> = { A: 20000, B: 10000, C: 5000 };
 
 export interface Club {
   id: string;
@@ -116,6 +124,7 @@ export interface Club {
   penaltyTakerId?: string; // Player designated to take penalty kicks
   hasVipBoxes?: boolean; // Premium seating built -- adds a flat revenue bonus per home match
   vipBoxesWeeksLeft?: number; // Weeks remaining while VIP boxes are under construction
+  vipBoxCapacity?: number; // Seats in the camarote, once built -- starts at VIP_BOX_BASE_CAPACITY (200), expandable up to VIP_BOX_MAX_CAPACITY (1000)
   vipTicketPrice?: number; // Premium seating price per home match -- defaults to the division baseline when unset
   financialScore?: number; // 0-100 "Score Financeiro" driving bank loan terms
   loans?: Loan[]; // Active bank loans
