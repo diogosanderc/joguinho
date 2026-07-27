@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, isClassico, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
 import { ACHIEVEMENTS } from './data/achievements';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
 
@@ -113,7 +113,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, careerStats, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, youthAcademyUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, investorOffer, acceptInvestorDeal, declineInvestorDeal, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, upgradeYouthAcademy, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -136,7 +136,10 @@ const AppContent: React.FC = () => {
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
   const [selectedStartDivision, setSelectedStartDivision] = useState<'A' | 'B' | 'C'>('C');
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
-  const [showPressConference, setShowPressConference] = useState(false);
+  // Entrevista Coletiva only shows before a clássico (league) or a final (Copa/Libertadores) --
+  // this tracks which of those three contexts triggered it, so the tone picker knows which
+  // start-match function to call afterward. null = not showing.
+  const [pressConferenceContext, setPressConferenceContext] = useState<'LEAGUE' | 'CUP' | 'LIBERTADORES' | null>(null);
 
   // Squad selection states
   const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '3-5-2' | '4-3-3'>('4-4-2');
@@ -2424,7 +2427,14 @@ const AppContent: React.FC = () => {
                   )}
                   <button
                     className="btn btn-primary"
-                    onClick={() => { beginMatchKickoff(); startCupMatch(starters); }}
+                    onClick={() => {
+                      if (phase === 'FINAL') {
+                        setPressConferenceContext('CUP');
+                      } else {
+                        beginMatchKickoff();
+                        startCupMatch(starters);
+                      }
+                    }}
                     style={{ marginTop: '16px', height: '48px', background: 'var(--accent-gold)' }}
                   >
                     <Play size={18} fill="#000" /> Iniciar Partida da Copa
@@ -2463,7 +2473,14 @@ const AppContent: React.FC = () => {
                   )}
                   <button
                     className="btn btn-primary"
-                    onClick={() => { beginMatchKickoff(); startLibertadoresMatch(starters); }}
+                    onClick={() => {
+                      if (phase === 'FINAL') {
+                        setPressConferenceContext('LIBERTADORES');
+                      } else {
+                        beginMatchKickoff();
+                        startLibertadoresMatch(starters);
+                      }
+                    }}
                     style={{ marginTop: '16px', height: '48px', background: '#0096dc' }}
                   >
                     <Play size={18} fill="#000" /> Iniciar Partida da Libertadores
@@ -2510,7 +2527,17 @@ const AppContent: React.FC = () => {
 
                 <button
                   className="btn btn-primary"
-                  onClick={() => setShowPressConference(true)}
+                  onClick={() => {
+                    const roundMatches = schedule.filter(m => m.round === currentRound);
+                    const pMatch = roundMatches.find(m => m.homeId === userClubId || m.awayId === userClubId);
+                    const oppId = pMatch ? (pMatch.homeId === userClubId ? pMatch.awayId : pMatch.homeId) : null;
+                    if (oppId && isClassico(userClubId, oppId)) {
+                      setPressConferenceContext('LEAGUE');
+                    } else {
+                      beginMatchKickoff();
+                      nextRound(starters);
+                    }
+                  }}
                   style={{ marginTop: '16px', height: '48px' }}
                 >
                   <Play size={18} fill="#000" /> Iniciar Partida
@@ -4607,49 +4634,59 @@ const AppContent: React.FC = () => {
         );
       })()}
 
-      {/* ENTREVISTA COLETIVA -- shown right before kicking off the league match, letting the
-          player pick a tone that nudges the confidence swing from the result: Confiante risks
-          bigger ups and downs, Provocador also knocks the opponent's confidence regardless of
-          the result, Cauteloso is the safe/neutral baseline (today's existing behavior). */}
-      {showPressConference && gameState !== 'MATCH_DAY' && (
-        <div className="modal-overlay" style={{ zIndex: 1400 }}>
-          <div className="modal-content" style={{ maxWidth: '360px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <span style={{ fontSize: '2.2rem' }}>🎤</span>
-              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Entrevista Coletiva</h3>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>
-                Qual vai ser o tom antes do jogo?
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                className="btn btn-secondary"
-                style={{ textAlign: 'left', padding: '12px' }}
-                onClick={() => { setShowPressConference(false); beginMatchKickoff(); nextRound(starters, 'CONFIANTE'); }}
-              >
-                <strong>😤 Confiante</strong>
-                <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Promete a vitória. Se ganhar, confiança extra. Se perder, o tombo é maior.</p>
-              </button>
-              <button
-                className="btn btn-secondary"
-                style={{ textAlign: 'left', padding: '12px' }}
-                onClick={() => { setShowPressConference(false); beginMatchKickoff(); nextRound(starters, 'CAUTELOSO'); }}
-              >
-                <strong>😐 Cauteloso</strong>
-                <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Não cria expectativa nem arma o adversário. Sem efeito extra.</p>
-              </button>
-              <button
-                className="btn btn-secondary"
-                style={{ textAlign: 'left', padding: '12px' }}
-                onClick={() => { setShowPressConference(false); beginMatchKickoff(); nextRound(starters, 'PROVOCADOR'); }}
-              >
-                <strong>😏 Provocador</strong>
-                <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Mexe com a confiança do adversário, ganhe ou perca. Mas se perder, também dói na sua.</p>
-              </button>
+      {/* ENTREVISTA COLETIVA -- shown only before um clássico (liga) ou uma final (Copa do
+          Brasil/Libertadores), letting the player pick a tone that nudges the confidence swing
+          from the result: Confiante risks bigger ups and downs, Provocador also knocks the
+          opponent's confidence regardless of the result, Cauteloso is the safe/neutral baseline. */}
+      {pressConferenceContext && gameState !== 'MATCH_DAY' && (() => {
+        const chooseTone = (tone: 'CONFIANTE' | 'CAUTELOSO' | 'PROVOCADOR') => {
+          const context = pressConferenceContext;
+          setPressConferenceContext(null);
+          beginMatchKickoff();
+          if (context === 'LEAGUE') nextRound(starters, tone);
+          else if (context === 'CUP') startCupMatch(starters, tone);
+          else if (context === 'LIBERTADORES') startLibertadoresMatch(starters, tone);
+        };
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1400 }}>
+            <div className="modal-content" style={{ maxWidth: '360px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                <span style={{ fontSize: '2.2rem' }}>🎤</span>
+                <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Entrevista Coletiva</h3>
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>
+                  Qual vai ser o tom antes do jogo?
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ textAlign: 'left', padding: '12px' }}
+                  onClick={() => chooseTone('CONFIANTE')}
+                >
+                  <strong>😤 Confiante</strong>
+                  <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Promete a vitória. Se ganhar, confiança extra. Se perder, o tombo é maior.</p>
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ textAlign: 'left', padding: '12px' }}
+                  onClick={() => chooseTone('CAUTELOSO')}
+                >
+                  <strong>😐 Cauteloso</strong>
+                  <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Não cria expectativa nem arma o adversário. Sem efeito extra.</p>
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ textAlign: 'left', padding: '12px' }}
+                  onClick={() => chooseTone('PROVOCADOR')}
+                >
+                  <strong>😏 Provocador</strong>
+                  <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>Mexe com a confiança do adversário, ganhe ou perca. Mas se perder, também dói na sua.</p>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* CHAMPION CELEBRATION MODAL -- top priority in the modal queue, since it's a one-off
           highlight (Copa do Brasil title, decided mid-season) that shouldn't get buried behind
@@ -4810,28 +4847,6 @@ const AppContent: React.FC = () => {
             <button className="btn btn-primary" onClick={dismissSponsorAlert}>
               OK
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* INVESTIDOR/SAF OFFER -- once per season (round 10), offers cash for tougher board
-          expectations the rest of the season. Queued behind the other auto-popup modals. */}
-      {investorOffer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && !championCelebration && (
-        <div className="modal-overlay" style={{ zIndex: 1200 }}>
-          <div className="modal-content" style={{ maxWidth: '350px', textAlign: 'center' }}>
-            <span style={{ fontSize: '2.5rem' }}>💰</span>
-            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Proposta de Investidor</h3>
-            <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 20px 0' }}>
-              Um investidor quer aportar <strong style={{ color: 'var(--accent-green)' }}>{formatCurrency(investorOffer.amount)}</strong> no clube. Em troca, a diretoria vai exigir muito mais de você pelo resto da temporada -- o limite de confiança pra demissão e aviso sobem.
-            </p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={declineInvestorDeal}>
-                Recusar
-              </button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={acceptInvestorDeal}>
-                Aceitar
-              </button>
-            </div>
           </div>
         </div>
       )}
