@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
+import { ACHIEVEMENTS } from './data/achievements';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
@@ -88,7 +89,7 @@ const TUTORIAL_STEPS: { tabIndex: number; title: string; text: string; nextTabIn
 const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
-    schedule, marketPlayers, offers, news, history, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, activeSponsors,
+    schedule, marketPlayers, offers, news, history, careerStats, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
@@ -123,7 +124,7 @@ const AppContent: React.FC = () => {
   const [standingsTab, setStandingsTab] = useState<'A' | 'B' | 'C'>('C');
   const [standingsCompetition, setStandingsCompetition] = useState<'NACIONAL' | 'LIBERTADORES'>('NACIONAL');
   const [libertadoresStandingsGroup, setLibertadoresStandingsGroup] = useState<LibertadoresGroupLabel>('A');
-  const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'GAMES' | 'HISTORY'>('TABLE');
+  const [statsView, setStatsView] = useState<'TABLE' | 'STATS' | 'GAMES' | 'HISTORY' | 'ACHIEVEMENTS'>('TABLE');
 
   // Whenever the user's club actually changes division (promotion/relegation at season
   // rollover, or picking a new club), snap the Classificação tab to that division -- otherwise
@@ -4034,7 +4035,48 @@ const AppContent: React.FC = () => {
               >
                 Carreira
               </button>
+              <button
+                onClick={() => setStatsView('ACHIEVEMENTS')}
+                className={`sub-tab-btn ${statsView === 'ACHIEVEMENTS' ? 'active' : ''}`}
+                style={{ flex: 1, padding: '6px 4px', fontSize: '0.68rem' }}
+              >
+                Conquistas
+              </button>
             </div>
+
+            {statsView === 'ACHIEVEMENTS' && (
+              <div className="card">
+                <div className="card-title">🏅 Conquistas</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                  <span>Vitórias: <strong style={{ color: 'white' }}>{careerStats.totalWins}</strong></span>
+                  <span>Sequência invicta: <strong style={{ color: 'white' }}>{careerStats.longestUnbeatenStreak}</strong></span>
+                  <span>Títulos: <strong style={{ color: 'white' }}>{careerStats.titlesWon}</strong></span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {ACHIEVEMENTS.map(ach => {
+                    const unlocked = ach.check(careerStats);
+                    return (
+                      <div
+                        key={ach.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px', padding: '10px',
+                          borderRadius: '12px',
+                          background: unlocked ? 'rgba(0,230,118,0.06)' : 'rgba(255,255,255,0.02)',
+                          border: `1px solid ${unlocked ? 'rgba(0,230,118,0.25)' : 'rgba(255,255,255,0.05)'}`,
+                          opacity: unlocked ? 1 : 0.5
+                        }}
+                      >
+                        <span style={{ fontSize: '1.6rem' }}>{unlocked ? ach.icon : '🔒'}</span>
+                        <div>
+                          <strong style={{ fontSize: '0.85rem', color: unlocked ? 'var(--accent-green)' : 'white' }}>{ach.title}</strong>
+                          <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '2px 0 0' }}>{ach.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {statsView === 'TABLE' && (
               <>

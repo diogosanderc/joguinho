@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS } from '../data/database';
+import type { CareerStats } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
@@ -159,6 +160,7 @@ interface GameContextType {
   offers: JobOffer[];
   news: NewsItem[];
   history: HistoryRecord[];
+  careerStats: CareerStats;
   stadiumUpgrade: StadiumUpgrade | null;
   vipBoxUpgrade: VipBoxUpgrade | null;
   medicalDeptUpgrade: MedicalDeptUpgrade | null;
@@ -289,6 +291,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [formerClubName, setFormerClubName] = useState('');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
+  // Lifetime career stats (Conquistas). Ref-backed like vipBoxUpgrade/medicalDeptUpgrade above,
+  // since saveGame reads it synchronously right after nextRoundImpl/endSeason update it.
+  const [careerStats, setCareerStatsRaw] = useState<CareerStats>(DEFAULT_CAREER_STATS);
+  const careerStatsRef = useRef<CareerStats>(DEFAULT_CAREER_STATS);
+  const setCareerStats = (next: CareerStats) => {
+    careerStatsRef.current = next;
+    setCareerStatsRaw(next);
+  };
   const [stadiumUpgrade, setStadiumUpgrade] = useState<StadiumUpgrade | null>(null);
   // VIP box capacity expansions (200 -> up to 1000 seats). Kept in a ref too, the same pattern
   // as cupStateRef, so saveGame() (which reads it synchronously outside any state-setter
@@ -544,6 +554,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stadiumUpgrade: upgrade,
       vipBoxUpgrade: vipBoxUpgradeRef.current,
       medicalDeptUpgrade: medicalDeptUpgradeRef.current,
+      careerStats: careerStatsRef.current,
       activeSponsors: sponsorsList,
       cupState: cupStateRef.current,
       foreignMarketPlayers: foreignMarketRef.current,
@@ -625,6 +636,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentRound(1);
     setCurrentYear(2026);
     setHistory([]);
+    setCareerStats(DEFAULT_CAREER_STATS);
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
     setMedicalDeptUpgrade(null);
@@ -964,6 +976,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           confidence = Math.max(0, confidence - 10);
         }
+
+        // Conquistas: lifetime win/draw/loss + unbeaten streak counters.
+        const prevStats = careerStatsRef.current;
+        const wonOrDrew = userScore >= oppScore;
+        const newStreak = wonOrDrew ? prevStats.currentUnbeatenStreak + 1 : 0;
+        setCareerStats({
+          ...prevStats,
+          totalWins: prevStats.totalWins + (userScore > oppScore ? 1 : 0),
+          totalDraws: prevStats.totalDraws + (userScore === oppScore ? 1 : 0),
+          totalLosses: prevStats.totalLosses + (userScore < oppScore ? 1 : 0),
+          currentUnbeatenStreak: newStreak,
+          longestUnbeatenStreak: Math.max(prevStats.longestUnbeatenStreak, newStreak)
+        });
 
         // Torcedor do Jogo (Man of the Match) -- picks a standout among the user's starters:
         // goals score heavily, a clean sheet highlights the defense/goalkeeper, with a small
@@ -2108,6 +2133,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isPlayerChampion = divisionChampions[playerDiv] === playerClubFinal.name;
     const isPlayerRelegated = (playerDiv === 'A' && relegations.A.includes(userClubId)) ||
                               (playerDiv === 'B' && relegations.B.includes(userClubId));
+
+    // Conquistas: division titles + Copa do Brasil titles (Libertadores is credited separately
+    // in finalizeLibertadoresPhase, since its Final can resolve after endSeason already ran).
+    setCareerStats({
+      ...careerStatsRef.current,
+      titlesWon: careerStatsRef.current.titlesWon + (isPlayerChampion ? 1 : 0),
+      cupsWon: careerStatsRef.current.cupsWon + (cupChampionClub === playerClubFinal.name ? 1 : 0)
+    });
 
     const careerOffers: JobOffer[] = [];
     const allAvailableClubs = finalClubs.filter(c => c.id !== userClubId);
@@ -3254,6 +3287,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOffers([]);
     setNews([]);
     setHistory([]);
+    setCareerStats(DEFAULT_CAREER_STATS);
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
     setMedicalDeptUpgrade(null);
@@ -3854,6 +3888,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setHistory(prev => prev.map(rec => rec.year === currentYear
         ? { ...rec, libertadoresChampion: championName, libertadoresEarnings: userLibEarnings }
         : rec));
+      if (championId === userClubId) {
+        setCareerStats({ ...careerStatsRef.current, libertadoresWon: careerStatsRef.current.libertadoresWon + 1 });
+      }
     }
 
     setLibertadoresState(nextLib);
@@ -4256,6 +4293,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStadiumUpgrade(data.stadiumUpgrade);
     setVipBoxUpgrade(data.vipBoxUpgrade ?? null);
     setMedicalDeptUpgrade(data.medicalDeptUpgrade ?? null);
+    setCareerStats(data.careerStats ?? DEFAULT_CAREER_STATS);
     setActiveSponsors(data.activeSponsors);
     if (data.cupState && data.cupState.fase1ByeClubIds) {
       setCupState(data.cupState);
@@ -4309,6 +4347,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stadiumUpgrade,
       vipBoxUpgrade,
       medicalDeptUpgrade,
+      careerStats,
       activeSponsors,
       currentMatch,
       currentMatchResult,

@@ -1,5 +1,29 @@
 import type { Loan } from '../utils/loanEngine';
 
+// Lifetime counters across the manager's whole career (persist across seasons, only reset when
+// a brand new career starts) -- drives the Conquistas (achievements) system.
+export interface CareerStats {
+  totalWins: number;
+  totalDraws: number;
+  totalLosses: number;
+  currentUnbeatenStreak: number;
+  longestUnbeatenStreak: number;
+  titlesWon: number; // Division championships (A, B or C)
+  cupsWon: number; // Copa do Brasil titles
+  libertadoresWon: number; // Libertadores titles
+}
+
+export const DEFAULT_CAREER_STATS: CareerStats = {
+  totalWins: 0,
+  totalDraws: 0,
+  totalLosses: 0,
+  currentUnbeatenStreak: 0,
+  longestUnbeatenStreak: 0,
+  titlesWon: 0,
+  cupsWon: 0,
+  libertadoresWon: 0
+};
+
 // GOL Goleiro, ZAG Zagueiro, LD Lateral-Direito, LE Lateral-Esquerdo,
 // VOL Volante, MEI Meia, PON Ponta, CA Centroavante
 export type PlayerPosition = 'GOL' | 'ZAG' | 'LD' | 'LE' | 'VOL' | 'MEI' | 'PON' | 'CA';
