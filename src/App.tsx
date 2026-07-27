@@ -98,6 +98,7 @@ const AppContent: React.FC = () => {
   // Starting state states
   const [inputName, setInputName] = useState('');
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
+  const [selectedStartDivision, setSelectedStartDivision] = useState<'A' | 'B' | 'C'>('C');
 
   // Squad selection states
   const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '3-5-2' | '4-3-3'>('4-4-2');
@@ -1274,7 +1275,7 @@ const AppContent: React.FC = () => {
 
   // --- START SCREEN RENDER ---
   if (gameState === 'START') {
-    const cClubs = CLUB_DEFINITIONS.filter(c => c.division === 'C').sort((a, b) => a.name.localeCompare(b.name));
+    const startClubs = CLUB_DEFINITIONS.filter(c => c.division === selectedStartDivision).sort((a, b) => a.name.localeCompare(b.name));
 
     // All 4 save slots are occupied — ask which one to overwrite before starting
     if (overwriteSlotPicker) {
@@ -1356,9 +1357,27 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', flex: 0.8, overflow: 'hidden' }}>
-          <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube (Série C)</h3>
+          <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube</h3>
+          <select
+            value={selectedStartDivision}
+            onChange={(e) => { setSelectedStartDivision(e.target.value as 'A' | 'B' | 'C'); setSelectedStartClubId(''); }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginBottom: '10px',
+              background: '#121316',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '12px',
+              color: 'white',
+              fontSize: '0.85rem'
+            }}
+          >
+            <option value="A">Série A</option>
+            <option value="B">Série B</option>
+            <option value="C">Série C</option>
+          </select>
           <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', gap: '8px', display: 'flex', flexDirection: 'column' }}>
-            {cClubs.map(club => (
+            {startClubs.map(club => (
               <div 
                 key={club.id}
                 onClick={() => setSelectedStartClubId(club.id)}

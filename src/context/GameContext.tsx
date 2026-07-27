@@ -593,13 +593,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBoughtForeignIds([]);
     setForeignMarketPlayers(foreignPlayerPool.length > 0 ? sampleForeignPlayers(foreignPlayerPool, [], 18) : []);
 
+    const chosenClub = updatedClubs.find(c => c.id === chosenClubId);
     const initialNews: NewsItem[] = [
-      { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${updatedClubs.find(c => c.id === chosenClubId)?.name}. Boa sorte na Série C!`, type: 'BOARD' }
+      { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${chosenClub?.name}. Boa sorte na Série ${chosenClub?.division}!`, type: 'BOARD' }
     ];
     setNews(initialNews);
     
-    // Generate initial market
-    const market = generateMarketPlayers('C');
+    // Generate initial market, scaled to the division the player actually starts in.
+    const market = generateMarketPlayers(chosenClub?.division ?? 'C');
     setMarketPlayers(market);
     setGameState('PLAYING');
 
