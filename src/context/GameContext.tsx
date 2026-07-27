@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
@@ -101,6 +101,22 @@ export interface VipBoxUpgrade {
   weeksLeft: number;
 }
 
+export interface MedicalDeptUpgrade {
+  level: number; // nível alvo da obra em andamento
+  cost: number;
+  weeksLeft: number;
+}
+
+// Rolls how many weeks an injury keeps a player out, then applies the Departamento Médico's
+// duration reduction for the given level (0 = nenhum, no reduction). Shared by both places an
+// injury can be generated (a live match INJURY event, and the random per-round chance) so the
+// medical department's effect is guaranteed to apply consistently everywhere.
+const rollInjuryWeeks = (medicalDeptLevel: number): number => {
+  const base = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
+  const reduction = MEDICAL_DEPT_REDUCTION_BY_LEVEL[medicalDeptLevel] ?? 0;
+  return Math.max(1, Math.round(base * (1 - reduction)));
+};
+
 export interface JobOffer {
   clubId: string;
   clubName: string;
@@ -143,6 +159,7 @@ interface GameContextType {
   history: HistoryRecord[];
   stadiumUpgrade: StadiumUpgrade | null;
   vipBoxUpgrade: VipBoxUpgrade | null;
+  medicalDeptUpgrade: MedicalDeptUpgrade | null;
   activeSponsors: Record<'MASTER' | 'COSTAS' | 'MANGAS', Sponsor | null>;
   currentMatch: LeagueMatch | null;
   currentMatchResult: MatchResult | null;
@@ -181,6 +198,7 @@ interface GameContextType {
   upgradeStadium: (capacity: number) => void;
   buildVipBoxes: () => void;
   upgradeVipBoxes: (capacityAdded: number) => void;
+  upgradeMedicalDept: () => void;
   requestLoan: (amount: number, totalRounds: number, purpose: string) => void;
   payOffLoanEarly: (loanId: string) => void;
   renegotiateLoanAction: (loanId: string) => void;
@@ -278,6 +296,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setVipBoxUpgrade = (next: VipBoxUpgrade | null) => {
     vipBoxUpgradeRef.current = next;
     setVipBoxUpgradeRaw(next);
+  };
+  // Departamento Médico upgrade in progress (same ref-backed pattern as vipBoxUpgrade above).
+  const [medicalDeptUpgrade, setMedicalDeptUpgradeRaw] = useState<MedicalDeptUpgrade | null>(null);
+  const medicalDeptUpgradeRef = useRef<MedicalDeptUpgrade | null>(null);
+  const setMedicalDeptUpgrade = (next: MedicalDeptUpgrade | null) => {
+    medicalDeptUpgradeRef.current = next;
+    setMedicalDeptUpgradeRaw(next);
   };
   // Copa Mata-Mata state. Kept in a ref too so saveGame() (which reads it synchronously outside
   // of any state-setter callback) always sees the latest value, the same pattern as currentSlotRef.
@@ -516,6 +541,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       history: past,
       stadiumUpgrade: upgrade,
       vipBoxUpgrade: vipBoxUpgradeRef.current,
+      medicalDeptUpgrade: medicalDeptUpgradeRef.current,
       activeSponsors: sponsorsList,
       cupState: cupStateRef.current,
       foreignMarketPlayers: foreignMarketRef.current,
@@ -599,6 +625,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory([]);
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
+    setMedicalDeptUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCupState(startCup(updatedClubs, 2026));
     // The Libertadores club data loads asynchronously (fetched once on mount) -- on the rare
@@ -1106,8 +1133,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (ev.type === 'INJURY') {
               isInjured = true;
               justInjured = true;
-              // 70% chance of a light 1-week injury, otherwise 2-4 weeks
-              injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
+              injuryWeeks = rollInjuryWeeks(club.id === userClubId ? (club.medicalDeptLevel ?? 0) : 0);
               energy = 100; // recovers fatigue on injury!
               if (club.id === userClubId) {
                 pushNews({
@@ -1132,7 +1158,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (Math.random() < injuryChance) {
             isInjured = true;
             justInjured = true;
-            injuryWeeks = Math.random() < 0.70 ? 1 : Math.floor(Math.random() * 3) + 2;
+            injuryWeeks = rollInjuryWeeks(club.medicalDeptLevel ?? 0);
             energy = 100; // recovers fatigue on injury!
             pushNews({
               id: `inj_rand_${player.id}_${Date.now()}`,
@@ -1409,6 +1435,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // Handle Departamento Médico level upgrades -- advances one level at a time (0 -> 1 -> 2 -> 3),
+    // reducing injury duration for the user's squad (see rollInjuryWeeks) once complete.
+    let nextMedicalUpgrade = medicalDeptUpgrade;
+    if (medicalDeptUpgrade) {
+      if (medicalDeptUpgrade.weeksLeft > 1) {
+        nextMedicalUpgrade = { ...medicalDeptUpgrade, weeksLeft: medicalDeptUpgrade.weeksLeft - 1 };
+      } else {
+        finalClubs = finalClubs.map(c => {
+          if (c.id === userClubId) {
+            return { ...c, medicalDeptLevel: medicalDeptUpgrade.level };
+          }
+          return c;
+        });
+        nextMedicalUpgrade = null;
+        pushNews({
+          id: `med_${Date.now()}`,
+          week: currentRound,
+          text: `Obras concluídas! Departamento médico avançou para o nível ${MEDICAL_DEPT_LEVEL_NAMES[medicalDeptUpgrade.level]}. As lesões dos seus jogadores serão mais curtas.`,
+          type: 'INFO'
+        });
+      }
+    }
+
     // Decrement sponsors contract weeks
     const updatedSponsors = { ...activeSponsors };
     Object.keys(updatedSponsors).forEach(key => {
@@ -1650,6 +1699,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSchedule(updatedMatches);
     setStadiumUpgrade(nextUpgrade);
     setVipBoxUpgrade(nextVipUpgrade);
+    setMedicalDeptUpgrade(nextMedicalUpgrade);
     setActiveSponsors(updatedSponsors);
     setMarketPlayers(nextMarket);
     setOffers(nextOffers);
@@ -2708,6 +2758,51 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
   };
 
+  // Advance the Departamento Médico one level at a time (0 -> 1 -> 2 -> 3), reducing injury
+  // duration for the user's squad (see rollInjuryWeeks). 5 rounds of construction per level.
+  const upgradeMedicalDept = () => {
+    if (!userClub) return;
+
+    const currentLevel = userClub.medicalDeptLevel ?? 0;
+    if (currentLevel >= 3) {
+      alert('Seu departamento médico já está no nível máximo.');
+      return;
+    }
+    if (medicalDeptUpgrade) {
+      alert('O departamento médico já está em obras.');
+      return;
+    }
+
+    const nextLevel = currentLevel + 1;
+    const cost = MEDICAL_DEPT_COST_BY_LEVEL_DIV[nextLevel]?.[userClub.division] ?? 500000;
+    if (userClub.finances < cost) {
+      alert('Finanças insuficientes para ampliar o departamento médico.');
+      return;
+    }
+
+    const weeksLeft = 5;
+    const nextUpgrade: MedicalDeptUpgrade = { level: nextLevel, cost, weeksLeft };
+
+    const updatedClubs = clubs.map(club => {
+      if (club.id === userClubId) {
+        return { ...club, finances: club.finances - cost };
+      }
+      return club;
+    });
+
+    setClubs(updatedClubs);
+    setMedicalDeptUpgrade(nextUpgrade);
+
+    setNews(prev => [...prev, {
+      id: `med_start_${Date.now()}`,
+      week: currentRound,
+      text: `Obras iniciadas! Departamento médico avançando para o nível ${MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (${weeksLeft} rodadas).`,
+      type: 'INFO'
+    }]);
+
+    saveGame(gameState, managerName, currentYear, currentRound, updatedClubs, userClubId, schedule, marketPlayers, offers, news, history, stadiumUpgrade, activeSponsors);
+  };
+
   // Request a bank loan for the user's club. Amount and term are validated against the
   // credit limit (Score Financeiro × last season's revenue) and the bank refuses outright
   // below a minimum score, or if too many past installments have gone late.
@@ -2863,6 +2958,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOffers([]);
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
+    setMedicalDeptUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null }); // Clear sponsorships for new club
 
     const newLib = startLibertadores(currentYear + 1, libertadoresClubs, lastSeasonTopSerieA, updatedClubs.filter(c => c.division === 'A'), defendingLibertadoresChampionId);
@@ -3086,6 +3182,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory([]);
     setStadiumUpgrade(null);
     setVipBoxUpgrade(null);
+    setMedicalDeptUpgrade(null);
     setActiveSponsors({ MASTER: null, COSTAS: null, MANGAS: null });
     setCurrentMatch(null);
     setCurrentMatchResult(null);
@@ -4084,6 +4181,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistory(data.history);
     setStadiumUpgrade(data.stadiumUpgrade);
     setVipBoxUpgrade(data.vipBoxUpgrade ?? null);
+    setMedicalDeptUpgrade(data.medicalDeptUpgrade ?? null);
     setActiveSponsors(data.activeSponsors);
     if (data.cupState && data.cupState.fase1ByeClubIds) {
       setCupState(data.cupState);
@@ -4136,6 +4234,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       history,
       stadiumUpgrade,
       vipBoxUpgrade,
+      medicalDeptUpgrade,
       activeSponsors,
       currentMatch,
       currentMatchResult,
@@ -4171,6 +4270,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       upgradeStadium,
       buildVipBoxes,
       upgradeVipBoxes,
+      upgradeMedicalDept,
       requestLoan,
       payOffLoanEarly,
       renegotiateLoanAction,

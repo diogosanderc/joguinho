@@ -102,6 +102,20 @@ export const VIP_BOX_BASE_CAPACITY = 200;
 export const VIP_BOX_MAX_CAPACITY = 1000;
 export const VIP_SEAT_COST_BY_DIV: Record<string, number> = { A: 20000, B: 10000, C: 5000 };
 
+// Departamento Médico: 3 níveis (0 = nenhum), cada um reduzindo a duração das lesões dos
+// jogadores do clube do usuário (não afeta a chance de se machucar, só quanto tempo fica fora).
+export const MEDICAL_DEPT_LEVEL_NAMES: Record<number, string> = {
+  0: 'Nenhum', 1: 'Básico', 2: 'Intermediário', 3: 'Avançado'
+};
+export const MEDICAL_DEPT_REDUCTION_BY_LEVEL: Record<number, number> = {
+  0: 0, 1: 0.20, 2: 0.40, 3: 0.60
+};
+export const MEDICAL_DEPT_COST_BY_LEVEL_DIV: Record<number, Record<string, number>> = {
+  1: { A: 2000000, B: 1000000, C: 500000 },
+  2: { A: 6000000, B: 3000000, C: 1500000 },
+  3: { A: 12000000, B: 6000000, C: 3000000 }
+};
+
 export interface Club {
   id: string;
   name: string;
@@ -126,6 +140,7 @@ export interface Club {
   vipBoxesWeeksLeft?: number; // Weeks remaining while VIP boxes are under construction
   vipBoxCapacity?: number; // Seats in the camarote, once built -- starts at VIP_BOX_BASE_CAPACITY (200), expandable up to VIP_BOX_MAX_CAPACITY (1000)
   vipTicketPrice?: number; // Premium seating price per home match -- defaults to the division baseline when unset
+  medicalDeptLevel?: number; // 0 (nenhum) a 3 (avançado) -- reduz a duração das lesões dos jogadores do clube do usuário
   financialScore?: number; // 0-100 "Score Financeiro" driving bank loan terms
   loans?: Loan[]; // Active bank loans
   lateStrikes?: number; // Cumulative missed installments -- 3+ blocks new loans

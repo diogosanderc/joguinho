@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
@@ -88,9 +88,9 @@ const TUTORIAL_STEPS: { tabIndex: number; title: string; text: string; nextTabIn
 const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
-    schedule, marketPlayers, offers, news, history, stadiumUpgrade, vipBoxUpgrade, activeSponsors,
+    schedule, marketPlayers, offers, news, history, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
-    upgradeStadium, buildVipBoxes, upgradeVipBoxes, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
+    upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
@@ -3732,6 +3732,49 @@ const AppContent: React.FC = () => {
                     >
                       Construir Camarotes VIP (Custo: {formatCurrency(cost)})
                     </button>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Departamento Médico */}
+            <div className="card">
+              <div className="card-title"><Shield size={18} color="var(--accent-green)" /> Departamento Médico</div>
+              {(() => {
+                const level = userClub.medicalDeptLevel ?? 0;
+                const reduction = MEDICAL_DEPT_REDUCTION_BY_LEVEL[level] ?? 0;
+                const nextLevel = level + 1;
+                const nextCost = MEDICAL_DEPT_COST_BY_LEVEL_DIV[nextLevel]?.[userClub.division] ?? 0;
+
+                return (
+                  <>
+                    <div className="stat-box" style={{ marginBottom: '10px' }}>
+                      <span className="stat-label">Nível Atual</span>
+                      <span className="stat-value">{MEDICAL_DEPT_LEVEL_NAMES[level]}</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: '12px' }}>
+                      {level > 0
+                        ? `Lesões dos seus jogadores duram ${Math.round(reduction * 100)}% menos tempo.`
+                        : 'Sem departamento médico ainda -- lesões seguem a duração padrão.'}
+                    </div>
+
+                    {medicalDeptUpgrade ? (
+                      <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.05)', border: '1px solid rgba(255, 193, 7, 0.2)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
+                        🚧 Obras em andamento: Nível {MEDICAL_DEPT_LEVEL_NAMES[medicalDeptUpgrade.level]} ({medicalDeptUpgrade.weeksLeft} rodadas restantes).
+                      </div>
+                    ) : level >= 3 ? (
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                        🏆 Departamento médico no nível máximo.
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => upgradeMedicalDept()}
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8rem', padding: '10px', width: '100%' }}
+                      >
+                        Avançar para Nível {MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (Custo: {formatCurrency(nextCost)})
+                      </button>
+                    )}
                   </>
                 );
               })()}
