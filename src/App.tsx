@@ -99,6 +99,7 @@ const AppContent: React.FC = () => {
   const [inputName, setInputName] = useState('');
   const [selectedStartClubId, setSelectedStartClubId] = useState('');
   const [selectedStartDivision, setSelectedStartDivision] = useState<'A' | 'B' | 'C'>('C');
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Squad selection states
   const [selectedTactic, setSelectedTactic] = useState<'4-4-2' | '3-5-2' | '4-3-3'>('4-4-2');
@@ -873,6 +874,17 @@ const AppContent: React.FC = () => {
     }
   }, [currentRound, gameState]);
 
+  // Kicks off a brand new career and, the very first time this player has ever done so on this
+  // browser, queues the tutorial modal right behind it -- a global flag (not tied to any save
+  // slot), so it's a true "first time playing" thing rather than "first time in this campaign".
+  const beginNewCareer = (name: string, clubId: string, slot: number) => {
+    startGame(name, clubId, slot);
+    if (!localStorage.getItem('retrofoot_2026_tutorial_seen')) {
+      localStorage.setItem('retrofoot_2026_tutorial_seen', 'true');
+      setShowTutorial(true);
+    }
+  };
+
   const handleSkipMatch = () => {
     if (!currentMatchResult) return;
     setSimMinute(90);
@@ -1250,7 +1262,7 @@ const AppContent: React.FC = () => {
       <div className="mobile-wrapper" style={{ justifyContent: 'center', alignItems: 'center', padding: '30px' }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>RETROFOOT 2026</h1>
-          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
+          <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Seja um verdadeiro campeão!</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', maxWidth: '320px' }}>
@@ -1297,7 +1309,7 @@ const AppContent: React.FC = () => {
                     key={slot}
                     onClick={() => {
                       if (confirm(`Substituir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
-                        startGame(overwriteSlotPicker.name, overwriteSlotPicker.clubId, slot);
+                        beginNewCareer(overwriteSlotPicker.name, overwriteSlotPicker.clubId, slot);
                         setOverwriteSlotPicker(null);
                       }
                     }}
@@ -1411,7 +1423,7 @@ const AppContent: React.FC = () => {
           onClick={() => {
             const free = getFreeSlot();
             if (free) {
-              startGame(inputName, selectedStartClubId, free);
+              beginNewCareer(inputName, selectedStartClubId, free);
             } else {
               setOverwriteSlotPicker({ name: inputName, clubId: selectedStartClubId });
             }
@@ -4353,6 +4365,68 @@ const AppContent: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* FIRST-TIME TUTORIAL MODAL -- shown once ever on this browser, right after a brand new
+          career is created (see beginNewCareer), giving a quick tour of the main tabs before the
+          player is left alone on the office screen. */}
+      {showTutorial && gameState !== 'MATCH_DAY' && (
+        <div className="modal-overlay" style={{ zIndex: 1500 }}>
+          <div className="modal-content" style={{ maxWidth: '380px', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+              <span style={{ fontSize: '2.5rem' }}>🏆</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Seja um verdadeiro campeão!</h3>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px' }}>Conheça rapidinho as principais áreas do jogo:</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <Home size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>Escritório</strong>
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Acompanhe o feed de notícias do seu clube e do campeonato, e inicie a partida da rodada.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <Users size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>Elenco</strong>
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Monte sua escalação, mude a tática, renove contratos e cuide da condição dos jogadores.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <TrendingUp size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>Mercado</strong>
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Compre e venda jogadores livres, de times brasileiros ou de ligas estrangeiras.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <DollarSign size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>Finanças</strong>
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Controle o caixa do clube, ingressos, patrocínios, empréstimos e o estádio.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <Trophy size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>Classificação</strong>
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Veja a tabela do campeonato, artilheiros e o histórico da sua carreira.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <Play size={20} color="var(--accent-green)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>Partidas ao vivo</strong>
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0' }}>Assista aos jogos rodada a rodada, faça substituições e mude a tática no intervalo.</p>
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowTutorial(false)}>
+              Vamos começar!
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* CHAMPION CELEBRATION MODAL -- top priority in the modal queue, since it's a one-off
           highlight (Copa do Brasil title, decided mid-season) that shouldn't get buried behind
