@@ -66,6 +66,20 @@ const PERSONALITY_LABEL: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> 
   DECISIVO: 'Decisivo: rende mais em finais e mata-matas'
 };
 
+// Potencial oculto: never shown as a flat number until the player is well-scouted (enough
+// games started) -- narrows from "observando" to a range to the exact hidden ceiling.
+const getPotentialDisplay = (player: Player): string | null => {
+  if (!player.potentialRating) return null;
+  const games = player.scoutingGames ?? 0;
+  if (games < 5) return '🔭 Potencial: observando...';
+  if (games < 15) {
+    const lo = Math.max(player.rating, player.potentialRating - 8);
+    const hi = Math.min(99, player.potentialRating + 8);
+    return `🔭 Potencial: ${lo}-${hi}`;
+  }
+  return `🔭 Potencial: ${player.potentialRating}`;
+};
+
 const marketSelectStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px',
@@ -2875,6 +2889,9 @@ const AppContent: React.FC = () => {
                           {player.energy < 60 && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-gold)', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>Fadiga ({player.energy}%)</span>}
                         </div>
                         <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • {formatCurrency(player.value)}</span>
+                        {getPotentialDisplay(player) && (
+                          <span style={{ fontSize: '0.68rem', color: 'var(--accent-gold)' }}>{getPotentialDisplay(player)}</span>
+                        )}
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

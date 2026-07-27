@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality } from '../data/database';
+import { initializeClubs, formatCurrency, getPositionGroup, isClassico, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, MEDICAL_DEPT_LEVEL_NAMES, DEFAULT_CAREER_STATS, rollPersonality, rollYouthPotential } from '../data/database';
 import type { CareerStats } from '../data/database';
 import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/database';
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
@@ -258,7 +258,8 @@ const generateYouthPlayer = (clubId: string, position: PlayerPosition, clubReput
     id: `youth_${clubId}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
     name, age, position, rating, energy: 100, value, salary,
     goals: 0, yellowCards: 0, redCards: 0, isInjured: false, isStar: false, contractLocked: false,
-    personality: rollPersonality()
+    personality: rollPersonality(),
+    potentialRating: rollYouthPotential(rating)
   };
 };
 
@@ -1288,7 +1289,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // back DOWN to 99 by a growth roll; his own current rating is the effective floor.
           const growthCap = Math.max(99, player.rating);
           if (isYoung) {
-            if (Math.random() < 0.08) rating = Math.min(growthCap, rating + 1);
+            // A young player with a hidden potential (see rollYouthPotential) never trains past
+            // that ceiling, no matter how many good rolls he gets -- the potential IS the ceiling.
+            const youthCap = player.potentialRating ? Math.min(growthCap, player.potentialRating) : growthCap;
+            if (Math.random() < 0.08) rating = Math.min(youthCap, rating + 1);
           } else if (isOld) {
             const roll = Math.random();
             if (roll < 0.04) rating = Math.max(40, rating - 1);
@@ -1312,9 +1316,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // while actually starting -- feeds the end-of-season form bonus (see endSeason).
         let seasonStartedRounds = player.seasonStartedRounds ?? 0;
         let seasonGoodRounds = player.seasonGoodRounds ?? 0;
+        // Lifetime (never resets each season, unlike seasonStartedRounds) -- how many games of
+        // scouting the club's staff has on this player, gradually revealing his hidden potential.
+        let scoutingGames = player.scoutingGames ?? 0;
         if (wasStarter) {
           seasonStartedRounds++;
           if (performanceTrend !== 'DOWN') seasonGoodRounds++;
+          scoutingGames++;
         }
 
         if (club.id === userClubId && performanceTrend !== player.performanceTrend && (player.isStar || player.rating >= 75)) {
@@ -1434,7 +1442,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           renewalBoostMatchesLeft -= 1;
         }
 
-        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches, seasonStartedRounds, seasonGoodRounds, renewalBoostMatchesLeft, renewalBoostPercent };
+        return { ...player, rating, value, salary, energy, isInjured, injuryWeeks, yellowCards, redCards, goals, contractWeeks, benchRounds, contractLocked, contractLockYears, performanceTrend, suspendedMatches, seasonStartedRounds, seasonGoodRounds, renewalBoostMatchesLeft, renewalBoostPercent, scoutingGames };
       });
 
       return { ...club, finances, confidence, squad, hasVipBoxes, vipBoxesWeeksLeft, vipBoxCapacity, financialScore, lateStrikes, loans, seasonRevenueAccum };
@@ -2004,7 +2012,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // The 99 cap below only applies to normal players -- a boosted foreign star already
         // sitting above it must never be pulled back DOWN to 99 by one of these season-end
         // bumps; his own rating at the start of this calculation is the effective floor.
-        const growthCap = Math.max(99, p.rating);
+        // A young player with a hidden potential never grows past it, even via these season-end
+        // bonuses -- same rule as the weekly training roll above.
+        const growthCap = p.age <= 23 && p.potentialRating
+          ? Math.min(Math.max(99, p.rating), p.potentialRating)
+          : Math.max(99, p.rating);
         let rating = p.rating;
         if (p.goals >= 10) {
           isStar = true;

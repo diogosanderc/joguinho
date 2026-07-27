@@ -63,7 +63,21 @@ export interface Player {
   eliteStamina?: boolean; // World-class foreign stars whose fitness holds up far better -- lose energy 50% slower after playing than everyone else
   purchasePrice?: number; // What the user's club actually paid for this player, if bought -- their market value never drops below this afterward
   personality?: 'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO'; // LIDER: small team-force bonus when he starts. TEMPERAMENTAL: more likely to pick up cards. DECISIVO: rating bonus in high-stakes matches (ver isHighStakes em calculateTeamForces/simulateMatch)
+  potentialRating?: number; // Hidden ceiling for young players (<=21 at creation) -- his rating never trains past this. Gradually revealed to the user as scoutingGames grows.
+  scoutingGames?: number; // Lifetime games started (never resets each season) -- how well-scouted this player is, narrows the potential range shown in the UI
 }
+
+// Rolls a hidden growth ceiling for a newly created young player (age <= 21): most get a modest
+// bump over their current rating, some are genuinely promising, and a rare few are wonderkids.
+// Never told to the player directly -- only gradually narrowed in the UI as scoutingGames grows.
+export const rollYouthPotential = (currentRating: number): number => {
+  const roll = Math.random();
+  let ceiling: number;
+  if (roll < 0.05) ceiling = currentRating + 30 + Math.floor(Math.random() * 15); // wonderkid
+  else if (roll < 0.20) ceiling = currentRating + 15 + Math.floor(Math.random() * 15); // promising
+  else ceiling = currentRating + Math.floor(Math.random() * 15); // modest
+  return Math.min(99, ceiling);
+};
 
 // Rolls a personality for a newly created player -- ~15% of players have one, split evenly
 // across the 3 kinds. Called at every point a Player object gets created (squad generation,
