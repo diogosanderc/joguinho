@@ -5,6 +5,7 @@ import type { Player, Club, PlayerPosition, ForeignPlayer } from '../data/databa
 import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyOutcome } from '../utils/matchEngine';
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
 import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
+import { mirrorSaveToCloud, removeCloudSave } from '../utils/nativeServices';
 import type { Loan } from '../utils/loanEngine';
 import {
   startCup, drawPhaseTies, simulateFullTie, resolveTie,
@@ -637,13 +638,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // that calls saveGame) has essential state transitions (like opening the live match view)
     // AFTER this call, and those must still happen even if persisting to disk didn't work out.
     try {
-      localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, feed)));
+      const serialized = JSON.stringify(buildData(slimSchedule, feed));
+      localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, serialized);
+      mirrorSaveToCloud(`retrofoot_2026_save_slot_${slot}`, serialized);
     } catch (e) {
       // Quota exceeded (or similar) even after slimming match events -- try once more with only
       // the most recent news items kept, since that list only ever grows.
       try {
         const trimmedNews = feed.length > 150 ? feed.slice(feed.length - 150) : feed;
-        localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, JSON.stringify(buildData(slimSchedule, trimmedNews)));
+        const serialized = JSON.stringify(buildData(slimSchedule, trimmedNews));
+        localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, serialized);
+        mirrorSaveToCloud(`retrofoot_2026_save_slot_${slot}`, serialized);
       } catch (e2) {
         // Still failing -- surface it once per session instead of silently losing progress
         // every round from here on with no way for the player to know.
@@ -3517,6 +3522,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetGame = () => {
     if (currentSlotRef.current) {
       localStorage.removeItem(`retrofoot_2026_save_slot_${currentSlotRef.current}`);
+      removeCloudSave(`retrofoot_2026_save_slot_${currentSlotRef.current}`);
     }
     setActiveSlot(null);
     setGameState('MENU');
