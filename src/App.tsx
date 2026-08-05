@@ -1135,12 +1135,19 @@ const AppContent: React.FC = () => {
 
   const topScorers = getTopScorers();
 
+  // True when running as the installed native app (Capacitor's iOS WKWebView), not a browser tab.
+  const isNativeApp = (): boolean => {
+    try {
+      return (window as any).Capacitor?.isNativePlatform?.() === true;
+    } catch {
+      return false;
+    }
+  };
+
   // Reads a save slot's headline info for display (Menu load screen, overwrite picker)
-  // Export/import a save as a downloadable .json file -- since the game isn't installed (just a
-  // page using the browser's localStorage), clearing browsing data / cache wipes every save.
-  // Exporting lets the user keep a backup anywhere (Drive, email, WhatsApp to self) and restore
-  // it later on any browser/device by importing the file back into a slot.
-  const exportSave = (slot: number) => {
+  // Export/import a save as a .json file, so it can be kept as a backup anywhere (Drive, email,
+  // WhatsApp to self) and restored later by importing the file back into a slot.
+  const exportSave = async (slot: number) => {
     const raw = localStorage.getItem(`retrofoot_2026_save_slot_${slot}`);
     if (!raw) return;
     const tacticsRaw = localStorage.getItem(`retrofoot_2026_tactics_slot_${slot}`);
@@ -1149,6 +1156,22 @@ const AppContent: React.FC = () => {
     const club = data.clubs?.find((c: any) => c.isPlayerClub);
     const fileName = `retrofoot2026_${(data.managerName || 'save').replace(/[^a-zA-Z0-9]+/g, '_')}_${club?.name?.replace(/[^a-zA-Z0-9]+/g, '_') || ''}_r${data.currentRound}.json`;
     const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
+
+    // Inside the native app's WKWebView, an <a download> click is silently ignored -- there's no
+    // browser download manager to catch it. The Web Share API (native share sheet: Files, e-mail,
+    // WhatsApp, AirDrop...) is what actually works there, so prefer it whenever it's available.
+    const file = new File([blob], fileName, { type: 'application/json' });
+    const nav = navigator as any;
+    if (nav.canShare?.({ files: [file] })) {
+      try {
+        await nav.share({ files: [file], title: fileName });
+        return;
+      } catch (e) {
+        if ((e as any)?.name === 'AbortError') return; // user cancelled the share sheet
+        // fall through to the download-link approach below
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -5234,7 +5257,9 @@ const AppContent: React.FC = () => {
             </div>
 
             <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '12px', lineHeight: '1.4' }}>
-              💡 Como o jogo roda direto no navegador (ainda não é um app instalado), limpar o cache/dados do navegador apaga os saves. Exporte de vez em quando pra ter um backup guardado (Drive, e-mail, WhatsApp pra si mesmo) e importe de volta quando precisar.
+              {isNativeApp()
+                ? '💡 Reinstalar o app ou trocar de aparelho apaga os saves guardados apenas neste dispositivo. Exporte de vez em quando pra ter um backup guardado (Drive, e-mail, WhatsApp pra si mesmo) e importe de volta quando precisar.'
+                : '💡 Como o jogo roda direto no navegador, limpar o cache/dados do navegador apaga os saves. Exporte de vez em quando pra ter um backup guardado (Drive, e-mail, WhatsApp pra si mesmo) e importe de volta quando precisar.'}
             </p>
 
             <input
