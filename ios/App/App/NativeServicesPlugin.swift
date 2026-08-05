@@ -148,29 +148,39 @@ public class NativeServicesPlugin: CAPPlugin {
     @objc func purchasePremium(_ call: CAPPluginCall) {
         Task {
             do {
+                NSLog("🟡 [Premium] Buscando produto \(premiumProductId)...")
                 let products = try await Product.products(for: [premiumProductId])
+                NSLog("🟡 [Premium] Produtos encontrados: \(products.count) -- \(products.map { $0.id })")
                 guard let product = products.first else {
+                    NSLog("🔴 [Premium] Produto NAO encontrado")
                     call.reject("Produto Premium não encontrado")
                     return
                 }
+                NSLog("🟡 [Premium] Iniciando compra de \(product.id)...")
                 let result = try await product.purchase()
                 switch result {
                 case .success(let verification):
                     switch verification {
                     case .verified(let transaction):
+                        NSLog("🟢 [Premium] Compra verificada com sucesso")
                         await transaction.finish()
                         call.resolve(["purchased": true])
-                    case .unverified:
+                    case .unverified(_, let error):
+                        NSLog("🔴 [Premium] Compra NAO verificada: \(error.localizedDescription)")
                         call.reject("Não foi possível verificar a compra")
                     }
                 case .userCancelled:
+                    NSLog("🟡 [Premium] Usuario cancelou a compra")
                     call.resolve(["purchased": false])
                 case .pending:
+                    NSLog("🟡 [Premium] Compra pendente")
                     call.resolve(["purchased": false])
                 @unknown default:
+                    NSLog("🟡 [Premium] Resultado desconhecido da compra")
                     call.resolve(["purchased": false])
                 }
             } catch {
+                NSLog("🔴 [Premium] Erro na compra: \(error)")
                 call.reject("Falha na compra: \(error.localizedDescription)")
             }
         }
