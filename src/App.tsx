@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
+import { PremiumProvider, usePremium } from './context/PremiumContext';
+import { PremiumPaywallModal } from './components/PremiumPaywallModal';
 import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, isClassico, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
 import { ACHIEVEMENTS } from './data/achievements';
@@ -53,7 +55,7 @@ import { authenticateGameCenter, restoreSavesFromCloud, mirrorSaveToCloud, remov
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
-  PlusCircle, FolderOpen
+  PlusCircle, FolderOpen, Lock
 } from 'lucide-react';
 
 // Shared styling for the Mercado tab's filter dropdowns (source/position/league/club selects) --
@@ -120,8 +122,11 @@ const AppContent: React.FC = () => {
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
 
+  const { isPremium } = usePremium();
+  const [premiumPaywallReason, setPremiumPaywallReason] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState(0); // 0: Escritorio, 1: Elenco, 2: Mercado, 3: Finanças, 4: Classificação
-  
+
   // Main menu states (New Game / Load Game)
   const [menuView, setMenuView] = useState<'ROOT' | 'LOAD'>('ROOT');
   const [, setSlotRefreshTick] = useState(0); // bumped to force re-reading save slots from localStorage
@@ -292,7 +297,7 @@ const AppContent: React.FC = () => {
 
   // Market Search & Negotiation states
   const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS' | 'FOREIGN'>('FREE_AGENTS');
-  const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('A');
+  const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('C');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [foreignBrowseMode, setForeignBrowseMode] = useState<'SAMPLE' | 'BY_CLUB'>('SAMPLE');
   const FOREIGN_LEAGUES = ['Premier League', 'Serie A', 'Bundesliga', 'La Liga', 'Ligue 1', 'Libertadores'] as const;
@@ -1239,6 +1244,7 @@ const AppContent: React.FC = () => {
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
               {saveSlots.map(({ slot, key }) => {
                 const label = getSaveLabel(key);
+                const locked = !label && !isPremium && slot > 1;
                 return (
                   <div
                     key={key}
@@ -1255,6 +1261,7 @@ const AppContent: React.FC = () => {
                   >
                     <div
                       onClick={() => {
+                        if (locked) { setPremiumPaywallReason(`Slot 0${slot}`); return; }
                         if (!label) return;
                         const raw = localStorage.getItem(key);
                         if (!raw) return;
@@ -1265,10 +1272,12 @@ const AppContent: React.FC = () => {
                           alert('Não foi possível carregar este save.');
                         }
                       }}
-                      style={{ flex: 1, cursor: label ? 'pointer' : 'default' }}
+                      style={{ flex: 1, cursor: (label || locked) ? 'pointer' : 'default' }}
                     >
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: label ? 'var(--accent-green)' : '#9ca3af' }}>Slot 0{slot}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{label || 'Vazio'}</div>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: label ? 'var(--accent-green)' : '#9ca3af', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {locked && <Lock size={13} />} Slot 0{slot}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{locked ? 'Premium' : (label || 'Vazio')}</div>
                     </div>
                     {label && (
                       <button
@@ -1297,6 +1306,7 @@ const AppContent: React.FC = () => {
                     )}
                     <button
                       onClick={() => {
+                        if (locked) { setPremiumPaywallReason(`Slot 0${slot}`); return; }
                         if (label && !confirm(`O Slot 0${slot} já tem uma campanha (${label}). Importar um arquivo vai SUBSTITUIR esse save. Continuar?`)) return;
                         setImportTargetSlot(slot);
                         importFileInputRef.current?.click();
@@ -1310,9 +1320,9 @@ const AppContent: React.FC = () => {
                         fontSize: '0.8rem',
                         cursor: 'pointer'
                       }}
-                      title="Importar um save de um arquivo exportado anteriormente"
+                      title={locked ? 'Recurso Premium' : 'Importar um save de um arquivo exportado anteriormente'}
                     >
-                      ⬆️
+                      {locked ? <Lock size={13} /> : '⬆️'}
                     </button>
                   </div>
                 );
@@ -1346,6 +1356,9 @@ const AppContent: React.FC = () => {
           >
             ← Voltar
           </button>
+          {premiumPaywallReason && (
+            <PremiumPaywallModal reason={premiumPaywallReason} onClose={() => setPremiumPaywallReason(null)} />
+          )}
         </div>
       );
     }
@@ -1388,7 +1401,9 @@ const AppContent: React.FC = () => {
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-red)', letterSpacing: '-1px' }}>Slots Cheios</h1>
             <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>
-              Os 4 slots de save já estão ocupados. Escolha uma campanha para substituir:
+              {isPremium
+                ? 'Os 4 slots de save já estão ocupados. Escolha uma campanha para substituir:'
+                : 'O slot de save grátis já está ocupado. Escolha uma campanha para substituir, ou desbloqueie o Premium pra ter mais slots:'}
             </p>
           </div>
 
@@ -1396,10 +1411,12 @@ const AppContent: React.FC = () => {
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
               {[1, 2, 3, 4].map(slot => {
                 const label = getSaveLabel(`retrofoot_2026_save_slot_${slot}`);
+                const locked = !label && !isPremium && slot > 1;
                 return (
                   <div
                     key={slot}
                     onClick={() => {
+                      if (locked) { setPremiumPaywallReason(`Slot 0${slot}`); return; }
                       if (confirm(`Substituir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                         beginNewCareer(overwriteSlotPicker.name, overwriteSlotPicker.clubId, slot);
                         setOverwriteSlotPicker(null);
@@ -1410,11 +1427,14 @@ const AppContent: React.FC = () => {
                       borderRadius: '12px',
                       background: '#121316',
                       border: '1px solid rgba(255, 23, 68, 0.2)',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      opacity: locked ? 0.6 : 1
                     }}
                   >
-                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-red)' }}>Slot 0{slot}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{label}</div>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {locked && <Lock size={14} />} Slot 0{slot}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>{locked ? 'Premium' : label}</div>
                   </div>
                 );
               })}
@@ -1428,6 +1448,9 @@ const AppContent: React.FC = () => {
           >
             ← Cancelar
           </button>
+          {premiumPaywallReason && (
+            <PremiumPaywallModal reason={premiumPaywallReason} onClose={() => setPremiumPaywallReason(null)} />
+          )}
         </div>
       );
     }
@@ -1464,7 +1487,12 @@ const AppContent: React.FC = () => {
           <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube</h3>
           <select
             value={selectedStartDivision}
-            onChange={(e) => { setSelectedStartDivision(e.target.value as 'A' | 'B' | 'C'); setSelectedStartClubId(''); }}
+            onChange={(e) => {
+              const div = e.target.value as 'A' | 'B' | 'C';
+              if (div !== 'C' && !isPremium) { setPremiumPaywallReason(div === 'A' ? 'Série A' : 'Série B'); return; }
+              setSelectedStartDivision(div);
+              setSelectedStartClubId('');
+            }}
             style={{
               width: '100%',
               padding: '10px',
@@ -1476,8 +1504,8 @@ const AppContent: React.FC = () => {
               fontSize: '0.85rem'
             }}
           >
-            <option value="A">Série A</option>
-            <option value="B">Série B</option>
+            <option value="A">{isPremium ? 'Série A' : '🔒 Série A (Premium)'}</option>
+            <option value="B">{isPremium ? 'Série B' : '🔒 Série B (Premium)'}</option>
             <option value="C">Série C</option>
           </select>
           <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', gap: '8px', display: 'flex', flexDirection: 'column' }}>
@@ -1531,6 +1559,9 @@ const AppContent: React.FC = () => {
         >
           ← Voltar ao Menu
         </button>
+        {premiumPaywallReason && (
+          <PremiumPaywallModal reason={premiumPaywallReason} onClose={() => setPremiumPaywallReason(null)} />
+        )}
       </div>
     );
   }
@@ -2470,6 +2501,7 @@ const AppContent: React.FC = () => {
                   <button
                     className="btn btn-primary"
                     onClick={() => {
+                      if (!isPremium) { setPremiumPaywallReason('Copa do Brasil'); return; }
                       if (phase === 'FINAL') {
                         setPressConferenceContext('CUP');
                       } else {
@@ -2479,7 +2511,7 @@ const AppContent: React.FC = () => {
                     }}
                     style={{ marginTop: '16px', height: '48px', background: 'var(--accent-gold)' }}
                   >
-                    <Play size={18} fill="#000" /> Iniciar Partida da Copa
+                    {isPremium ? <Play size={18} fill="#000" /> : <Lock size={16} />} Iniciar Partida da Copa
                   </button>
                 </div>
               );
@@ -2516,6 +2548,7 @@ const AppContent: React.FC = () => {
                   <button
                     className="btn btn-primary"
                     onClick={() => {
+                      if (!isPremium) { setPremiumPaywallReason('Copa Libertadores'); return; }
                       if (phase === 'FINAL') {
                         setPressConferenceContext('LIBERTADORES');
                       } else {
@@ -2525,7 +2558,7 @@ const AppContent: React.FC = () => {
                     }}
                     style={{ marginTop: '16px', height: '48px', background: '#0096dc' }}
                   >
-                    <Play size={18} fill="#000" /> Iniciar Partida da Libertadores
+                    {isPremium ? <Play size={18} fill="#000" /> : <Lock size={16} />} Iniciar Partida da Libertadores
                   </button>
                 </div>
               );
@@ -3183,11 +3216,15 @@ const AppContent: React.FC = () => {
                     <label style={marketSelectLabelStyle}>Série</label>
                     <select
                       value={selectedSearchDiv}
-                      onChange={(e) => setSelectedSearchDiv(e.target.value as typeof selectedSearchDiv)}
+                      onChange={(e) => {
+                        const div = e.target.value as typeof selectedSearchDiv;
+                        if (div === 'A' && !isPremium) { setPremiumPaywallReason('Série A'); return; }
+                        setSelectedSearchDiv(div);
+                      }}
                       style={marketSelectStyle}
                     >
                       {(['A', 'B', 'C'] as const).map(div => (
-                        <option key={div} value={div}>Série {div}</option>
+                        <option key={div} value={div}>{div === 'A' && !isPremium ? '🔒 Série A (Premium)' : `Série ${div}`}</option>
                       ))}
                     </select>
                   </div>
@@ -3866,11 +3903,14 @@ const AppContent: React.FC = () => {
                       </div>
                     ) : (
                       <button
-                        onClick={() => upgradeMedicalDept()}
+                        onClick={() => {
+                          if (!isPremium) { setPremiumPaywallReason('Departamento Médico'); return; }
+                          upgradeMedicalDept();
+                        }}
                         className="btn btn-secondary"
-                        style={{ fontSize: '0.8rem', padding: '10px', width: '100%' }}
+                        style={{ fontSize: '0.8rem', padding: '10px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       >
-                        Avançar para Nível {MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (Custo: {formatCurrency(nextCost)})
+                        {!isPremium && <Lock size={14} />} Avançar para Nível {MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (Custo: {formatCurrency(nextCost)})
                       </button>
                     )}
                   </>
@@ -3909,11 +3949,14 @@ const AppContent: React.FC = () => {
                       </div>
                     ) : (
                       <button
-                        onClick={() => upgradeYouthAcademy()}
+                        onClick={() => {
+                          if (!isPremium) { setPremiumPaywallReason('Categoria de Base'); return; }
+                          upgradeYouthAcademy();
+                        }}
                         className="btn btn-secondary"
-                        style={{ fontSize: '0.8rem', padding: '10px', width: '100%' }}
+                        style={{ fontSize: '0.8rem', padding: '10px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       >
-                        Avançar para Nível {MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (Custo: {formatCurrency(nextCost)})
+                        {!isPremium && <Lock size={14} />} Avançar para Nível {MEDICAL_DEPT_LEVEL_NAMES[nextLevel]} (Custo: {formatCurrency(nextCost)})
                       </button>
                     )}
                   </>
@@ -5180,12 +5223,15 @@ const AppContent: React.FC = () => {
                 const saveKey = `retrofoot_2026_save_slot_${slot}`;
                 const label = getSaveLabel(saveKey);
                 const isCurrent = currentSlot === slot;
+                const locked = !label && !isPremium && slot > 1;
 
                 return (
                   <div key={slot} style={{ background: '#121316', border: isCurrent ? '1px solid var(--accent-green)' : '1px solid rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', color: isCurrent ? 'var(--accent-green)' : '#9ca3af', fontWeight: 800 }}>Slot 0{slot}{isCurrent ? ' (Atual)' : ''}</span>
-                      <span style={{ fontSize: '0.62rem', color: '#9ca3af' }}>{label ? '💾 Salvo' : '⚪ Livre'}</span>
+                      <span style={{ fontSize: '0.8rem', color: isCurrent ? 'var(--accent-green)' : '#9ca3af', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        {locked && <Lock size={12} />} Slot 0{slot}{isCurrent ? ' (Atual)' : ''}
+                      </span>
+                      <span style={{ fontSize: '0.62rem', color: '#9ca3af' }}>{locked ? '🔒 Premium' : label ? '💾 Salvo' : '⚪ Livre'}</span>
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label || ''}>
                       {label || 'Vazio'}
@@ -5240,15 +5286,16 @@ const AppContent: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
+                          if (locked) { setPremiumPaywallReason(`Slot 0${slot}`); return; }
                           if (label && !confirm(`O Slot 0${slot} já tem uma campanha (${label}). Importar um arquivo vai SUBSTITUIR esse save. Continuar?`)) return;
                           setImportTargetSlot(slot);
                           importFileInputRef.current?.click();
                         }}
                         className="btn btn-secondary"
                         style={{ flex: 1, fontSize: '0.68rem', padding: '5px 0', borderRadius: '6px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }}
-                        title="Restaurar um save de um arquivo exportado anteriormente"
+                        title={locked ? 'Recurso Premium' : 'Restaurar um save de um arquivo exportado anteriormente'}
                       >
-                        ⬆️ Importar
+                        {locked ? <><Lock size={12} /> Importar</> : '⬆️ Importar'}
                       </button>
                     </div>
                   </div>
@@ -5325,15 +5372,20 @@ const AppContent: React.FC = () => {
           </div>
         );
       })()}
+      {premiumPaywallReason && (
+        <PremiumPaywallModal reason={premiumPaywallReason} onClose={() => setPremiumPaywallReason(null)} />
+      )}
     </div>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <GameProvider>
-      <AppContent />
-    </GameProvider>
+    <PremiumProvider>
+      <GameProvider>
+        <AppContent />
+      </GameProvider>
+    </PremiumProvider>
   );
 };
 

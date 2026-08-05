@@ -1,6 +1,9 @@
 import Foundation
 import Capacitor
 import GameKit
+import StoreKit
+
+private let premiumProductId = "com.diogosander.retrofoot.premium"
 
 @objc(NativeServicesPlugin)
 public class NativeServicesPlugin: CAPPlugin {
@@ -137,6 +140,68 @@ public class NativeServicesPlugin: CAPPlugin {
         let store = NSUbiquitousKeyValueStore.default
         store.synchronize()
         call.resolve(["keys": Array(store.dictionaryRepresentation.keys)])
+    }
+
+    // MARK: - Premium (single non-consumable IAP unlocking Serie A, extra save slots,
+    // Medical Dept/Youth Academy upgrades, and playing Cup/Libertadores/National Team matches)
+
+    @objc func purchasePremium(_ call: CAPPluginCall) {
+        Task {
+            do {
+                let products = try await Product.products(for: [premiumProductId])
+                guard let product = products.first else {
+                    call.reject("Produto Premium não encontrado")
+                    return
+                }
+                let result = try await product.purchase()
+                switch result {
+                case .success(let verification):
+                    switch verification {
+                    case .verified(let transaction):
+                        await transaction.finish()
+                        call.resolve(["purchased": true])
+                    case .unverified:
+                        call.reject("Não foi possível verificar a compra")
+                    }
+                case .userCancelled:
+                    call.resolve(["purchased": false])
+                case .pending:
+                    call.resolve(["purchased": false])
+                @unknown default:
+                    call.resolve(["purchased": false])
+                }
+            } catch {
+                call.reject("Falha na compra: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc func restorePurchases(_ call: CAPPluginCall) {
+        Task {
+            do {
+                try await AppStore.sync()
+                let unlocked = await NativeServicesPlugin.hasPremiumEntitlement()
+                call.resolve(["restored": unlocked])
+            } catch {
+                call.reject("Falha ao restaurar compras: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc func isPremiumUnlocked(_ call: CAPPluginCall) {
+        Task {
+            let unlocked = await NativeServicesPlugin.hasPremiumEntitlement()
+            call.resolve(["unlocked": unlocked])
+        }
+    }
+
+    private static func hasPremiumEntitlement() async -> Bool {
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let transaction) = result, transaction.productID == premiumProductId {
+                return true
+            }
+        }
+        return false
     }
 }
 

@@ -11,6 +11,9 @@ interface NativeServicesPlugin {
   cloudGetSave(options: { key: string }): Promise<{ value: string | null }>;
   cloudRemoveSave(options: { key: string }): Promise<void>;
   cloudListKeys(): Promise<{ keys: string[] }>;
+  purchasePremium(): Promise<{ purchased: boolean }>;
+  restorePurchases(): Promise<{ restored: boolean }>;
+  isPremiumUnlocked(): Promise<{ unlocked: boolean }>;
 }
 
 const NativeServices = registerPlugin<NativeServicesPlugin>('NativeServices');
@@ -106,5 +109,43 @@ export async function restoreSavesFromCloud(): Promise<number> {
   } catch (e) {
     console.warn('restoreSavesFromCloud failed', e);
     return 0;
+  }
+}
+
+// --- Premium (single non-consumable IAP) -----------------------------------------------
+
+/** Initiates the Premium purchase flow. Returns false (never throws) outside the native app. */
+export async function purchasePremium(): Promise<boolean> {
+  if (!isNative()) return false;
+  try {
+    return (await NativeServices.purchasePremium()).purchased;
+  } catch (e) {
+    console.warn('purchasePremium failed', e);
+    return false;
+  }
+}
+
+/** Restores a previous Premium purchase. Returns false (never throws) outside the native app. */
+export async function restorePurchases(): Promise<boolean> {
+  if (!isNative()) return false;
+  try {
+    return (await NativeServices.restorePurchases()).restored;
+  } catch (e) {
+    console.warn('restorePurchases failed', e);
+    return false;
+  }
+}
+
+/**
+ * Checks the current Premium entitlement via StoreKit. Always returns false outside the native
+ * app, and on any error -- an error here must never accidentally unlock Premium.
+ */
+export async function isPremiumUnlocked(): Promise<boolean> {
+  if (!isNative()) return false;
+  try {
+    return (await NativeServices.isPremiumUnlocked()).unlocked;
+  } catch (e) {
+    console.warn('isPremiumUnlocked failed', e);
+    return false;
   }
 }

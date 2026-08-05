@@ -11,4 +11,7 @@ CAP_PLUGIN(NativeServicesPlugin, "NativeServices",
     CAP_PLUGIN_METHOD(cloudGetSave, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(cloudRemoveSave, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(cloudListKeys, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(purchasePremium, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(restorePurchases, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(isPremiumUnlocked, CAPPluginReturnPromise);
 )

@@ -6,6 +6,7 @@ import { simulateMatch, generateLeagueSchedule, getAutoStarters, resolvePenaltyO
 import type { MatchResult, MatchEvent } from '../utils/matchEngine';
 import { getBaseInterestRate, getCreditMultiplier, getAvailableCredit, calculateInstallment, advanceLoan, calculatePayoffAmount, renegotiateLoan as renegotiateLoanCalc, getBankEventForYear } from '../utils/loanEngine';
 import { mirrorSaveToCloud, removeCloudSave } from '../utils/nativeServices';
+import { usePremium } from './PremiumContext';
 import type { Loan } from '../utils/loanEngine';
 import {
   startCup, drawPhaseTies, simulateFullTie, resolveTie,
@@ -333,6 +334,7 @@ const replenishSquad = (squad: Player[], clubId: string, clubReputation: number,
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isPremium } = usePremium();
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [managerName, setManagerName] = useState('');
   const [currentYear, setCurrentYear] = useState(2026);
@@ -551,7 +553,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentSlotState(slot);
   };
   const getFreeSlot = (): number | null => {
-    for (let i = 1; i <= SAVE_SLOT_COUNT; i++) {
+    // Without Premium, only Slot 01 is ever handed out as "free" -- slots 2-4 stay locked until
+    // unlocked, even if they're empty in localStorage.
+    const maxSlot = isPremium ? SAVE_SLOT_COUNT : 1;
+    for (let i = 1; i <= maxSlot; i++) {
       if (!localStorage.getItem(`retrofoot_2026_save_slot_${i}`)) return i;
     }
     return null;
@@ -1674,7 +1679,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // foreign star -- acceptable since it's a flavor/motivation mechanic, not a strict simulation.
     // Each call-up carries a small injury risk (Departamento Médico still applies) and otherwise
     // returns the player boosted in value and rating, reflecting the exposure/experience gained.
-    if (SELECAO_CALL_UP_ROUNDS.includes(currentRound)) {
+    if (SELECAO_CALL_UP_ROUNDS.includes(currentRound) && isPremium) {
       finalClubs = finalClubs.map(c => {
         if (c.id !== userClubId) return c;
         const eligible = c.squad
