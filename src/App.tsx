@@ -49,6 +49,7 @@ import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterest
 import { CUP_PHASE_LABEL, TWO_LEGGED_PHASES, PHASES } from './utils/cupEngine';
 import { LIBERTADORES_PHASE_LABEL, LIBERTADORES_GROUP_ROUNDS, LIBERTADORES_GROUP_LABELS, calculateGroupStandings } from './utils/libertadoresEngine';
 import type { LibertadoresGroupLabel } from './utils/libertadoresEngine';
+import { authenticateGameCenter, restoreSavesFromCloud, mirrorSaveToCloud, removeCloudSave } from './utils/nativeServices';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -130,6 +131,16 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (gameState === 'MENU') setMenuView('ROOT');
   }, [gameState]);
+
+  // On cold start: sign in to Game Center in the background, and pull down any save/tactics
+  // slots that exist in iCloud but not on this device (e.g. after a reinstall or new phone).
+  // Both are silent no-ops outside iOS. Never overwrites a slot that already has local data.
+  useEffect(() => {
+    authenticateGameCenter();
+    restoreSavesFromCloud().then(restored => {
+      if (restored > 0) setSlotRefreshTick(t => t + 1);
+    });
+  }, []);
 
   // Starting state states
   const [inputName, setInputName] = useState('');
@@ -386,7 +397,9 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (currentSlot && userClubId) {
-      localStorage.setItem(`retrofoot_2026_tactics_slot_${currentSlot}`, JSON.stringify({ userClubId, selectedTactic, startersPerTactic }));
+      const serialized = JSON.stringify({ userClubId, selectedTactic, startersPerTactic });
+      localStorage.setItem(`retrofoot_2026_tactics_slot_${currentSlot}`, serialized);
+      mirrorSaveToCloud(`retrofoot_2026_tactics_slot_${currentSlot}`, serialized);
     }
   }, [currentSlot, userClubId, selectedTactic, startersPerTactic]);
 
@@ -1177,9 +1190,13 @@ const AppContent: React.FC = () => {
       const text = await file.text();
       const bundle = JSON.parse(text);
       const saveData = bundle.save ?? bundle; // tolerate importing a raw save export too
-      localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, JSON.stringify(saveData));
+      const serializedSave = JSON.stringify(saveData);
+      localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, serializedSave);
+      mirrorSaveToCloud(`retrofoot_2026_save_slot_${slot}`, serializedSave);
       if (bundle.tactics) {
-        localStorage.setItem(`retrofoot_2026_tactics_slot_${slot}`, JSON.stringify(bundle.tactics));
+        const serializedTactics = JSON.stringify(bundle.tactics);
+        localStorage.setItem(`retrofoot_2026_tactics_slot_${slot}`, serializedTactics);
+        mirrorSaveToCloud(`retrofoot_2026_tactics_slot_${slot}`, serializedTactics);
       }
       setSlotRefreshTick(t => t + 1);
       // If we just overwrote the slot currently being played, refresh the live state too --
@@ -1212,7 +1229,7 @@ const AppContent: React.FC = () => {
 
     if (menuView === 'LOAD') {
       return (
-        <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
+        <div className="mobile-wrapper safe-padded" style={{ justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-gold)', letterSpacing: '-1px' }}>Carregar Jogo</h1>
             <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>Escolha uma campanha salva para continuar</p>
@@ -1259,6 +1276,8 @@ const AppContent: React.FC = () => {
                           if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                             localStorage.removeItem(key);
                             localStorage.removeItem(`retrofoot_2026_tactics_slot_${slot}`);
+                            removeCloudSave(key);
+                            removeCloudSave(`retrofoot_2026_tactics_slot_${slot}`);
                             setSlotRefreshTick(t => t + 1);
                           }
                         }}
@@ -1332,7 +1351,7 @@ const AppContent: React.FC = () => {
     }
 
     return (
-      <div className="mobile-wrapper" style={{ justifyContent: 'center', alignItems: 'center', padding: '30px' }}>
+      <div className="mobile-wrapper safe-padded" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>RETROFOOT 2026</h1>
           <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Seja um verdadeiro campeão!</p>
@@ -1365,7 +1384,7 @@ const AppContent: React.FC = () => {
     // All 4 save slots are occupied — ask which one to overwrite before starting
     if (overwriteSlotPicker) {
       return (
-        <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
+        <div className="mobile-wrapper safe-padded" style={{ justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-red)', letterSpacing: '-1px' }}>Slots Cheios</h1>
             <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>
@@ -1414,7 +1433,7 @@ const AppContent: React.FC = () => {
     }
 
     return (
-      <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px' }}>
+      <div className="mobile-wrapper safe-padded" style={{ justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>RETROFOOT 2026</h1>
           <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Dirigente de Futebol - Mobile</p>
@@ -1441,7 +1460,7 @@ const AppContent: React.FC = () => {
           />
         </div>
 
-        <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', flex: 0.8, overflow: 'hidden' }}>
+        <div className="card" style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '260px', overflow: 'hidden' }}>
           <h3 style={{ marginBottom: '8px', fontWeight: 700 }}>2. Escolha seu clube</h3>
           <select
             value={selectedStartDivision}
@@ -1518,7 +1537,7 @@ const AppContent: React.FC = () => {
 
   if (gameState === 'UNEMPLOYED') {
     return (
-      <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px', gap: '16px' }}>
+      <div className="mobile-wrapper safe-padded" style={{ justifyContent: 'center', gap: '16px' }}>
         <div style={{ textAlign: 'center' }}>
           <Users size={48} color="var(--accent-gold)" style={{ margin: '0 auto 12px auto' }} />
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Mercado de Trabalho</h2>
@@ -2236,7 +2255,7 @@ const AppContent: React.FC = () => {
     const isSacked = userClub.confidence <= 0;
 
     return (
-      <div className="mobile-wrapper" style={{ justifyContent: 'center', padding: '30px', gap: '16px' }}>
+      <div className="mobile-wrapper safe-padded" style={{ justifyContent: 'center', gap: '16px' }}>
         {championCelebration && (
           <div className="modal-overlay" style={{ zIndex: 1300 }}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
@@ -4987,7 +5006,7 @@ const AppContent: React.FC = () => {
         if (sellResult) {
           return (
             <div className="modal-overlay" style={{ zIndex: 1260 }}>
-              <div className="modal-content" style={{ width: '340px', padding: '18px', textAlign: 'center' }}>
+              <div className="modal-content" style={{ width: '100%', maxWidth: '340px', padding: '18px', textAlign: 'center' }}>
                 <span style={{ fontSize: '2rem' }}>{sellResult.success ? '✅' : '❌'}</span>
                 <h3 style={{ fontWeight: 800, marginTop: '8px', color: sellResult.success ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                   {sellResult.success ? 'Venda concluída!' : 'Proposta recusada'}
@@ -5018,7 +5037,7 @@ const AppContent: React.FC = () => {
 
         return (
           <div className="modal-overlay" style={{ zIndex: 1260 }}>
-            <div className="modal-content" style={{ width: '340px', padding: '18px', textAlign: 'center' }}>
+            <div className="modal-content" style={{ width: '100%', maxWidth: '340px', padding: '18px', textAlign: 'center' }}>
               <span style={{ fontSize: '2rem' }}>💰</span>
               <h3 style={{ fontWeight: 800, marginTop: '8px' }}>Vender {player.name}</h3>
               <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '8px 0 14px', lineHeight: '1.4' }}>
@@ -5076,7 +5095,7 @@ const AppContent: React.FC = () => {
           are account/session actions, not something that belongs mixed into the main content). */}
       {settingsModalOpen && (
         <div className="modal-overlay" style={{ zIndex: 1250 }}>
-          <div className="modal-content" style={{ width: '340px', padding: '18px' }}>
+          <div className="modal-content" style={{ width: '100%', maxWidth: '340px', padding: '18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ fontWeight: 800, fontSize: '1.1rem' }}>⚙️ Configurações</h3>
               <button
@@ -5196,6 +5215,8 @@ const AppContent: React.FC = () => {
                             if (confirm(`Excluir a campanha do Slot 0${slot}? Essa ação não pode ser desfeita.`)) {
                               localStorage.removeItem(saveKey);
                               localStorage.removeItem(`retrofoot_2026_tactics_slot_${slot}`);
+                              removeCloudSave(saveKey);
+                              removeCloudSave(`retrofoot_2026_tactics_slot_${slot}`);
                               setSlotRefreshTick(t => t + 1);
                             }
                           }}
