@@ -116,10 +116,14 @@ export async function restoreSavesFromCloud(): Promise<number> {
 
 /** Initiates the Premium purchase flow. Returns false (never throws) outside the native app. */
 export async function purchasePremium(): Promise<boolean> {
+  // TEMP DIAGNOSTIC (remove once the purchase flow is confirmed working):
+  // shows on-screen, via alert(), why purchasePremium is short-circuiting -- no Xcode/Safari needed.
+  alert(`[DIAG] isNative()=${isNative()} Capacitor=${!!(window as any).Capacitor} platform=${(window as any).Capacitor?.getPlatform?.()}`);
   if (!isNative()) return false;
   try {
     return (await NativeServices.purchasePremium()).purchased;
   } catch (e) {
+    alert(`[DIAG] native call threw: ${String(e)}`);
     console.warn('purchasePremium failed', e);
     return false;
   }
