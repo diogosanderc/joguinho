@@ -6,7 +6,24 @@ import StoreKit
 private let premiumProductId = "com.diogosander.retrofoot.premium"
 
 @objc(NativeServicesPlugin)
-public class NativeServicesPlugin: CAPPlugin {
+public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "NativeServicesPlugin"
+    public let jsName = "NativeServices"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "authenticateGameCenter", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isGameCenterAuthenticated", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "submitScore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "reportAchievement", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showLeaderboard", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showAchievements", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cloudSetSave", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cloudGetSave", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cloudRemoveSave", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cloudListKeys", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "purchasePremium", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isPremiumUnlocked", returnType: CAPPluginReturnPromise)
+    ]
 
     @objc func authenticateGameCenter(_ call: CAPPluginCall) {
         let localPlayer = GKLocalPlayer.local
