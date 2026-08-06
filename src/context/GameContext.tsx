@@ -201,6 +201,19 @@ export interface HistoryRecord {
   seasonTopScorerGoals?: number;
 }
 
+// Transient (not persisted) upsell alert shown when a non-Premium player's own Copa do Brasil or
+// Libertadores tie gets auto-resolved instead of played live -- gives them an in-context "buy
+// Premium" option right when the loss (of that competition) is freshest, on top of the permanent
+// record of it in the news feed.
+interface PremiumCompetitionAlert {
+  competitionLabel: 'Copa do Brasil' | 'Copa Libertadores';
+  phaseLabel: string;
+  opponentName: string;
+  outcome: 'WIN' | 'LOSS' | 'DRAW';
+  scoreLine?: string;
+  wentToPenalties?: boolean;
+}
+
 interface GameContextType {
   gameState: GameState;
   managerName: string;
@@ -237,6 +250,8 @@ interface GameContextType {
   dismissLibertadoresDrawReveal: () => void;
   sponsorAlert: { kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null;
   dismissSponsorAlert: () => void;
+  premiumCompetitionAlert: PremiumCompetitionAlert | null;
+  dismissPremiumCompetitionAlert: () => void;
   penaltyShootout: PenaltyShootoutState | null;
   takePenaltyShootoutKick: () => void;
   finalizePenaltyShootout: () => void;
@@ -432,6 +447,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // user signs/renews one (an explicit confirmation on top of the news item).
   const [sponsorAlert, setSponsorAlert] = useState<{ kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null>(null);
   const dismissSponsorAlert = () => setSponsorAlert(null);
+
+  // Transient (not persisted) upsell alert shown alongside the news item whenever a non-Premium
+  // player's own Cup/Libertadores tie is auto-resolved (see PremiumCompetitionAlert above).
+  const [premiumCompetitionAlert, setPremiumCompetitionAlert] = useState<PremiumCompetitionAlert | null>(null);
+  const dismissPremiumCompetitionAlert = () => setPremiumCompetitionAlert(null);
 
   // Live penalty shootout for the user's own Copa do Brasil tie. Kept in a ref too (same
   // pattern as cupStateRef) since takePenaltyShootoutKick() is called repeatedly on a timer from
@@ -3760,6 +3780,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
       });
+      setPremiumCompetitionAlert({
+        competitionLabel: 'Copa do Brasil',
+        phaseLabel: CUP_PHASE_LABEL[phase],
+        opponentName,
+        outcome: userWon ? 'WIN' : 'LOSS',
+        wentToPenalties: tie.wentToPenalties
+      });
     }
 
     const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
@@ -4048,6 +4075,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         text: `Libertadores (Grupo ${userMatch.group}, rodada ${nextGroupRound}): seu time enfrentou o ${opponentName} e ${userScore === oppScore ? 'empatou' : userScore > oppScore ? 'venceu' : 'perdeu'} por ${userScore} a ${oppScore}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
       });
+      setPremiumCompetitionAlert({
+        competitionLabel: 'Copa Libertadores',
+        phaseLabel: `Fase de Grupos (Grupo ${userMatch.group})`,
+        opponentName,
+        outcome: userScore === oppScore ? 'DRAW' : userScore > oppScore ? 'WIN' : 'LOSS',
+        scoreLine: `${userScore} a ${oppScore}`
+      });
     }
 
     setLibertadoresState(updatedLib);
@@ -4152,6 +4186,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ? `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e venceu${tie.wentToPenalties ? ' nos pênaltis' : ''}! Assine o Premium pra jogar essas partidas você mesmo.`
           : `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
+      });
+      setPremiumCompetitionAlert({
+        competitionLabel: 'Copa Libertadores',
+        phaseLabel: LIBERTADORES_PHASE_LABEL[phase],
+        opponentName,
+        outcome: userWon ? 'WIN' : 'LOSS',
+        wentToPenalties: tie.wentToPenalties
       });
     }
 
@@ -4263,6 +4304,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
       });
+      setPremiumCompetitionAlert({
+        competitionLabel: 'Copa do Brasil',
+        phaseLabel: CUP_PHASE_LABEL[phase],
+        opponentName,
+        outcome: userWon ? 'WIN' : 'LOSS',
+        wentToPenalties: tie.wentToPenalties
+      });
       const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
       setCupState(nextCup);
       setClubs(nextClubs);
@@ -4303,6 +4351,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           text: `Libertadores (Grupo ${group}): seu time enfrentou o ${nameOf(opponentId)} e ${userScore === oppScore ? 'empatou' : userScore > oppScore ? 'venceu' : 'perdeu'} por ${userScore} a ${oppScore}. Assine o Premium pra jogar essas partidas você mesmo.`,
           type: 'MATCH'
         });
+        setPremiumCompetitionAlert({
+          competitionLabel: 'Copa Libertadores',
+          phaseLabel: `Fase de Grupos (Grupo ${group})`,
+          opponentName: nameOf(opponentId),
+          outcome: userScore === oppScore ? 'DRAW' : userScore > oppScore ? 'WIN' : 'LOSS',
+          scoreLine: `${userScore} a ${oppScore}`
+        });
         setLibertadoresState({ ...lib, schedule: nextSchedule, scorers: nextScorers, userTie: null });
         return;
       }
@@ -4326,6 +4381,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ? `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${nameOf(opponentId)} e venceu${tie.wentToPenalties ? ' nos pênaltis' : ''}! Assine o Premium pra jogar essas partidas você mesmo.`
           : `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${nameOf(opponentId)} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
+      });
+      setPremiumCompetitionAlert({
+        competitionLabel: 'Copa Libertadores',
+        phaseLabel: LIBERTADORES_PHASE_LABEL[phase],
+        opponentName: nameOf(opponentId),
+        outcome: userWon ? 'WIN' : 'LOSS',
+        wentToPenalties: tie.wentToPenalties
       });
       finalizeLibertadoresPhase(working, phase, pairs, pushNews);
     }
@@ -4817,6 +4879,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dismissLibertadoresDrawReveal,
       sponsorAlert,
       dismissSponsorAlert,
+      premiumCompetitionAlert,
+      dismissPremiumCompetitionAlert,
       penaltyShootout,
       takePenaltyShootoutKick,
       finalizePenaltyShootout,

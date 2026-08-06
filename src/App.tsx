@@ -117,7 +117,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, careerStats, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, youthAcademyUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, premiumCompetitionAlert, dismissPremiumCompetitionAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, upgradeYouthAcademy, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -5059,6 +5059,47 @@ const AppContent: React.FC = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PREMIUM COMPETITION UPSELL MODAL -- fires right alongside the news item whenever a
+          non-Premium player's own Copa do Brasil/Libertadores tie got auto-resolved instead of
+          played live (see processCupMilestone/processLibertadoresMilestone in GameContext), so
+          the offer to unlock it lands at the exact moment the player feels the loss, not just as
+          a line buried in the news feed. Queued behind the other auto-popup modals. */}
+      {premiumCompetitionAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !incomingProposal && !penaltyShootout && !championCelebration && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
+            <span style={{ fontSize: '2.5rem' }}>{premiumCompetitionAlert.competitionLabel === 'Copa do Brasil' ? '🏆' : '🌎'}</span>
+            <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>
+              {premiumCompetitionAlert.competitionLabel} — {premiumCompetitionAlert.phaseLabel}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 8px 0' }}>
+              Seu time enfrentou o <strong>{premiumCompetitionAlert.opponentName}</strong> e{' '}
+              {premiumCompetitionAlert.outcome === 'WIN' ? 'venceu' : premiumCompetitionAlert.outcome === 'DRAW' ? 'empatou' : 'foi eliminado'}
+              {premiumCompetitionAlert.scoreLine ? ` por ${premiumCompetitionAlert.scoreLine}` : ''}
+              {premiumCompetitionAlert.wentToPenalties ? ' nos pênaltis' : ''}.
+            </p>
+            <p style={{ fontSize: '0.78rem', color: '#9ca3af', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+              Sem o Premium, essas partidas são resolvidas automaticamente. Desbloqueie pra jogar você mesmo da próxima vez.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                className="btn btn-primary"
+                style={{ background: 'var(--accent-gold)' }}
+                onClick={() => {
+                  const reason = premiumCompetitionAlert.competitionLabel;
+                  dismissPremiumCompetitionAlert();
+                  setPremiumPaywallReason(reason);
+                }}
+              >
+                🔓 Desbloquear Premium
+              </button>
+              <button className="btn btn-secondary" onClick={dismissPremiumCompetitionAlert}>
+                Agora não
+              </button>
             </div>
           </div>
         </div>
