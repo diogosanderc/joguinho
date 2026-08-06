@@ -1,9 +1,9 @@
 import { initNativeAds, showInterstitialAd } from './nativeServices';
 
-// Google's official TEST interstitial ad unit ID -- always fills, safe to ship during
-// development, never serves real ads. Swap this for the real Ad Unit ID from the AdMob
-// console before submitting to the App Store.
-const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-3940256099942544/4411468910';
+// Real interstitial ad unit ID from the AdMob console (Retrofoot 2026, iOS -- "Interstitial
+// Pos-Partida"). Google's own test ad unit ID is 'ca-app-pub-3940256099942544/4411468910',
+// useful again if this ever needs to go back to always-test-ads mode for local development.
+const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-9207064721204036/8667639689';
 
 const MIN_INTERVAL_MS = 4 * 60 * 1000;
 
