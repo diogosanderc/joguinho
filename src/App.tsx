@@ -52,6 +52,7 @@ import { CUP_PHASE_LABEL, TWO_LEGGED_PHASES, PHASES } from './utils/cupEngine';
 import { LIBERTADORES_PHASE_LABEL, LIBERTADORES_GROUP_ROUNDS, LIBERTADORES_GROUP_LABELS, calculateGroupStandings } from './utils/libertadoresEngine';
 import type { LibertadoresGroupLabel } from './utils/libertadoresEngine';
 import { authenticateGameCenter, restoreSavesFromCloud, mirrorSaveToCloud, removeCloudSave } from './utils/nativeServices';
+import { initAds, maybeShowInterstitialAfterMatch } from './utils/ads';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
   Play, Shield, AlertTriangle, Activity, CheckCircle,
@@ -145,6 +146,7 @@ const AppContent: React.FC = () => {
     restoreSavesFromCloud().then(restored => {
       if (restored > 0) setSlotRefreshTick(t => t + 1);
     });
+    initAds();
   }, []);
 
   // Starting state states
@@ -1880,6 +1882,7 @@ const AppContent: React.FC = () => {
               className="btn btn-primary"
               onClick={() => {
                 clearCurrentMatch();
+                maybeShowInterstitialAfterMatch(isPremium);
                 if (currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES') {
                   setActiveTab(1);
                 } else {

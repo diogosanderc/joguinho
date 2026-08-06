@@ -45,5 +45,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- AdMob: GADApplicationIdentifier below is Google's official TEST App ID for iOS,
+	     safe to ship as is during development (always serves test ads, never real ones).
+	     Replace with the real App ID from the AdMob console before submitting to the App Store. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>
