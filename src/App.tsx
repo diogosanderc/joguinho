@@ -1212,7 +1212,7 @@ const AppContent: React.FC = () => {
         loadGame(saveData, slot);
       }
       alert(`Save importado com sucesso para o Slot 0${slot}!`);
-    } catch (e) {
+    } catch {
       alert('Não foi possível importar esse arquivo. Verifique se é um arquivo de save válido do Retrofoot 2026.');
     }
   };
@@ -1224,7 +1224,7 @@ const AppContent: React.FC = () => {
       const data = JSON.parse(raw);
       const club = data.clubs?.find((c: any) => c.isPlayerClub);
       return `${data.managerName} - ${club?.name || 'Time'} (Ano ${data.currentYear}, Rodada ${data.currentRound})`;
-    } catch (e) {
+    } catch {
       return 'Save corrompido';
     }
   };
@@ -1270,7 +1270,7 @@ const AppContent: React.FC = () => {
                         try {
                           const data = JSON.parse(raw);
                           loadGame(data, slot);
-                        } catch (e) {
+                        } catch {
                           alert('Não foi possível carregar este save.');
                         }
                       }}

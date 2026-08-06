@@ -646,7 +646,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const serialized = JSON.stringify(buildData(slimSchedule, feed));
       localStorage.setItem(`retrofoot_2026_save_slot_${slot}`, serialized);
       mirrorSaveToCloud(`retrofoot_2026_save_slot_${slot}`, serialized);
-    } catch (e) {
+    } catch {
       // Quota exceeded (or similar) even after slimming match events -- try once more with only
       // the most recent news items kept, since that list only ever grows.
       try {
@@ -1227,7 +1227,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Update player physical energy & injuries
       const clubMatch = updatedMatches.find(m => m.round === currentRound && (m.homeId === club.id || m.awayId === club.id));
       let squad = club.squad.map(player => {
-        let energy = player.energy;
+        // Normalized on read: a save written before `energy` existed would otherwise turn every
+        // arithmetic step below into NaN and persist that back into the squad permanently.
+        let energy = Number.isFinite(player.energy) ? player.energy : 100;
         let isInjured = player.isInjured;
         let injuryWeeks = player.injuryWeeks || 0;
         let yellowCards = player.yellowCards;
@@ -2597,7 +2599,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [...squad].sort((a, b) => order[a.position] - order[b.position]);
     };
 
-    const { nationality, originClub, league, ...basePlayer } = player;
+    // nationality is deliberately dropped here -- it only describes a player while he's still a
+    // foreign-market listing, not once he's on a Brazilian squad. originClub/league are kept
+    // because the transfer news below still names where he came from.
+    const { nationality: _nationality, originClub, league, ...basePlayer } = player;
     const updatedClubs = clubs.map(club => {
       if (club.id === userClubId) {
         return {
@@ -4551,6 +4556,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       alert('Este save é de uma versão antiga e incompatível do jogo. Não é possível carregá-lo.');
       return;
     }
+    // A truncated write (storage quota hit mid-save) or an imported file from somewhere else can
+    // be valid JSON and still be missing the fields everything downstream indexes into. Bailing
+    // out here keeps the player on the menu with an explanation instead of a blank screen.
+    const userClub = Array.isArray(data.clubs) ? data.clubs.find((c: any) => c?.id === data.userClubId) : null;
+    if (!Array.isArray(data.clubs) || !Array.isArray(data.schedule) || !userClub || !Array.isArray(userClub.squad)) {
+      alert('Este save parece estar corrompido ou incompleto e não pôde ser carregado.');
+      return;
+    }
     setActiveSlot(slot);
     setGameState(data.gameState);
     setManagerName(data.managerName);
@@ -4559,16 +4572,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClubs(data.clubs);
     setUserClubId(data.userClubId);
     setSchedule(data.schedule);
-    setMarketPlayers(data.marketPlayers);
-    setOffers(data.offers);
-    setNews(data.news);
-    setHistory(data.history);
-    setStadiumUpgrade(data.stadiumUpgrade);
+    setMarketPlayers(Array.isArray(data.marketPlayers) ? data.marketPlayers : []);
+    setOffers(Array.isArray(data.offers) ? data.offers : []);
+    setNews(Array.isArray(data.news) ? data.news : []);
+    setHistory(Array.isArray(data.history) ? data.history : []);
+    setStadiumUpgrade(data.stadiumUpgrade ?? null);
     setVipBoxUpgrade(data.vipBoxUpgrade ?? null);
     setMedicalDeptUpgrade(data.medicalDeptUpgrade ?? null);
     setYouthAcademyUpgrade(data.youthAcademyUpgrade ?? null);
     setCareerStats(data.careerStats ?? DEFAULT_CAREER_STATS);
-    setActiveSponsors(data.activeSponsors);
+    setActiveSponsors(Array.isArray(data.activeSponsors) ? data.activeSponsors : []);
     if (data.cupState && data.cupState.fase1ByeClubIds) {
       setCupState(data.cupState);
     } else {

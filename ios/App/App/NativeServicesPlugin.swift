@@ -268,9 +268,14 @@ public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             self.interstitialAd = ad
             DispatchQueue.main.async {
-                if let vc = self.bridge?.viewController {
-                    ad.present(from: vc)
+                guard let vc = self.bridge?.viewController else {
+                    // Nothing was actually shown -- resolving here would let the JS side start its
+                    // "an ad just played" cooldown for an impression that never happened.
+                    self.interstitialAd = nil
+                    call.reject("No view controller available to present the ad")
+                    return
                 }
+                ad.present(from: vc)
                 call.resolve()
             }
         }

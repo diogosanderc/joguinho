@@ -8,6 +8,7 @@ const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-3940256099942544/4411468910';
 const MIN_INTERVAL_MS = 4 * 60 * 1000;
 
 let lastAdShownAt = 0;
+let adInFlight = false;
 
 /** Initializes the ads SDK once. Silent no-op outside iOS. */
 export async function initAds(): Promise<void> {
@@ -20,8 +21,16 @@ export async function initAds(): Promise<void> {
  * several matches -- league + cup + Libertadores). Never throws, never blocks the game flow.
  */
 export async function maybeShowInterstitialAfterMatch(isPremium: boolean): Promise<void> {
-  if (isPremium) return;
+  if (isPremium || adInFlight) return;
   if (Date.now() - lastAdShownAt < MIN_INTERVAL_MS) return;
-  lastAdShownAt = Date.now();
-  await showInterstitialAd(INTERSTITIAL_AD_UNIT_ID, true /* npa: non-personalized ads -- no App Tracking Transparency prompt needed */);
+  adInFlight = true;
+  try {
+    // npa: non-personalized ads -- no App Tracking Transparency prompt needed.
+    const shown = await showInterstitialAd(INTERSTITIAL_AD_UNIT_ID, true);
+    // Only a real impression starts the cooldown: an ad that failed to load (offline, no fill)
+    // shouldn't cost the player-facing quiet period *and* the next chance to show one.
+    if (shown) lastAdShownAt = Date.now();
+  } finally {
+    adInFlight = false;
+  }
 }

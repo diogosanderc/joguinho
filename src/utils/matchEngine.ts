@@ -88,6 +88,14 @@ export const getAutoStarters = (club: Club): Player[] => {
     }
   }
 
+  // Last resort: an injury/suspension pile-up can leave a club with nobody available at all.
+  // A real club still has to put a team on the pitch, and more to the point every consumer here
+  // (goal scorer picks, penalty takers, shootout takers) assumes a non-empty lineup and would
+  // otherwise read past the end of an empty array. Field whoever is left, fitness aside.
+  if (starters.length === 0 && club.squad.length > 0) {
+    return [...club.squad].sort((a, b) => b.rating - a.rating).slice(0, 11);
+  }
+
   return starters;
 };
 
@@ -172,11 +180,16 @@ export const calculateTeamForces = (starters: Player[], isHighStakes: boolean = 
 // Exported standalone so a live, user-chosen taker (picked from the in-match "escolher batedor"
 // modal) can be resolved the same way as the auto-picked taker inside simulateMatch.
 export const resolvePenaltyOutcome = (takerRating: number, takerEnergy: number, isHome: boolean): { scored: boolean; saved: boolean } => {
-  const ratingAdj = (takerRating - 75) * 0.0015;
+  // Saves written before `energy` existed (and any other gap) would otherwise poison every
+  // threshold below into NaN, which silently turns *every* penalty into a miss.
+  const rating = Number.isFinite(takerRating) ? takerRating : 70;
+  const energy = Number.isFinite(takerEnergy) ? takerEnergy : 100;
+
+  const ratingAdj = (rating - 75) * 0.0015;
   // Tired legs hurt penalty composure/technique too, just less than raw skill -- smaller
   // coefficient than ratingAdj so a gassed star is still better than a fresh scrub, but a
   // rested taker gets a real (if modest) edge over an exhausted one at the same rating.
-  const energyAdj = (takerEnergy - 75) * 0.001;
+  const energyAdj = (energy - 75) * 0.001;
   const homeBonus = isHome ? 0.02 : 0;
 
   let missChance = 0.10 - ratingAdj * 0.4 - energyAdj * 0.4 - homeBonus * 0.3; // off-target portion of the 25%

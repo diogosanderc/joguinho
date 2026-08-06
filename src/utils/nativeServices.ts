@@ -169,12 +169,18 @@ export async function initNativeAds(): Promise<void> {
   }
 }
 
-/** Loads and shows a full-screen interstitial ad. Never throws, silent no-op outside iOS. */
-export async function showInterstitialAd(adId: string, npa: boolean): Promise<void> {
-  if (!isNative()) return;
+/**
+ * Loads and shows a full-screen interstitial ad. Never throws. Returns whether an ad actually
+ * got shown, so the caller can tell "no ad available" apart from "ad displayed" -- outside iOS,
+ * and whenever loading fails (offline, no fill), that's false.
+ */
+export async function showInterstitialAd(adId: string, npa: boolean): Promise<boolean> {
+  if (!isNative()) return false;
   try {
     await NativeServices.showInterstitialAd({ adId, npa });
+    return true;
   } catch (e) {
     console.warn('showInterstitialAd failed', e);
+    return false;
   }
 }
