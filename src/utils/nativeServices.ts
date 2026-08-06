@@ -180,6 +180,10 @@ export async function showInterstitialAd(adId: string, npa: boolean): Promise<bo
     await NativeServices.showInterstitialAd({ adId, npa });
     return true;
   } catch (e) {
+    // TEMP DIAGNOSTIC (remove once real ads are confirmed working): surfaces the exact load/
+    // present failure on-screen. Otherwise this only reaches console.warn, and Xcode's console
+    // doesn't capture WKWebView console output unless Safari Web Inspector is attached.
+    alert(`[DIAG Ads] showInterstitialAd failed: ${String(e)}`);
     console.warn('showInterstitialAd failed', e);
     return false;
   }
