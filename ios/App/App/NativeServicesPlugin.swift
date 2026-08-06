@@ -2,6 +2,7 @@ import Foundation
 import Capacitor
 import GameKit
 import StoreKit
+import GoogleMobileAds
 
 private let premiumProductId = "com.diogosander.retrofoot.premium"
 
@@ -22,8 +23,12 @@ public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cloudListKeys", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchasePremium", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isPremiumUnlocked", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "isPremiumUnlocked", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "initAds", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showInterstitialAd", returnType: CAPPluginReturnPromise)
     ]
+
+    private var interstitialAd: InterstitialAd?
 
     @objc func authenticateGameCenter(_ call: CAPPluginCall) {
         let localPlayer = GKLocalPlayer.local
@@ -229,6 +234,46 @@ public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         return false
+    }
+
+    // MARK: - Ads (Google Mobile Ads SDK, used directly -- not through @capacitor-community/admob,
+    // whose only Capacitor-6-compatible release points at an unpinned, since-drifted SDK branch)
+
+    @objc func initAds(_ call: CAPPluginCall) {
+        MobileAds.shared.start { _ in
+            call.resolve()
+        }
+    }
+
+    @objc func showInterstitialAd(_ call: CAPPluginCall) {
+        guard let adId = call.getString("adId") else {
+            call.reject("adId is required")
+            return
+        }
+        let request = Request()
+        if call.getBool("npa") == true {
+            let extras = Extras()
+            extras.additionalParameters = ["npa": "1"]
+            request.register(extras)
+        }
+        InterstitialAd.load(with: adId, request: request) { [weak self] ad, error in
+            guard let self = self else { return }
+            if let error = error {
+                call.reject("Failed to load interstitial: \(error.localizedDescription)")
+                return
+            }
+            guard let ad = ad else {
+                call.reject("Failed to load interstitial")
+                return
+            }
+            self.interstitialAd = ad
+            DispatchQueue.main.async {
+                if let vc = self.bridge?.viewController {
+                    ad.present(from: vc)
+                }
+                call.resolve()
+            }
+        }
     }
 }
 

@@ -14,6 +14,8 @@ interface NativeServicesPlugin {
   purchasePremium(): Promise<{ purchased: boolean }>;
   restorePurchases(): Promise<{ restored: boolean }>;
   isPremiumUnlocked(): Promise<{ unlocked: boolean }>;
+  initAds(): Promise<void>;
+  showInterstitialAd(options: { adId: string; npa?: boolean }): Promise<void>;
 }
 
 const NativeServices = registerPlugin<NativeServicesPlugin>('NativeServices');
@@ -152,5 +154,27 @@ export async function isPremiumUnlocked(): Promise<boolean> {
   } catch (e) {
     console.warn('isPremiumUnlocked failed', e);
     return false;
+  }
+}
+
+// --- Ads (Google Mobile Ads SDK) --------------------------------------------------------
+
+/** Initializes the Google Mobile Ads SDK once. Silent no-op outside iOS. */
+export async function initNativeAds(): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await NativeServices.initAds();
+  } catch (e) {
+    console.warn('initAds failed', e);
+  }
+}
+
+/** Loads and shows a full-screen interstitial ad. Never throws, silent no-op outside iOS. */
+export async function showInterstitialAd(adId: string, npa: boolean): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await NativeServices.showInterstitialAd({ adId, npa });
+  } catch (e) {
+    console.warn('showInterstitialAd failed', e);
   }
 }
