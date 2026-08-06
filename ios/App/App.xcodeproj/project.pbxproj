@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		20DD8CE0AC4B44AD84987B42 /* NativeServicesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B4B9EE8116C41EEAD3D4583 /* NativeServicesPlugin.swift */; };
+		400FC7B030E4048A83CE7AAF /* BridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0233CCB8C3F98DFA90659329 /* BridgeViewController.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -20,6 +21,7 @@
 
 /* Begin PBXFileReference section */
 		1B4B9EE8116C41EEAD3D4583 /* NativeServicesPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeServicesPlugin.swift; sourceTree = "<group>"; };
+		0233CCB8C3F98DFA90659329 /* BridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeViewController.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		3B5A80791CB545FAB4009F4A /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -72,6 +74,7 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				1B4B9EE8116C41EEAD3D4583 /* NativeServicesPlugin.swift */,
+				0233CCB8C3F98DFA90659329 /* BridgeViewController.swift */,
 				3B5A80791CB545FAB4009F4A /* App.entitlements */,
 			);
 			path = App;
@@ -160,6 +163,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				20DD8CE0AC4B44AD84987B42 /* NativeServicesPlugin.swift in Sources */,
+				400FC7B030E4048A83CE7AAF /* BridgeViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
