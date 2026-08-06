@@ -32,8 +32,13 @@ function isNative(): boolean {
 export async function authenticateGameCenter() {
   if (!isNative()) return null;
   try {
-    return await NativeServices.authenticateGameCenter();
+    const result = await NativeServices.authenticateGameCenter();
+    // TEMP DIAGNOSTIC (remove once Game Center is confirmed working): shows the auth result
+    // on-screen via alert(), since the OS "Welcome" banner is easy to miss/hard to debug.
+    alert(`[DIAG GameCenter] authenticated=${result.authenticated} displayName=${result.displayName ?? 'null'}`);
+    return result;
   } catch (e) {
+    alert(`[DIAG GameCenter] auth threw: ${String(e)}`);
     console.warn('Game Center authentication failed', e);
     return null;
   }
@@ -116,14 +121,10 @@ export async function restoreSavesFromCloud(): Promise<number> {
 
 /** Initiates the Premium purchase flow. Returns false (never throws) outside the native app. */
 export async function purchasePremium(): Promise<boolean> {
-  // TEMP DIAGNOSTIC (remove once the purchase flow is confirmed working):
-  // shows on-screen, via alert(), why purchasePremium is short-circuiting -- no Xcode/Safari needed.
-  alert(`[DIAG] isNative()=${isNative()} Capacitor=${!!(window as any).Capacitor} platform=${(window as any).Capacitor?.getPlatform?.()}`);
   if (!isNative()) return false;
   try {
     return (await NativeServices.purchasePremium()).purchased;
   } catch (e) {
-    alert(`[DIAG] native call threw: ${String(e)}`);
     console.warn('purchasePremium failed', e);
     return false;
   }
