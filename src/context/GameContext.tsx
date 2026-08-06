@@ -3731,17 +3731,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (userPair) {
-      working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
-      setCupState(working);
       const opponentId = userPair.homeId === userClubId ? userPair.awayId : userPair.homeId;
-      setCupDrawReveal({ phase, opponentId, isHome: userPair.homeId === userClubId });
+      if (isPremium) {
+        working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
+        setCupState(working);
+        setCupDrawReveal({ phase, opponentId, isHome: userPair.homeId === userClubId });
+        pushNews({
+          id: `cup_draw_${Date.now()}`,
+          week: currentRound,
+          text: `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrenta o ${clubs.find(c => c.id === opponentId)?.name ?? '???'}!`,
+          type: 'MATCH'
+        });
+        return;
+      }
+      // No Premium: there's no way for this player to play the tie live (the "Iniciar Partida"
+      // button is paywalled), and hasPendingTie in clearCurrentMatch would otherwise block the
+      // league forever waiting on a fixture that can never be resolved. Auto-simulate it exactly
+      // like every other pair's tie instead, and tell the player it happened so they still know
+      // the competition exists and want to play it themselves next time.
+      const tie = simulateFullTie(working, phase, userPair.homeId, userPair.awayId, clubs);
+      const userWon = tie.winnerId === userClubId;
+      const opponentName = clubs.find(c => c.id === opponentId)?.name ?? '???';
       pushNews({
-        id: `cup_draw_${Date.now()}`,
+        id: `cup_auto_${Date.now()}`,
         week: currentRound,
-        text: `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrenta o ${clubs.find(c => c.id === opponentId)?.name ?? '???'}!`,
+        text: userWon
+          ? `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e venceu${tie.wentToPenalties ? ' nos pênaltis' : ''}! Assine o Premium pra jogar essas partidas você mesmo.`
+          : `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
       });
-      return;
     }
 
     const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
@@ -3990,16 +4008,46 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     if (userMatch) {
-      updatedLib.userTie = { homeId: userMatch.homeId, awayId: userMatch.awayId, legs: [], group: userMatch.group };
-      setLibertadoresState(updatedLib);
       const opponentId = userMatch.homeId === userClubId ? userMatch.awayId : userMatch.homeId;
+      if (isPremium) {
+        updatedLib.userTie = { homeId: userMatch.homeId, awayId: userMatch.awayId, legs: [], group: userMatch.group };
+        setLibertadoresState(updatedLib);
+        pushNews({
+          id: `lib_group_match_${Date.now()}`,
+          week: currentRound,
+          text: `Libertadores (Grupo ${userMatch.group}, rodada ${nextGroupRound}): seu time enfrenta o ${nameOf(opponentId)}!`,
+          type: 'MATCH'
+        });
+        return;
+      }
+      // No Premium: auto-resolve the user's own group match too (see processCupMilestone for why)
+      // instead of leaving it as an unplayable pending fixture that would stall the league.
+      const homeClubObj = clubsById[userMatch.homeId];
+      const awayClubObj = clubsById[userMatch.awayId];
+      const result = simulateMatch(homeClubObj, awayClubObj);
+      const nextScorers = { ...updatedLib.scorers };
+      result.events.forEach(e => {
+        if (e.type !== 'GOAL' || !e.player) return;
+        const clubId = e.clubId === userMatch.homeId ? userMatch.homeId : userMatch.awayId;
+        const key = `${clubId}|${e.player}`;
+        if (!nextScorers[key]) nextScorers[key] = { playerName: e.player, clubId, goals: 0 };
+        nextScorers[key].goals++;
+      });
+      updatedLib.scorers = nextScorers;
+      updatedLib.schedule = updatedLib.schedule.map(m =>
+        (m.round === nextGroupRound && m.homeId === userMatch.homeId && m.awayId === userMatch.awayId)
+          ? { ...m, result, simulated: true }
+          : m
+      );
+      const userScore = userMatch.homeId === userClubId ? result.homeScore : result.awayScore;
+      const oppScore = userMatch.homeId === userClubId ? result.awayScore : result.homeScore;
+      const opponentName = nameOf(opponentId);
       pushNews({
-        id: `lib_group_match_${Date.now()}`,
+        id: `lib_group_auto_${Date.now()}`,
         week: currentRound,
-        text: `Libertadores (Grupo ${userMatch.group}, rodada ${nextGroupRound}): seu time enfrenta o ${nameOf(opponentId)}!`,
+        text: `Libertadores (Grupo ${userMatch.group}, rodada ${nextGroupRound}): seu time enfrentou o ${opponentName} e ${userScore === oppScore ? 'empatou' : userScore > oppScore ? 'venceu' : 'perdeu'} por ${userScore} a ${oppScore}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
       });
-      return;
     }
 
     setLibertadoresState(updatedLib);
@@ -4080,17 +4128,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (userPair) {
-      working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
-      setLibertadoresState(working);
       const opponentId = userPair.homeId === userClubId ? userPair.awayId : userPair.homeId;
-      setLibertadoresDrawReveal({ kind: 'KNOCKOUT', phase, opponentId, isHome: userPair.homeId === userClubId });
+      if (isPremium) {
+        working.userTie = { homeId: userPair.homeId, awayId: userPair.awayId, legs: [] };
+        setLibertadoresState(working);
+        setLibertadoresDrawReveal({ kind: 'KNOCKOUT', phase, opponentId, isHome: userPair.homeId === userClubId });
+        pushNews({
+          id: `lib_draw_${Date.now()}`,
+          week: currentRound,
+          text: `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrenta o ${nameOf(opponentId)}!`,
+          type: 'MATCH'
+        });
+        return;
+      }
+      // No Premium: auto-simulate the user's own tie too (see processCupMilestone for why).
+      const tie = simulateFullLibertadoresTie(working, phase, userPair.homeId, userPair.awayId, clubsById);
+      const userWon = tie.winnerId === userClubId;
+      const opponentName = nameOf(opponentId);
       pushNews({
-        id: `lib_draw_${Date.now()}`,
+        id: `lib_auto_${Date.now()}`,
         week: currentRound,
-        text: `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrenta o ${nameOf(opponentId)}!`,
+        text: userWon
+          ? `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e venceu${tie.wentToPenalties ? ' nos pênaltis' : ''}! Assine o Premium pra jogar essas partidas você mesmo.`
+          : `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
         type: 'MATCH'
       });
-      return;
     }
 
     finalizeLibertadoresPhase(working, phase, pairs, pushNews);
@@ -4164,6 +4226,110 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLibertadoresState(nextLib);
     setClubs(nextClubs);
   };
+
+  // Recovery for saves created before this fix shipped: a non-Premium player could get a Cup or
+  // Libertadores tie drawn as their own interactive `userTie`, but the "Iniciar Partida" button
+  // was (correctly) paywalled -- leaving them with no way to ever resolve it, which in turn
+  // permanently blocked every future league round (see hasPendingTie in clearCurrentMatch).
+  // Going forward the milestone functions above never do this to a non-Premium player, but
+  // anyone already stuck needs their pending tie auto-resolved retroactively, same as it would
+  // have been at draw time under the fixed logic. Self-terminating: once resolved, userTie
+  // becomes null and this no-ops on every subsequent run.
+  useEffect(() => {
+    if (isPremium) return;
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+
+    const cup = cupStateRef.current;
+    if (cup?.userTie) {
+      const phase = PHASES[cup.phaseIndex];
+      const { homeId, awayId } = cup.userTie;
+      const working: CupState = {
+        ...cup,
+        history: [...cup.history],
+        scorers: { ...cup.scorers },
+        eliminatedClubIds: [...cup.eliminatedClubIds],
+        userTie: null,
+        pendingSecondLeg: null
+      };
+      const tie = simulateFullTie(working, phase, homeId, awayId, clubs);
+      const userWon = tie.winnerId === userClubId;
+      const opponentId = homeId === userClubId ? awayId : homeId;
+      const opponentName = clubs.find(c => c.id === opponentId)?.name ?? '???';
+      pushNews({
+        id: `cup_auto_recover_${Date.now()}`,
+        week: currentRound,
+        text: userWon
+          ? `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e venceu${tie.wentToPenalties ? ' nos pênaltis' : ''}! Assine o Premium pra jogar essas partidas você mesmo.`
+          : `Copa do Brasil ${CUP_PHASE_LABEL[phase]}: seu time enfrentou o ${opponentName} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
+        type: 'MATCH'
+      });
+      const { nextCup, nextClubs } = finalizeCupPhase(working, phase, clubs, pushNews);
+      setCupState(nextCup);
+      setClubs(nextClubs);
+      return;
+    }
+
+    const lib = libertadoresStateRef.current;
+    if (lib?.userTie) {
+      const clubsById: Record<string, Club> = {};
+      clubs.forEach(c => { clubsById[c.id] = c; });
+      libertadoresClubs.forEach(c => { clubsById[c.id] = c; });
+      const nameOf = (id: string) => clubsById[id]?.name ?? id;
+      const { homeId, awayId, group } = lib.userTie;
+      const opponentId = homeId === userClubId ? awayId : homeId;
+
+      if (lib.phase === 'GROUPS') {
+        const homeClubObj = clubsById[homeId];
+        const awayClubObj = clubsById[awayId];
+        const result = simulateMatch(homeClubObj, awayClubObj);
+        const nextScorers = { ...lib.scorers };
+        result.events.forEach(e => {
+          if (e.type !== 'GOAL' || !e.player) return;
+          const clubId = e.clubId === homeId ? homeId : awayId;
+          const key = `${clubId}|${e.player}`;
+          if (!nextScorers[key]) nextScorers[key] = { playerName: e.player, clubId, goals: 0 };
+          nextScorers[key].goals++;
+        });
+        const nextSchedule = lib.schedule.map(m =>
+          (m.round === lib.groupRoundsPlayed && m.homeId === homeId && m.awayId === awayId)
+            ? { ...m, result, simulated: true }
+            : m
+        );
+        const userScore = homeId === userClubId ? result.homeScore : result.awayScore;
+        const oppScore = homeId === userClubId ? result.awayScore : result.homeScore;
+        pushNews({
+          id: `lib_group_auto_recover_${Date.now()}`,
+          week: currentRound,
+          text: `Libertadores (Grupo ${group}): seu time enfrentou o ${nameOf(opponentId)} e ${userScore === oppScore ? 'empatou' : userScore > oppScore ? 'venceu' : 'perdeu'} por ${userScore} a ${oppScore}. Assine o Premium pra jogar essas partidas você mesmo.`,
+          type: 'MATCH'
+        });
+        setLibertadoresState({ ...lib, schedule: nextSchedule, scorers: nextScorers, userTie: null });
+        return;
+      }
+
+      const phase = lib.phase;
+      const pairs = getBracketPairs(lib.bracketOrder);
+      const working: LibertadoresState = {
+        ...lib,
+        history: [...lib.history],
+        scorers: { ...lib.scorers },
+        eliminatedClubIds: [...lib.eliminatedClubIds],
+        userTie: null,
+        pendingSecondLeg: null
+      };
+      const tie = simulateFullLibertadoresTie(working, phase, homeId, awayId, clubsById);
+      const userWon = tie.winnerId === userClubId;
+      pushNews({
+        id: `lib_auto_recover_${Date.now()}`,
+        week: currentRound,
+        text: userWon
+          ? `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${nameOf(opponentId)} e venceu${tie.wentToPenalties ? ' nos pênaltis' : ''}! Assine o Premium pra jogar essas partidas você mesmo.`
+          : `Libertadores ${LIBERTADORES_PHASE_LABEL[phase]}: seu time enfrentou o ${nameOf(opponentId)} e foi eliminado${tie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
+        type: 'MATCH'
+      });
+      finalizeLibertadoresPhase(working, phase, pairs, pushNews);
+    }
+  }, [isPremium, cupState, libertadoresState, clubs, libertadoresClubs, userClubId, currentRound]);
 
   // Kicks off the live view for the user's own pending Libertadores fixture -- group match or
   // knockout leg, mirroring startCupMatch exactly (reuses the same currentMatch/MATCH_DAY flow).

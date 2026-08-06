@@ -1731,7 +1731,10 @@ const AppContent: React.FC = () => {
               {(['LENTO', 'MEDIO', 'RAPIDO'] as const).map(mode => (
                 <button
                   key={mode}
-                  onClick={() => setSimSpeedMode(mode)}
+                  onClick={() => {
+                    if (mode !== 'LENTO' && !isPremium) { setPremiumPaywallReason('Velocidade de jogo'); return; }
+                    setSimSpeedMode(mode);
+                  }}
                   style={{
                     fontSize: '0.62rem',
                     padding: '4px 8px',
@@ -1743,30 +1746,36 @@ const AppContent: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  {mode}
+                  {mode}{mode !== 'LENTO' && !isPremium ? ' 🔒' : ''}
                 </button>
               ))}
             </div>
-            
-            <button 
-              onClick={() => setIsSimPaused(!isSimPaused)} 
+
+            <button
+              onClick={() => setIsSimPaused(!isSimPaused)}
               disabled={matchDone}
               className="btn btn-secondary"
               style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
             >
               {isSimPaused ? 'Retomar' : 'Pausar'}
             </button>
-            <button 
-              onClick={handleSkipMatch} 
+            <button
+              onClick={() => {
+                if (!isPremium) { setPremiumPaywallReason('Pular partida'); return; }
+                handleSkipMatch();
+              }}
               disabled={matchDone}
               className="btn btn-primary"
               style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
             >
-              Pular
+              {!isPremium && <Lock size={12} />} Pular
             </button>
             {!matchDone && (
               <button
-                onClick={() => { setMidMatchSubModal(true); setIsSimPaused(true); }}
+                onClick={() => {
+                  if (!isPremium) { setPremiumPaywallReason('Substituições'); return; }
+                  setMidMatchSubModal(true); setIsSimPaused(true);
+                }}
                 disabled={subsUsed >= MAX_SUBS}
                 className="btn btn-secondary"
                 style={{
@@ -1777,7 +1786,7 @@ const AppContent: React.FC = () => {
                   cursor: subsUsed >= MAX_SUBS ? 'not-allowed' : 'pointer'
                 }}
               >
-                Substituir ({MAX_SUBS - subsUsed})
+                {!isPremium && <Lock size={12} />} Substituir ({MAX_SUBS - subsUsed})
               </button>
             )}
           </div>
@@ -2006,9 +2015,12 @@ const AppContent: React.FC = () => {
                   <button
                     className="btn btn-secondary"
                     style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)' }}
-                    onClick={() => { setHalftimeModalOpen(false); setMidMatchSubModal(true); }}
+                    onClick={() => {
+                      if (!isPremium) { setHalftimeModalOpen(false); setIsSimPaused(false); setPremiumPaywallReason('Substituições'); return; }
+                      setHalftimeModalOpen(false); setMidMatchSubModal(true);
+                    }}
                   >
-                    🔄 Fazer Substituição
+                    {!isPremium && <Lock size={14} />} 🔄 Fazer Substituição
                   </button>
                 )}
                 <button
@@ -2047,12 +2059,13 @@ const AppContent: React.FC = () => {
                     className="btn btn-secondary"
                     style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: 'var(--accent-red)', fontWeight: 700 }}
                     onClick={() => {
+                      if (!isPremium) { setRedCardModalOpen(false); setIsSimPaused(false); setPremiumPaywallReason('Substituições'); return; }
                       setRedCardModalOpen(false);
                       setSubslotIndex(null);
                       setMidMatchSubModal(true);
                     }}
                   >
-                    🔄 Reorganizar Time ({MAX_SUBS - subsUsed} sub. restante{MAX_SUBS - subsUsed === 1 ? '' : 's'})
+                    {!isPremium && <Lock size={14} />} 🔄 Reorganizar Time ({MAX_SUBS - subsUsed} sub. restante{MAX_SUBS - subsUsed === 1 ? '' : 's'})
                   </button>
                 )}
                 <button
@@ -2095,6 +2108,13 @@ const AppContent: React.FC = () => {
                     className="btn btn-secondary"
                     style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)', color: 'var(--accent-gold)', fontWeight: 700 }}
                     onClick={() => {
+                      if (!isPremium) {
+                        setInjuryModalOpen(false);
+                        setIsSimPaused(false);
+                        if (injuryPlayer) setMidMatchStarters(prev => prev.filter(p => p.id !== injuryPlayer.id));
+                        setPremiumPaywallReason('Substituições');
+                        return;
+                      }
                       setInjuryModalOpen(false);
                       if (injuryPlayer) {
                         const idx = midMatchStarters.findIndex(s => s.id === injuryPlayer.id);
@@ -2103,7 +2123,7 @@ const AppContent: React.FC = () => {
                       setMidMatchSubModal(true);
                     }}
                   >
-                    🔄 Substituir Agora
+                    {!isPremium && <Lock size={14} />} 🔄 Substituir Agora
                   </button>
                 ) : (
                   <button
