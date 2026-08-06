@@ -1368,6 +1368,7 @@ const AppContent: React.FC = () => {
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '-1px' }}>RETROFOOT 2026</h1>
           <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 500 }}>Seja um verdadeiro campeão!</p>
+          <p style={{ fontSize: '0.7rem', color: '#6b7280', fontWeight: 600, marginTop: '4px' }}>por Diogo Sander</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', maxWidth: '320px' }}>
