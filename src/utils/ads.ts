@@ -21,18 +21,12 @@ export async function initAds(): Promise<void> {
  * several matches -- league + cup + Libertadores). Never throws, never blocks the game flow.
  */
 export async function maybeShowInterstitialAfterMatch(isPremium: boolean): Promise<void> {
-  if (isPremium) { alert('[DIAG Ads] skipped: isPremium is true'); return; }
-  if (adInFlight) { alert('[DIAG Ads] skipped: adInFlight (previous call still running)'); return; }
-  if (Date.now() - lastAdShownAt < MIN_INTERVAL_MS) {
-    alert(`[DIAG Ads] skipped: cooldown, ${Math.round((MIN_INTERVAL_MS - (Date.now() - lastAdShownAt)) / 1000)}s left`);
-    return;
-  }
+  if (isPremium || adInFlight) return;
+  if (Date.now() - lastAdShownAt < MIN_INTERVAL_MS) return;
   adInFlight = true;
   try {
     // npa: non-personalized ads -- no App Tracking Transparency prompt needed.
     const shown = await showInterstitialAd(INTERSTITIAL_AD_UNIT_ID, true);
-    // TEMP DIAGNOSTIC (remove once real ads are confirmed working).
-    alert(`[DIAG Ads] showInterstitialAd resolved: shown=${shown}`);
     // Only a real impression starts the cooldown: an ad that failed to load (offline, no fill)
     // shouldn't cost the player-facing quiet period *and* the next chance to show one.
     if (shown) lastAdShownAt = Date.now();
