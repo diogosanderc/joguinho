@@ -4,6 +4,7 @@ import { usePremium } from '../context/PremiumContext';
 const PREMIUM_PRICE_LABEL = 'R$ 9,99';
 
 const PREMIUM_PERKS = [
+  'Remove os anúncios completamente',
   'Começar carreira também pela Série A e Série B',
   'Negociar jogadores de clubes da Série A',
   'Departamento Médico e Categoria de Base',
