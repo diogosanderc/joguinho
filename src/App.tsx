@@ -1732,7 +1732,7 @@ const AppContent: React.FC = () => {
                 <button
                   key={mode}
                   onClick={() => {
-                    if (mode !== 'LENTO' && !isPremium) { setPremiumPaywallReason('Velocidade de jogo'); return; }
+                    if (mode === 'MEDIO' && !isPremium) { setPremiumPaywallReason('Velocidade de jogo'); return; }
                     setSimSpeedMode(mode);
                   }}
                   style={{
@@ -1746,7 +1746,7 @@ const AppContent: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  {mode}{mode !== 'LENTO' && !isPremium ? ' 🔒' : ''}
+                  {mode}{mode === 'MEDIO' && !isPremium ? ' 🔒' : ''}
                 </button>
               ))}
             </div>
