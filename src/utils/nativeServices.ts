@@ -34,13 +34,8 @@ function isNative(): boolean {
 export async function authenticateGameCenter() {
   if (!isNative()) return null;
   try {
-    const result = await NativeServices.authenticateGameCenter();
-    // TEMP DIAGNOSTIC (remove once Game Center is confirmed working): shows the auth result
-    // on-screen via alert(), since the OS "Welcome" banner is easy to miss/hard to debug.
-    alert(`[DIAG GameCenter] authenticated=${result.authenticated} displayName=${result.displayName ?? 'null'}`);
-    return result;
+    return await NativeServices.authenticateGameCenter();
   } catch (e) {
-    alert(`[DIAG GameCenter] auth threw: ${String(e)}`);
     console.warn('Game Center authentication failed', e);
     return null;
   }
