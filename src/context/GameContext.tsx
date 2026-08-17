@@ -680,7 +680,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!saveFailureWarnedRef.current) {
           saveFailureWarnedRef.current = true;
           console.error('saveGame failed even after trimming:', e2);
-          alert('Não foi possível salvar o jogo -- o armazenamento do navegador está cheio. Exporte seu save (Slots > Exportar) e libere espaço (limpando outras campanhas antigas) o quanto antes para não perder seu progresso.');
+          alert('Não foi possível salvar o jogo -- o armazenamento do aparelho está cheio. Exporte seu save (Slots > Exportar) e libere espaço (limpando outras campanhas antigas) o quanto antes para não perder seu progresso.');
         }
       }
     }

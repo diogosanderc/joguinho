@@ -1333,7 +1333,7 @@ const AppContent: React.FC = () => {
           </div>
 
           <p style={{ fontSize: '0.7rem', color: '#9ca3af', margin: '12px 0 0', lineHeight: '1.4', textAlign: 'center' }}>
-            💡 Perdeu um save porque limpou o cache do navegador? Toque no ⬆️ ao lado do slot pra importar um backup exportado antes.
+            💡 Precisa restaurar um save de um backup? Toque no ⬆️ ao lado do slot pra importar um arquivo exportado antes.
           </p>
 
           <input
@@ -5345,7 +5345,7 @@ const AppContent: React.FC = () => {
                         className="btn btn-secondary"
                         style={{ flex: 1, fontSize: '0.68rem', padding: '5px 0', borderRadius: '6px', background: label ? 'rgba(255,255,255,0.04)' : '#1e2126', border: '1px solid rgba(255,255,255,0.06)', color: label ? 'white' : '#6b7280', cursor: label ? 'pointer' : 'not-allowed' }}
                         disabled={!label}
-                        title="Baixar este save como arquivo, pra guardar como backup fora do navegador"
+                        title="Baixar este save como arquivo, pra guardar como backup"
                       >
                         ⬇️ Exportar
                       </button>
