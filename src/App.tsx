@@ -302,7 +302,7 @@ const AppContent: React.FC = () => {
   const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('C');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [foreignBrowseMode, setForeignBrowseMode] = useState<'SAMPLE' | 'BY_CLUB'>('SAMPLE');
-  const FOREIGN_LEAGUES = ['Premier League', 'Serie A', 'Bundesliga', 'La Liga', 'Ligue 1', 'Libertadores'] as const;
+  const FOREIGN_LEAGUES = ['Premier League', 'Serie A', 'Bundesliga', 'La Liga', 'Ligue 1', 'Saudi Pro League', 'Libertadores'] as const;
   const [selectedForeignLeague, setSelectedForeignLeague] = useState<typeof FOREIGN_LEAGUES[number]>('Premier League');
   const [selectedForeignClub, setSelectedForeignClub] = useState<string>('');
   const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
@@ -3319,13 +3319,13 @@ const AppContent: React.FC = () => {
               return (
               <>
                 {/* INTERNATIONAL MARKET -- Premier League, Serie A, Bundesliga, La Liga,
-                    Ligue 1 and Libertadores clubs. Foreign signings cost far more than
-                    domestic ones (same rating->value curve as everyone else, just with
-                    ratings that go well past the domestic ~84 ceiling), so this is really
-                    only realistic for a well-established, wealthy club. */}
+                    Ligue 1, Saudi Pro League and Libertadores clubs. Foreign signings cost
+                    far more than domestic ones (same rating->value curve as everyone else,
+                    just with ratings that go well past the domestic ~84 ceiling), so this is
+                    really only realistic for a well-established, wealthy club. */}
                 <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Mercado Internacional</div>
                 <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '-8px 0 12px' }}>
-                  Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Libertadores). Custam bem mais caro que o mercado nacional.
+                  Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Liga Saudita, Libertadores). Custam bem mais caro que o mercado nacional.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '12px' }}>
