@@ -88,5 +88,19 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Seja campeão da Libertadores 3 vezes na carreira.',
     icon: '🌟',
     check: (s) => s.libertadoresWon >= 3
+  },
+  {
+    id: 'mundial_finalist',
+    title: 'Finalista Mundial',
+    description: 'Chegue à final do Mundial de Clubes.',
+    icon: '🎖️',
+    check: (s) => s.mundialFinalsReached >= 1
+  },
+  {
+    id: 'mundial_champion',
+    title: 'Campeão do Mundo',
+    description: 'Seja campeão do Mundial de Clubes.',
+    icon: '🌐',
+    check: (s) => s.mundialWon >= 1
   }
 ];

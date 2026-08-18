@@ -22,6 +22,11 @@ import {
   LIBERTADORES_PRIZE_FOR_REACHING, LIBERTADORES_CHAMPION_PRIZE, LIBERTADORES_TOP_SCORER_BONUS
 } from '../utils/libertadoresEngine';
 import type { LibertadoresState, LibertadoresPhase, LibertadoresTieLeg, LibertadoresGroupLabel } from '../utils/libertadoresEngine';
+import {
+  startMundial, resolveMundialTie, drawMundialFinalOpponent,
+  MUNDIAL_FINALIST_PRIZE, MUNDIAL_CHAMPION_PRIZE
+} from '../utils/mundialEngine';
+import type { MundialState, MundialPhase } from '../utils/mundialEngine';
 
 // One-time migration: this game used to be called "Elifoot 2026" -- carry over any saves,
 // tactics presets and settings already sitting in the player's browser under the old key prefix
@@ -73,7 +78,7 @@ export interface LeagueMatch {
   round: number;
   homeId: string;
   awayId: string;
-  division: 'A' | 'B' | 'C' | 'CUP' | 'LIBERTADORES';
+  division: 'A' | 'B' | 'C' | 'CUP' | 'LIBERTADORES' | 'MUNDIAL';
   simulated: boolean;
   result?: MatchResult;
 }
@@ -206,7 +211,7 @@ export interface HistoryRecord {
 // Premium" option right when the loss (of that competition) is freshest, on top of the permanent
 // record of it in the news feed.
 interface PremiumCompetitionAlert {
-  competitionLabel: 'Copa do Brasil' | 'Copa Libertadores';
+  competitionLabel: 'Copa do Brasil' | 'Copa Libertadores' | 'Mundial de Clubes';
   phaseLabel: string;
   opponentName: string;
   outcome: 'WIN' | 'LOSS' | 'DRAW';
@@ -239,7 +244,7 @@ interface GameContextType {
   startCupMatch: (starters: Player[], pressConferenceTone?: 'CONFIANTE' | 'CAUTELOSO' | 'PROVOCADOR') => void;
   cupDrawReveal: { phase: CupPhase; opponentId: string; isHome: boolean } | null;
   dismissCupDrawReveal: () => void;
-  championCelebration: { competition: 'Série A' | 'Copa do Brasil'; clubName: string } | null;
+  championCelebration: { competition: 'Série A' | 'Copa do Brasil' | 'Mundial de Clubes'; clubName: string } | null;
   dismissChampionCelebration: () => void;
   libertadoresState: LibertadoresState | null;
   startLibertadoresMatch: (starters: Player[], pressConferenceTone?: 'CONFIANTE' | 'CAUTELOSO' | 'PROVOCADOR') => void;
@@ -248,6 +253,11 @@ interface GameContextType {
     | { kind: 'KNOCKOUT'; phase: LibertadoresPhase; opponentId: string; isHome: boolean }
     | null;
   dismissLibertadoresDrawReveal: () => void;
+  mundialClubs: Club[];
+  mundialState: MundialState | null;
+  startMundialMatch: (starters: Player[]) => void;
+  mundialDrawReveal: { phase: MundialPhase; opponentId: string } | null;
+  dismissMundialDrawReveal: () => void;
   sponsorAlert: { kind: 'EXPIRED' | 'SIGNED'; sponsorName: string; sponsorType: 'MASTER' | 'COSTAS' | 'MANGAS' } | null;
   dismissSponsorAlert: () => void;
   premiumCompetitionAlert: PremiumCompetitionAlert | null;
@@ -412,7 +422,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Transient (not persisted) celebration modal, shown once when the user's club is crowned
   // Série A champion (at season end) or Copa do Brasil champion (right when the final ends).
-  const [championCelebration, setChampionCelebration] = useState<{ competition: 'Série A' | 'Copa do Brasil'; clubName: string } | null>(null);
+  const [championCelebration, setChampionCelebration] = useState<{ competition: 'Série A' | 'Copa do Brasil' | 'Mundial de Clubes'; clubName: string } | null>(null);
   const dismissChampionCelebration = () => setChampionCelebration(null);
 
   // Top Série A finishers from the season that just ended, captured in endSeason -- consumed by
@@ -441,6 +451,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     | null
   >(null);
   const dismissLibertadoresDrawReveal = () => setLibertadoresDrawReveal(null);
+
+  // Mundial de Clubes: opponent clubs (Saudi semifinal pool + European final pool), fetched once
+  // like foreignPlayerPool -- never mutated (the user never signs a player from them), so no
+  // seed/mutable-state split is needed like libertadoresClubs has.
+  const [mundialClubs, setMundialClubs] = useState<Club[]>([]);
+  useEffect(() => {
+    fetch('/data/mundial_clubs.json')
+      .then(r => r.json())
+      .then((data: Club[]) => setMundialClubs(data))
+      .catch(() => {});
+  }, []);
+
+  // Mundial de Clubes campaign state -- only ever exists while the user's own club, having just
+  // won the Libertadores, is working through its 2-match ladder (semifinal vs a drawn Saudi club,
+  // final vs a drawn European club). Unlike cupState/libertadoresState there's no "other clubs'
+  // ties" to track -- this competition only exists because the user qualified, so every match in
+  // it is the user's own. Reset to null the instant the campaign ends (won the final or lost
+  // either match) -- the outcome itself is preserved via the news feed and careerStats, same as
+  // cupState/libertadoresState don't carry last season's bracket forward either.
+  const [mundialState, setMundialStateRaw] = useState<MundialState | null>(null);
+  const mundialStateRef = useRef<MundialState | null>(null);
+  const setMundialState = (next: MundialState | null) => {
+    mundialStateRef.current = next;
+    setMundialStateRaw(next);
+  };
+  // Transient (not persisted) draw-reveal modal -- shown once per match (semifinal opponent, then
+  // final opponent if they get there), same idea as libertadoresDrawReveal's KNOCKOUT case.
+  const [mundialDrawReveal, setMundialDrawReveal] = useState<{ phase: MundialPhase; opponentId: string } | null>(null);
+  const dismissMundialDrawReveal = () => setMundialDrawReveal(null);
 
   // Transient (not persisted) alert for the sponsor-contract modal -- fires when a deal expires
   // (a passive event during round processing, easy to miss in the news feed alone) or when the
@@ -654,7 +693,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastSeasonTopSerieA,
       libertadoresClubs: libertadoresClubsRef.current,
       libertadoresState: libertadoresStateRef.current,
-      defendingLibertadoresChampionId
+      defendingLibertadoresChampionId,
+      mundialState: mundialStateRef.current
     });
 
     const slimSchedule = slimOldMatchEvents(currentSchedule, round);
@@ -3575,6 +3615,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentMatch(null);
     setCurrentMatchResult(null);
     setCupState(null);
+    setMundialState(null);
     setForeignMarketPlayers([]);
     setBoughtForeignIds([]);
   };
@@ -3585,6 +3626,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resolveCupUserLeg(currentMatch, currentMatchResult);
       } else if (currentMatch.division === 'LIBERTADORES') {
         resolveLibertadoresUserLeg(currentMatch, currentMatchResult);
+      } else if (currentMatch.division === 'MUNDIAL') {
+        resolveMundialUserMatch(currentMatch, currentMatchResult);
       } else {
         // nextRound() commits a match result to `schedule` (for the points table/finances/etc.)
         // the instant "Iniciar Partida" is clicked, before the user has made any live substitutions.
@@ -3615,8 +3658,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // to the Season End screen here would strand that Final unplayed and no champion ever
       // crowned, only for a brand new Libertadores to start next season regardless -- so hold off
       // on the season-end transition (without discarding it) until every pending Copa/Libertadores
-      // tie the user still needs to play live has actually been resolved.
-      const hasPendingTie = !!cupStateRef.current?.userTie || !!libertadoresStateRef.current?.userTie;
+      // tie the user still needs to play live has actually been resolved. mundialState itself
+      // (rather than a nested .userTie) is the pending-match signal here -- see its own comment.
+      const hasPendingTie = !!cupStateRef.current?.userTie || !!libertadoresStateRef.current?.userTie || !!mundialStateRef.current;
       if (hasPendingTie) {
         setGameState('PLAYING');
       } else if (seasonEndPendingRef.current) {
@@ -3638,7 +3682,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // gating the next league round until it's resolved -- exactly the "extra midweek fixture,
   // less rest" rhythm real football has. See src/utils/cupEngine.ts for the bracket rules.
 
-  const applyCupPrize = (clubsList: Club[], clubId: string, amount: number, competition: 'CUP' | 'LIBERTADORES'): Club[] => {
+  const applyCupPrize = (clubsList: Club[], clubId: string, amount: number, competition: 'CUP' | 'LIBERTADORES' | 'MUNDIAL'): Club[] => {
     if (amount <= 0) return clubsList;
     return clubsList.map(c => (c.id === clubId ? {
       ...c,
@@ -4261,6 +4305,71 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : rec));
       if (championId === userClubId) {
         setCareerStats({ ...careerStatsRef.current, libertadoresWon: careerStatsRef.current.libertadoresWon + 1 });
+        // The ultimate payoff for a Libertadores title: a 2-match Mundial de Clubes ladder
+        // (semifinal vs a drawn Saudi club, final vs a drawn European giant), played out right
+        // here before the season screen -- see mundialState's own comment for why it doesn't
+        // need userTie/pendingSecondLeg-style bookkeeping like Cup/Libertadores ties do.
+        if (mundialClubs.length > 0) {
+          const mundial = startMundial(currentYear, mundialClubs);
+          if (isPremium) {
+            setMundialState(mundial);
+            setMundialDrawReveal({ phase: mundial.phase, opponentId: mundial.semifinalOpponentId });
+          } else {
+            // Not Premium: auto-simulate the whole ladder instantly, same as any other of the
+            // user's own Cup/Libertadores ties get resolved for a non-Premium player (see
+            // processLibertadoresKnockoutMilestone) -- interactive play is the Premium perk, but
+            // a non-Premium champion still gets the trophy chase and the prize money.
+            const semiOpponent = mundialClubs.find(c => c.id === mundial.semifinalOpponentId)!;
+            const userClubForSemi = nextClubs.find(c => c.id === userClubId)!;
+            const semiResult = simulateMatch(userClubForSemi, semiOpponent);
+            const semiTie = resolveMundialTie('SEMIFINAL', userClubId, semiOpponent.id, userClubForSemi, semiOpponent, semiResult);
+            const semiWon = semiTie.winnerId === userClubId;
+
+            if (!semiWon) {
+              pushNews({
+                id: `mundial_semi_${Date.now()}`,
+                week: currentRound,
+                text: `Mundial de Clubes: seu time enfrentou o ${semiOpponent.name} na semifinal e foi eliminado${semiTie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
+                type: 'MATCH'
+              });
+              setPremiumCompetitionAlert({
+                competitionLabel: 'Mundial de Clubes', phaseLabel: 'Semifinal', opponentName: semiOpponent.name,
+                outcome: 'LOSS', wentToPenalties: semiTie.wentToPenalties
+              });
+            } else {
+              nextClubs = applyCupPrize(nextClubs, userClubId, MUNDIAL_FINALIST_PRIZE, 'MUNDIAL');
+              const finalOpponent = mundialClubs.find(c => c.id === drawMundialFinalOpponent(mundialClubs))!;
+              const userClubForFinal = nextClubs.find(c => c.id === userClubId)!;
+              const finalResult = simulateMatch(userClubForFinal, finalOpponent);
+              const finalTie = resolveMundialTie('FINAL', userClubId, finalOpponent.id, userClubForFinal, finalOpponent, finalResult);
+              const finalWon = finalTie.winnerId === userClubId;
+              let statsUpdate = { ...careerStatsRef.current, mundialFinalsReached: careerStatsRef.current.mundialFinalsReached + 1 };
+
+              if (finalWon) {
+                nextClubs = applyCupPrize(nextClubs, userClubId, MUNDIAL_CHAMPION_PRIZE, 'MUNDIAL');
+                statsUpdate = { ...statsUpdate, mundialWon: statsUpdate.mundialWon + 1 };
+                pushNews({
+                  id: `mundial_final_${Date.now()}`,
+                  week: currentRound,
+                  text: `🌐 CAMPEÃO MUNDIAL! Seu time venceu o ${finalOpponent.name} na final e conquistou o Mundial de Clubes, faturando ${formatCurrency(MUNDIAL_CHAMPION_PRIZE)}! Assine o Premium pra jogar essas partidas você mesmo.`,
+                  type: 'BOARD'
+                });
+              } else {
+                pushNews({
+                  id: `mundial_final_${Date.now()}`,
+                  week: currentRound,
+                  text: `Mundial de Clubes: seu time perdeu a final para o ${finalOpponent.name}${finalTie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
+                  type: 'MATCH'
+                });
+              }
+              setPremiumCompetitionAlert({
+                competitionLabel: 'Mundial de Clubes', phaseLabel: 'Final', opponentName: finalOpponent.name,
+                outcome: finalWon ? 'WIN' : 'LOSS', wentToPenalties: finalTie.wentToPenalties
+              });
+              setCareerStats(statsUpdate);
+            }
+          }
+        }
       }
     }
 
@@ -4497,6 +4606,89 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // if still needed, computed instantly rather than shown live since it's a rare edge case),
     // or a non-final tie already decided in normal/aggregate time.
     finishLibertadoresTieResolution(lib, phase, userTie.homeId, userTie.awayId, homeClubObj, awayClubObj, legs);
+  };
+
+  // --- Mundial de Clubes (Premium interactive path) --------------------------------------
+  // Always exactly one match pending at a time (semifinal, then final) -- no "other ties" to
+  // auto-simulate around it like Cup/Libertadores have, since this competition only exists
+  // because the user's own club qualified. User always plays as the home side; it's a
+  // neutral-venue exhibition, no real home/away to model.
+  const startMundialMatch = (playerStarters: Player[]) => {
+    const mundial = mundialStateRef.current;
+    if (!mundial || !userClub) return;
+    const opponentId = mundial.phase === 'SEMIFINAL' ? mundial.semifinalOpponentId : mundial.finalOpponentId;
+    if (!opponentId) return;
+    const opponentClubObj = mundialClubs.find(c => c.id === opponentId);
+    if (!opponentClubObj) return;
+
+    const result = simulateMatch(userClub, opponentClubObj, playerStarters, getAutoStarters(opponentClubObj), { isHighStakes: true });
+
+    setCurrentMatch({ round: currentRound, homeId: userClubId, awayId: opponentId, division: 'MUNDIAL', simulated: true, result });
+    setCurrentMatchResult(result);
+    pendingGameStateRef.current = 'PLAYING';
+    setGameState('MATCH_DAY');
+  };
+
+  // Called from clearCurrentMatch once the user's own Mundial match finishes live.
+  const resolveMundialUserMatch = (matchFixture: LeagueMatch, result: MatchResult) => {
+    const mundial = mundialStateRef.current;
+    if (!mundial || !userClub) return;
+    const opponentId = matchFixture.homeId === userClubId ? matchFixture.awayId : matchFixture.homeId;
+    const opponentClubObj = mundialClubs.find(c => c.id === opponentId);
+    if (!opponentClubObj) return;
+
+    const homeClubObj = matchFixture.homeId === userClubId ? userClub : opponentClubObj;
+    const awayClubObj = matchFixture.awayId === userClubId ? userClub : opponentClubObj;
+    const tie = resolveMundialTie(mundial.phase, matchFixture.homeId, matchFixture.awayId, homeClubObj, awayClubObj, result);
+    const won = tie.winnerId === userClubId;
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+    const extraText = tie.wentToPenalties ? ' nos pênaltis' : (tie.wentToExtraTime ? ' na prorrogação' : '');
+
+    if (mundial.phase === 'SEMIFINAL') {
+      if (!won) {
+        pushNews({
+          id: `mundial_semi_${Date.now()}`,
+          week: currentRound,
+          text: `Mundial de Clubes: você enfrentou o ${opponentClubObj.name} na semifinal e foi eliminado${extraText}.`,
+          type: 'MATCH'
+        });
+        setMundialState(null);
+        return;
+      }
+      setClubs(prev => applyCupPrize(prev, userClubId, MUNDIAL_FINALIST_PRIZE, 'MUNDIAL'));
+      setCareerStats({ ...careerStatsRef.current, mundialFinalsReached: careerStatsRef.current.mundialFinalsReached + 1 });
+      const finalOpponentId = drawMundialFinalOpponent(mundialClubs);
+      setMundialState({ ...mundial, phase: 'FINAL', semifinalTie: tie, finalOpponentId });
+      setMundialDrawReveal({ phase: 'FINAL', opponentId: finalOpponentId });
+      pushNews({
+        id: `mundial_semi_win_${Date.now()}`,
+        week: currentRound,
+        text: `Mundial de Clubes: você venceu o ${opponentClubObj.name} na semifinal${extraText} e vai à final!`,
+        type: 'MATCH'
+      });
+      return;
+    }
+
+    // FINAL
+    if (won) {
+      setClubs(prev => applyCupPrize(prev, userClubId, MUNDIAL_CHAMPION_PRIZE, 'MUNDIAL'));
+      setCareerStats({ ...careerStatsRef.current, mundialWon: careerStatsRef.current.mundialWon + 1 });
+      pushNews({
+        id: `mundial_final_win_${Date.now()}`,
+        week: currentRound,
+        text: `🌐 CAMPEÃO MUNDIAL! Você venceu o ${opponentClubObj.name} na final${extraText} e conquistou o Mundial de Clubes, faturando ${formatCurrency(MUNDIAL_CHAMPION_PRIZE)}!`,
+        type: 'BOARD'
+      });
+      setChampionCelebration({ competition: 'Mundial de Clubes', clubName: userClub.name });
+    } else {
+      pushNews({
+        id: `mundial_final_loss_${Date.now()}`,
+        week: currentRound,
+        text: `Mundial de Clubes: você perdeu a final para o ${opponentClubObj.name}${extraText}.`,
+        type: 'MATCH'
+      });
+    }
+    setMundialState(null);
   };
 
   // Shared tail end of resolving the user's own Libertadores tie -- whether decided in normal
@@ -4808,7 +5000,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setVipBoxUpgrade(data.vipBoxUpgrade ?? null);
     setMedicalDeptUpgrade(data.medicalDeptUpgrade ?? null);
     setYouthAcademyUpgrade(data.youthAcademyUpgrade ?? null);
-    setCareerStats(data.careerStats ?? DEFAULT_CAREER_STATS);
+    // Spread over DEFAULT_CAREER_STATS (not just `?? DEFAULT_CAREER_STATS`) so a save from before
+    // a new stat existed (e.g. mundialWon) still gets 0 for it instead of undefined.
+    setCareerStats({ ...DEFAULT_CAREER_STATS, ...(data.careerStats ?? {}) });
     setActiveSponsors(Array.isArray(data.activeSponsors) ? data.activeSponsors : []);
     if (data.cupState && data.cupState.fase1ByeClubIds) {
       setCupState(data.cupState);
@@ -4835,6 +5029,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLibertadoresClubs(data.libertadoresClubs && data.libertadoresClubs.length > 0 ? data.libertadoresClubs : libertadoresSeed);
     setLibertadoresState(data.libertadoresState ?? null);
     setDefendingLibertadoresChampionId(data.defendingLibertadoresChampionId ?? null);
+    setMundialState(data.mundialState ?? null);
   };
 
   const cheatFinances = () => {
@@ -4877,6 +5072,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startLibertadoresMatch,
       libertadoresDrawReveal,
       dismissLibertadoresDrawReveal,
+      mundialClubs,
+      mundialState,
+      startMundialMatch,
+      mundialDrawReveal,
+      dismissMundialDrawReveal,
       sponsorAlert,
       dismissSponsorAlert,
       premiumCompetitionAlert,

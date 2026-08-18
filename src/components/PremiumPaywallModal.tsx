@@ -9,7 +9,7 @@ const PREMIUM_PERKS = [
   'Negociar jogadores de clubes da Série A',
   'Departamento Médico e Categoria de Base',
   '4 slots de campanhas salvas (em vez de 1)',
-  'Disputar Copa, Libertadores e Seleção Brasileira',
+  'Disputar Copa, Libertadores, Mundial de Clubes e Seleção Brasileira',
 ];
 
 interface PremiumPaywallModalProps {

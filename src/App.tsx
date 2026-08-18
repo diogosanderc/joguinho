@@ -51,7 +51,7 @@ import { LOAN_AMOUNTS, LOAN_TERMS, LOAN_PURPOSES, getScoreLabel, getBaseInterest
 import { CUP_PHASE_LABEL, TWO_LEGGED_PHASES, PHASES } from './utils/cupEngine';
 import { LIBERTADORES_PHASE_LABEL, LIBERTADORES_GROUP_ROUNDS, LIBERTADORES_GROUP_LABELS, calculateGroupStandings } from './utils/libertadoresEngine';
 import type { LibertadoresGroupLabel } from './utils/libertadoresEngine';
-import { authenticateGameCenter, restoreSavesFromCloud, mirrorSaveToCloud, removeCloudSave } from './utils/nativeServices';
+import { authenticateGameCenter, reportGameCenterAchievement, restoreSavesFromCloud, mirrorSaveToCloud, removeCloudSave } from './utils/nativeServices';
 import { initAds, maybeShowInterstitialAfterMatch } from './utils/ads';
 import {
   Home, Users, TrendingUp, DollarSign, Trophy,
@@ -117,7 +117,7 @@ const AppContent: React.FC = () => {
   const {
     gameState, managerName, currentYear, currentRound, clubs, userClubId, userClub,
     schedule, marketPlayers, offers, news, history, careerStats, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, youthAcademyUpgrade, activeSponsors,
-    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, sponsorAlert, dismissSponsorAlert, premiumCompetitionAlert, dismissPremiumCompetitionAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
+    currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, mundialClubs, mundialState, startMundialMatch, mundialDrawReveal, dismissMundialDrawReveal, sponsorAlert, dismissSponsorAlert, premiumCompetitionAlert, dismissPremiumCompetitionAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, upgradeYouthAcademy, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
     makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
@@ -148,6 +148,26 @@ const AppContent: React.FC = () => {
     });
     initAds();
   }, []);
+
+  // Syncs the in-app Conquistas list to real Apple Game Center achievements. ACHIEVEMENTS is
+  // derived (evaluated fresh against careerStats, never separately "unlocked and stored" -- see
+  // its own comment), so there's no discrete "just unlocked" event to hook into; instead this
+  // diffs against a locally persisted set of already-reported ids every time careerStats changes,
+  // reporting (and marking as reported) whatever's newly true. Device-level, not save-slot-scoped,
+  // since Game Center achievements belong to the Apple ID, not any one career.
+  useEffect(() => {
+    const key = 'retrofoot_2026_gc_achievements_reported';
+    let reported: string[] = [];
+    try {
+      reported = JSON.parse(localStorage.getItem(key) ?? '[]');
+    } catch {
+      reported = [];
+    }
+    const newlyUnlocked = ACHIEVEMENTS.filter(a => !reported.includes(a.id) && a.check(careerStats));
+    if (newlyUnlocked.length === 0) return;
+    newlyUnlocked.forEach(a => reportGameCenterAchievement(a.id));
+    localStorage.setItem(key, JSON.stringify([...reported, ...newlyUnlocked.map(a => a.id)]));
+  }, [careerStats]);
 
   // Starting state states
   const [inputName, setInputName] = useState('');
@@ -1126,8 +1146,8 @@ const AppContent: React.FC = () => {
         libertadoresState.tiebreakSeeds
       )
     : [];
-  const findClubName = (id: string) => clubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? '???';
-  const findClubColor = (id: string) => clubs.find(c => c.id === id)?.primaryColor ?? libertadoresClubs.find(c => c.id === id)?.primaryColor ?? '#555';
+  const findClubName = (id: string) => clubs.find(c => c.id === id)?.name ?? libertadoresClubs.find(c => c.id === id)?.name ?? mundialClubs.find(c => c.id === id)?.name ?? '???';
+  const findClubColor = (id: string) => clubs.find(c => c.id === id)?.primaryColor ?? libertadoresClubs.find(c => c.id === id)?.primaryColor ?? mundialClubs.find(c => c.id === id)?.primaryColor ?? '#555';
 
   // Top scorers calculation by division
   const getTopScorers = () => {
@@ -1643,7 +1663,7 @@ const AppContent: React.FC = () => {
   if (gameState === 'MATCH_DAY' && currentMatch) {
     const isHome = currentMatch.homeId === userClubId;
     const opponentId = isHome ? currentMatch.awayId : currentMatch.homeId;
-    const opponent = (clubs.find(c => c.id === opponentId) ?? libertadoresClubs.find(c => c.id === opponentId))!;
+    const opponent = (clubs.find(c => c.id === opponentId) ?? libertadoresClubs.find(c => c.id === opponentId) ?? mundialClubs.find(c => c.id === opponentId))!;
     const roundToDisplay = currentRound - 1;
     const roundMatches = schedule.filter(m => m.round === roundToDisplay);
 
@@ -1657,6 +1677,8 @@ const AppContent: React.FC = () => {
                 ? `🏆 COPA • ${CUP_PHASE_LABEL[PHASES[cupState.phaseIndex]]}`
                 : currentMatch.division === 'LIBERTADORES' && libertadoresState
                 ? `🌎 LIBERTADORES • ${libertadoresState.phase === 'GROUPS' ? 'Fase de Grupos' : LIBERTADORES_PHASE_LABEL[libertadoresState.phase]}`
+                : currentMatch.division === 'MUNDIAL' && mundialState
+                ? `🌐 MUNDIAL DE CLUBES • ${mundialState.phase === 'SEMIFINAL' ? 'Semifinal' : 'Final'}`
                 : `SEU JOGO • SÉRIE ${userClub.division}`} • 🔄 {subsUsed}/{MAX_SUBS}
             </span>
             <span style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}>
@@ -1802,6 +1824,11 @@ const AppContent: React.FC = () => {
             🌎 Copa Libertadores — {libertadoresState?.phase === 'GROUPS' ? 'Fase de Grupos' : LIBERTADORES_PHASE_LABEL[libertadoresState?.phase ?? 'OITAVAS']}<br />
             Os demais confrontos desta rodada já foram decididos.
           </div>
+        ) : currentMatch.division === 'MUNDIAL' ? (
+          <div className="classic-board-container" style={{ scrollBehavior: 'smooth', padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.8rem' }}>
+            🌐 Mundial de Clubes — {mundialState?.phase === 'SEMIFINAL' ? 'Semifinal' : 'Final'}<br />
+            O ápice da carreira: vença para conquistar o título mundial.
+          </div>
         ) : (
         <div className="classic-board-container" style={{ scrollBehavior: 'smooth' }}>
           {(['A', 'B', 'C'] as const).map(div => {
@@ -1887,7 +1914,7 @@ const AppContent: React.FC = () => {
               onClick={() => {
                 clearCurrentMatch();
                 maybeShowInterstitialAfterMatch(isPremium);
-                if (currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES') {
+                if (currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES' || currentMatch.division === 'MUNDIAL') {
                   setActiveTab(1);
                 } else {
                   setStandingsTab(userClub.division as 'A' | 'B' | 'C');
@@ -1897,7 +1924,7 @@ const AppContent: React.FC = () => {
               }}
               style={{ height: '44px' }}
             >
-              {currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES' ? 'Fim de Jogo (Continuar)' : 'Fim de Rodada (Ver Classificação)'}
+              {currentMatch.division === 'CUP' || currentMatch.division === 'LIBERTADORES' || currentMatch.division === 'MUNDIAL' ? 'Fim de Jogo (Continuar)' : 'Fim de Rodada (Ver Classificação)'}
             </button>
           </div>
         )}
@@ -2301,7 +2328,7 @@ const AppContent: React.FC = () => {
               <span style={{ fontSize: '2.5rem' }}>🏆</span>
               <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Parabéns!</h3>
               <p style={{ fontSize: '1rem', margin: '10px 0 20px', color: '#d1d5db' }}>
-                Você foi campeão da <strong style={{ color: 'var(--accent-gold)' }}>{championCelebration.competition}</strong> com o <strong>{championCelebration.clubName}</strong>!
+                Você foi campeão {championCelebration.competition === 'Mundial de Clubes' ? 'do' : 'da'} <strong style={{ color: 'var(--accent-gold)' }}>{championCelebration.competition}</strong> com o <strong>{championCelebration.clubName}</strong>!
               </p>
               <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissChampionCelebration}>
                 Continuar
@@ -2567,6 +2594,41 @@ const AppContent: React.FC = () => {
                     style={{ marginTop: '16px', height: '48px', background: '#0096dc' }}
                   >
                     {isPremium ? <Play size={18} fill="#000" /> : <Lock size={16} />} Iniciar Partida da Libertadores
+                  </button>
+                </div>
+              );
+            })() : mundialState ? (() => {
+              const phase = mundialState.phase;
+              const opponentId = phase === 'SEMIFINAL' ? mundialState.semifinalOpponentId : mundialState.finalOpponentId;
+              const opponent = mundialClubs.find(c => c.id === opponentId);
+              const phaseLabel = phase === 'SEMIFINAL' ? 'Semifinal' : 'Final';
+              return (
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.16) 0%, rgba(12, 13, 14, 0.9) 100%)', border: '1px solid rgba(147, 51, 234, 0.4)' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 700, textTransform: 'uppercase' }}>🌐 Mundial de Clubes</span>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{phaseLabel}</h2>
+                  </div>
+                  {opponent && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="club-badge-mini" style={{ backgroundColor: opponent.primaryColor, border: `1px solid ${opponent.secondaryColor}`, width: '16px', height: '16px' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>VS {opponent.name}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                        <span>{opponent.country}</span>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      if (!isPremium) { setPremiumPaywallReason('Mundial de Clubes'); return; }
+                      beginMatchKickoff();
+                      startMundialMatch(starters);
+                    }}
+                    style={{ marginTop: '16px', height: '48px', background: '#9333ea' }}
+                  >
+                    {isPremium ? <Play size={18} fill="#000" /> : <Lock size={16} />} Iniciar Partida do Mundial
                   </button>
                 </div>
               );
@@ -4790,7 +4852,7 @@ const AppContent: React.FC = () => {
             <span style={{ fontSize: '2.5rem' }}>🏆</span>
             <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Parabéns!</h3>
             <p style={{ fontSize: '1rem', margin: '10px 0 20px', color: '#d1d5db' }}>
-              Você foi campeão da <strong style={{ color: 'var(--accent-gold)' }}>{championCelebration.competition}</strong> com o <strong>{championCelebration.clubName}</strong>!
+              Você foi campeão {championCelebration.competition === 'Mundial de Clubes' ? 'do' : 'da'} <strong style={{ color: 'var(--accent-gold)' }}>{championCelebration.competition}</strong> com o <strong>{championCelebration.clubName}</strong>!
             </p>
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissChampionCelebration}>
               Continuar
@@ -4881,6 +4943,34 @@ const AppContent: React.FC = () => {
         );
       })()}
 
+      {mundialDrawReveal && gameState !== 'MATCH_DAY' && !penaltyShootout && !cupDrawReveal && !libertadoresDrawReveal && !championCelebration && (() => {
+        const opponentClub = mundialClubs.find(c => c.id === mundialDrawReveal.opponentId);
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1200 }}>
+            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2.5rem' }}>🌐</span>
+              <h3 style={{ fontWeight: 800, marginTop: '8px', color: '#c084fc' }}>
+                {mundialDrawReveal.phase === 'SEMIFINAL' ? 'Mundial de Clubes!' : 'Você está na Final!'}
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '4px 0 16px' }}>
+                {mundialDrawReveal.phase === 'SEMIFINAL' ? 'Semifinal' : 'Final'}
+              </p>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, margin: '10px 0' }}>
+                {userClub?.name}
+                <span style={{ color: '#c084fc' }}> x </span>
+                {opponentClub?.name}
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: '0 0 20px' }}>
+                {opponentClub?.country}
+              </p>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={dismissMundialDrawReveal}>
+                Continuar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* UNHAPPY PLAYER DISSATISFACTION MODAL -- gated to gameState !== 'MATCH_DAY' because
           its trigger effect can still land its state update after the user has already
           tapped into a new match: without this guard it renders on top of the live match
@@ -4888,7 +4978,7 @@ const AppContent: React.FC = () => {
           deferred behind cupDrawReveal/libertadoresDrawReveal so these auto-popup modals queue
           one at a time instead of stacking when more than one triggers on the same round
           transition. */}
-      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !penaltyShootout && !championCelebration && (
+      {unhappyPlayer && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !mundialDrawReveal && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>😠</span>
@@ -4923,7 +5013,7 @@ const AppContent: React.FC = () => {
       {/* SPONSOR CONTRACT ALERT MODAL -- fires when a deal expires (passive, during round
           processing, easy to miss in the news feed alone) or when the user signs a new one
           (explicit confirmation on top of the news item). */}
-      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !penaltyShootout && !championCelebration && (
+      {sponsorAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !mundialDrawReveal && !unhappyPlayer && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{sponsorAlert.kind === 'SIGNED' ? '🤝' : '📉'}</span>
@@ -4945,7 +5035,7 @@ const AppContent: React.FC = () => {
       {/* INCOMING CLUB TRANSFER PROPOSAL MODAL -- same race as the dissatisfaction modal
           above: guard against rendering over a live match that's already in progress, and
           queue behind the other two auto-popup modals instead of stacking on top of them. */}
-      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && !championCelebration && (
+      {incomingProposal && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !mundialDrawReveal && !unhappyPlayer && !sponsorAlert && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
@@ -5051,10 +5141,10 @@ const AppContent: React.FC = () => {
           played live (see processCupMilestone/processLibertadoresMilestone in GameContext), so
           the offer to unlock it lands at the exact moment the player feels the loss, not just as
           a line buried in the news feed. Queued behind the other auto-popup modals. */}
-      {premiumCompetitionAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !unhappyPlayer && !sponsorAlert && !incomingProposal && !penaltyShootout && !championCelebration && (
+      {premiumCompetitionAlert && gameState !== 'MATCH_DAY' && !cupDrawReveal && !libertadoresDrawReveal && !mundialDrawReveal && !unhappyPlayer && !sponsorAlert && !incomingProposal && !penaltyShootout && !championCelebration && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '345px', textAlign: 'center' }}>
-            <span style={{ fontSize: '2.5rem' }}>{premiumCompetitionAlert.competitionLabel === 'Copa do Brasil' ? '🏆' : '🌎'}</span>
+            <span style={{ fontSize: '2.5rem' }}>{premiumCompetitionAlert.competitionLabel === 'Copa do Brasil' ? '🏆' : premiumCompetitionAlert.competitionLabel === 'Mundial de Clubes' ? '🌐' : '🌎'}</span>
             <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>
               {premiumCompetitionAlert.competitionLabel} — {premiumCompetitionAlert.phaseLabel}
             </h3>

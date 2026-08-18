@@ -11,6 +11,8 @@ export interface CareerStats {
   titlesWon: number; // Division championships (A, B or C)
   cupsWon: number; // Copa do Brasil titles
   libertadoresWon: number; // Libertadores titles
+  mundialFinalsReached: number; // Mundial de Clubes finals reached (won the semifinal)
+  mundialWon: number; // Mundial de Clubes titles
 }
 
 export const DEFAULT_CAREER_STATS: CareerStats = {
@@ -21,7 +23,9 @@ export const DEFAULT_CAREER_STATS: CareerStats = {
   longestUnbeatenStreak: 0,
   titlesWon: 0,
   cupsWon: 0,
-  libertadoresWon: 0
+  libertadoresWon: 0,
+  mundialFinalsReached: 0,
+  mundialWon: 0
 };
 
 // GOL Goleiro, ZAG Zagueiro, LD Lateral-Direito, LE Lateral-Esquerdo,
