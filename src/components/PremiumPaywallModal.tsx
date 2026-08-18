@@ -10,7 +10,7 @@ const PREMIUM_PERKS = [
   'Departamento Médico e Categoria de Base',
   '4 slots de campanhas salvas (em vez de 1)',
   'Disputar Copa, Libertadores e Seleção Brasileira',
-  'Fazer substituições e usar velocidade rápida/pular partida',
+  'Velocidade média de partida',
 ];
 
 interface PremiumPaywallModalProps {
