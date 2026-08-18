@@ -119,7 +119,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, careerStats, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, youthAcademyUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, mundialClubs, mundialState, startMundialMatch, mundialDrawReveal, dismissMundialDrawReveal, sponsorAlert, dismissSponsorAlert, premiumCompetitionAlert, dismissPremiumCompetitionAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, upgradeYouthAcademy, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, resolvePlayerDissatisfaction,
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, cheatWinLibertadores, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
 
@@ -2428,6 +2428,9 @@ const AppContent: React.FC = () => {
               if (code === 'querosermilionario') {
                 cheatFinances();
                 alert('Trapaça ativada! R$ 1.000.000.000 (1 Bilhão) adicionados ao caixa do clube!');
+              } else if (code === 'campeaolibertadores') {
+                cheatWinLibertadores();
+                alert('Trapaça ativada! Seu time foi declarado campeão da Libertadores -- o Mundial de Clubes deve começar agora.');
               } else if (code !== null) {
                 alert('Código incorreto!');
               }

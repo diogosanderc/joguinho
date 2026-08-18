@@ -312,6 +312,7 @@ interface GameContextType {
   loadGame: (saveData: any, slot: number) => void;
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
   cheatFinances: () => void;
+  cheatWinLibertadores: () => void;
 }
 
 // --- Squad replenishment (used by endSeason for both `clubs` and `libertadoresClubs`) ---
@@ -4243,6 +4244,74 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     finalizeLibertadoresPhase(working, phase, pairs, pushNews);
   };
 
+  // Starts the Mundial de Clubes ladder for a fresh Libertadores champion -- shared by the real
+  // win path below (finalizeLibertadoresPhase) and the debug cheat code (cheatWinLibertadores),
+  // so testing the feature never runs a second, divergent copy of this logic. Live for Premium
+  // (sets mundialState + the draw-reveal modal); fully auto-simulated otherwise, exactly like any
+  // other of the user's own Cup/Libertadores ties get resolved for a non-Premium player. Returns
+  // the (possibly prize-updated) clubs array -- the caller commits it via setClubs.
+  const triggerMundial = (clubsList: Club[], pushNews: (item: NewsItem) => void): Club[] => {
+    let nextClubs = clubsList;
+    if (mundialClubs.length === 0) return nextClubs;
+    const mundial = startMundial(currentYear, mundialClubs);
+    if (isPremium) {
+      setMundialState(mundial);
+      setMundialDrawReveal({ phase: mundial.phase, opponentId: mundial.semifinalOpponentId });
+      return nextClubs;
+    }
+    const semiOpponent = mundialClubs.find(c => c.id === mundial.semifinalOpponentId)!;
+    const userClubForSemi = nextClubs.find(c => c.id === userClubId)!;
+    const semiResult = simulateMatch(userClubForSemi, semiOpponent);
+    const semiTie = resolveMundialTie('SEMIFINAL', userClubId, semiOpponent.id, userClubForSemi, semiOpponent, semiResult);
+    const semiWon = semiTie.winnerId === userClubId;
+
+    if (!semiWon) {
+      pushNews({
+        id: `mundial_semi_${Date.now()}`,
+        week: currentRound,
+        text: `Mundial de Clubes: seu time enfrentou o ${semiOpponent.name} na semifinal e foi eliminado${semiTie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
+        type: 'MATCH'
+      });
+      setPremiumCompetitionAlert({
+        competitionLabel: 'Mundial de Clubes', phaseLabel: 'Semifinal', opponentName: semiOpponent.name,
+        outcome: 'LOSS', wentToPenalties: semiTie.wentToPenalties
+      });
+      return nextClubs;
+    }
+
+    nextClubs = applyCupPrize(nextClubs, userClubId, MUNDIAL_FINALIST_PRIZE, 'MUNDIAL');
+    const finalOpponent = mundialClubs.find(c => c.id === drawMundialFinalOpponent(mundialClubs))!;
+    const userClubForFinal = nextClubs.find(c => c.id === userClubId)!;
+    const finalResult = simulateMatch(userClubForFinal, finalOpponent);
+    const finalTie = resolveMundialTie('FINAL', userClubId, finalOpponent.id, userClubForFinal, finalOpponent, finalResult);
+    const finalWon = finalTie.winnerId === userClubId;
+    let statsUpdate = { ...careerStatsRef.current, mundialFinalsReached: careerStatsRef.current.mundialFinalsReached + 1 };
+
+    if (finalWon) {
+      nextClubs = applyCupPrize(nextClubs, userClubId, MUNDIAL_CHAMPION_PRIZE, 'MUNDIAL');
+      statsUpdate = { ...statsUpdate, mundialWon: statsUpdate.mundialWon + 1 };
+      pushNews({
+        id: `mundial_final_${Date.now()}`,
+        week: currentRound,
+        text: `🌐 CAMPEÃO MUNDIAL! Seu time venceu o ${finalOpponent.name} na final e conquistou o Mundial de Clubes, faturando ${formatCurrency(MUNDIAL_CHAMPION_PRIZE)}! Assine o Premium pra jogar essas partidas você mesmo.`,
+        type: 'BOARD'
+      });
+    } else {
+      pushNews({
+        id: `mundial_final_${Date.now()}`,
+        week: currentRound,
+        text: `Mundial de Clubes: seu time perdeu a final para o ${finalOpponent.name}${finalTie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
+        type: 'MATCH'
+      });
+    }
+    setPremiumCompetitionAlert({
+      competitionLabel: 'Mundial de Clubes', phaseLabel: 'Final', opponentName: finalOpponent.name,
+      outcome: finalWon ? 'WIN' : 'LOSS', wentToPenalties: finalTie.wentToPenalties
+    });
+    setCareerStats(statsUpdate);
+    return nextClubs;
+  };
+
   // Wraps up whichever knockout phase just fully resolved -- pays the "reached the next stage"
   // prize, propagates winners into the FIXED bracket's next set of slots (see bracketOrder in
   // libertadoresEngine.ts), or crowns a champion.
@@ -4309,67 +4378,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // (semifinal vs a drawn Saudi club, final vs a drawn European giant), played out right
         // here before the season screen -- see mundialState's own comment for why it doesn't
         // need userTie/pendingSecondLeg-style bookkeeping like Cup/Libertadores ties do.
-        if (mundialClubs.length > 0) {
-          const mundial = startMundial(currentYear, mundialClubs);
-          if (isPremium) {
-            setMundialState(mundial);
-            setMundialDrawReveal({ phase: mundial.phase, opponentId: mundial.semifinalOpponentId });
-          } else {
-            // Not Premium: auto-simulate the whole ladder instantly, same as any other of the
-            // user's own Cup/Libertadores ties get resolved for a non-Premium player (see
-            // processLibertadoresKnockoutMilestone) -- interactive play is the Premium perk, but
-            // a non-Premium champion still gets the trophy chase and the prize money.
-            const semiOpponent = mundialClubs.find(c => c.id === mundial.semifinalOpponentId)!;
-            const userClubForSemi = nextClubs.find(c => c.id === userClubId)!;
-            const semiResult = simulateMatch(userClubForSemi, semiOpponent);
-            const semiTie = resolveMundialTie('SEMIFINAL', userClubId, semiOpponent.id, userClubForSemi, semiOpponent, semiResult);
-            const semiWon = semiTie.winnerId === userClubId;
-
-            if (!semiWon) {
-              pushNews({
-                id: `mundial_semi_${Date.now()}`,
-                week: currentRound,
-                text: `Mundial de Clubes: seu time enfrentou o ${semiOpponent.name} na semifinal e foi eliminado${semiTie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
-                type: 'MATCH'
-              });
-              setPremiumCompetitionAlert({
-                competitionLabel: 'Mundial de Clubes', phaseLabel: 'Semifinal', opponentName: semiOpponent.name,
-                outcome: 'LOSS', wentToPenalties: semiTie.wentToPenalties
-              });
-            } else {
-              nextClubs = applyCupPrize(nextClubs, userClubId, MUNDIAL_FINALIST_PRIZE, 'MUNDIAL');
-              const finalOpponent = mundialClubs.find(c => c.id === drawMundialFinalOpponent(mundialClubs))!;
-              const userClubForFinal = nextClubs.find(c => c.id === userClubId)!;
-              const finalResult = simulateMatch(userClubForFinal, finalOpponent);
-              const finalTie = resolveMundialTie('FINAL', userClubId, finalOpponent.id, userClubForFinal, finalOpponent, finalResult);
-              const finalWon = finalTie.winnerId === userClubId;
-              let statsUpdate = { ...careerStatsRef.current, mundialFinalsReached: careerStatsRef.current.mundialFinalsReached + 1 };
-
-              if (finalWon) {
-                nextClubs = applyCupPrize(nextClubs, userClubId, MUNDIAL_CHAMPION_PRIZE, 'MUNDIAL');
-                statsUpdate = { ...statsUpdate, mundialWon: statsUpdate.mundialWon + 1 };
-                pushNews({
-                  id: `mundial_final_${Date.now()}`,
-                  week: currentRound,
-                  text: `🌐 CAMPEÃO MUNDIAL! Seu time venceu o ${finalOpponent.name} na final e conquistou o Mundial de Clubes, faturando ${formatCurrency(MUNDIAL_CHAMPION_PRIZE)}! Assine o Premium pra jogar essas partidas você mesmo.`,
-                  type: 'BOARD'
-                });
-              } else {
-                pushNews({
-                  id: `mundial_final_${Date.now()}`,
-                  week: currentRound,
-                  text: `Mundial de Clubes: seu time perdeu a final para o ${finalOpponent.name}${finalTie.wentToPenalties ? ' nos pênaltis' : ''}. Assine o Premium pra jogar essas partidas você mesmo.`,
-                  type: 'MATCH'
-                });
-              }
-              setPremiumCompetitionAlert({
-                competitionLabel: 'Mundial de Clubes', phaseLabel: 'Final', opponentName: finalOpponent.name,
-                outcome: finalWon ? 'WIN' : 'LOSS', wentToPenalties: finalTie.wentToPenalties
-              });
-              setCareerStats(statsUpdate);
-            }
-          }
-        }
+        nextClubs = triggerMundial(nextClubs, pushNews);
       }
     }
 
@@ -5040,6 +5049,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  // Debug-only: declares the user's own club the Libertadores champion on the spot (bumping
+  // careerStats.libertadoresWon and running the exact same triggerMundial() the real title win
+  // uses) so the Mundial de Clubes ladder can be tested in seconds instead of needing an actual
+  // Libertadores campaign to finish. Never touches libertadoresState/bracket -- purely a shortcut
+  // to the "you just won" moment.
+  const cheatWinLibertadores = () => {
+    if (!userClubId) return;
+    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
+    setCareerStats({ ...careerStatsRef.current, libertadoresWon: careerStatsRef.current.libertadoresWon + 1 });
+    setClubs(triggerMundial(clubs, pushNews));
+    pushNews({
+      id: `cheat_libertadores_${Date.now()}`,
+      week: currentRound,
+      text: `[TRAPAÇA] Seu time foi declarado campeão da Libertadores!`,
+      type: 'BOARD'
+    });
+  };
+
   return (
     <GameContext.Provider value={{
       gameState,
@@ -5130,7 +5157,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       acceptIncomingProposal,
       loadGame,
       cancelSponsor,
-      cheatFinances
+      cheatFinances,
+      cheatWinLibertadores
     }}>
       {children}
     </GameContext.Provider>
