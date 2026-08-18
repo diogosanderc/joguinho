@@ -2367,7 +2367,7 @@ const AppContent: React.FC = () => {
               <CheckCircle size={18} /> Temporada Concluída!
             </h3>
             <p style={{ fontSize: '0.85rem', color: '#d1d5db' }}>
-              Você encerrou a temporada no comando do **{userClub.name}**. A diretoria está satisfeita com seu trabalho!
+              Você encerrou a temporada no comando do <strong>{userClub.name}</strong>. A diretoria está satisfeita com seu trabalho!
             </p>
           </div>
         )}
@@ -3179,7 +3179,7 @@ const AppContent: React.FC = () => {
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
                     <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-                      Substituindo titular: **{starters[subslotIndex]?.name}** ({starters[subslotIndex]?.position})
+                      Substituindo titular: <strong>{starters[subslotIndex]?.name}</strong> ({starters[subslotIndex]?.position})
                     </p>
                     {userClub.squad
                       .filter(p => !starters.some(s => s.id === p.id) && isPlayerAvailable(p) && p.position === starters[subslotIndex]?.position)
@@ -3609,7 +3609,7 @@ const AppContent: React.FC = () => {
                           <div style={{ fontSize: '2.5rem' }}>🎉</div>
                           <h4 style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Proposta Aceita!</h4>
                           <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
-                            O clube e o jogador aceitaram a sua oferta de **{formatCurrency(offerAmount)}**! O contrato de 1 ano foi assinado.
+                            O clube e o jogador aceitaram a sua oferta de <strong>{formatCurrency(offerAmount)}</strong>! O contrato de 1 ano foi assinado.
                           </p>
                           <button
                             className="btn btn-primary"
@@ -3637,7 +3637,7 @@ const AppContent: React.FC = () => {
                           <div style={{ fontSize: '2.5rem' }}>❌</div>
                           <h4 style={{ color: 'var(--accent-red)', fontWeight: 700 }}>Proposta Recusada!</h4>
                           <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
-                            O clube e o jogador recusaram sua oferta de **{formatCurrency(offerAmount)}** por estar abaixo do valor de mercado. Eles consideraram a oferta inaceitável.
+                            O clube e o jogador recusaram sua oferta de <strong>{formatCurrency(offerAmount)}</strong> por estar abaixo do valor de mercado. Eles consideraram a oferta inaceitável.
                           </p>
                           <button
                             className="btn btn-secondary"
@@ -3656,7 +3656,7 @@ const AppContent: React.FC = () => {
                           <div style={{ fontSize: '2.5rem' }}>🤝</div>
                           <h4 style={{ color: 'var(--accent-gold)', fontWeight: 700 }}>Contraproposta Recebida!</h4>
                           <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
-                            O clube recusou sua oferta inicial de **{formatCurrency(offerAmount)}**, mas fez uma contraproposta de **{formatCurrency(negotiationResult.counterAmount || 0)}** para fechar negócio hoje.
+                            O clube recusou sua oferta inicial de <strong>{formatCurrency(offerAmount)}</strong>, mas fez uma contraproposta de <strong>{formatCurrency(negotiationResult.counterAmount || 0)}</strong> para fechar negócio hoje.
                           </p>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
@@ -3706,7 +3706,7 @@ const AppContent: React.FC = () => {
                 <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
                   <h3 style={{ fontWeight: 800, marginBottom: '12px' }}>Confirmar Contratação</h3>
                   <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', marginBottom: '20px' }}>
-                    Tem certeza que deseja comprar o jogador **{purchaseConfirmData.player.name}** ({purchaseConfirmData.player.position}), do time **{purchaseConfirmData.clubName}**, por **{formatCurrency(purchaseConfirmData.price)}**?
+                    Tem certeza que deseja comprar o jogador <strong>{purchaseConfirmData.player.name}</strong> ({purchaseConfirmData.player.position}), do time <strong>{purchaseConfirmData.clubName}</strong>, por <strong>{formatCurrency(purchaseConfirmData.price)}</strong>?
                   </p>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button
@@ -4700,24 +4700,24 @@ const AppContent: React.FC = () => {
                           <span>{hist.userClub} (Série {hist.userDivision} - #{hist.userFinish})</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', color: '#9ca3af' }}>
-                          <span>🏆 Campeão Série A: **{hist.champions.A}**</span>
-                          <span>🏆 Campeão Série B: **{hist.champions.B}**</span>
-                          <span>🏆 Campeão Série C: **{hist.champions.C}**</span>
+                          <span>🏆 Campeão Série A: <strong>{hist.champions.A}</strong></span>
+                          <span>🏆 Campeão Série B: <strong>{hist.champions.B}</strong></span>
+                          <span>🏆 Campeão Série C: <strong>{hist.champions.C}</strong></span>
                           {hist.cupChampion && (
                             <span>
-                              🏆 Campeão Copa do Brasil: **{hist.cupChampion}**
+                              🏆 Campeão Copa do Brasil: <strong>{hist.cupChampion}</strong>
                               {!!hist.cupEarnings && <span style={{ color: 'var(--accent-green)' }}> ({formatCurrency(hist.cupEarnings)})</span>}
                             </span>
                           )}
                           {hist.libertadoresChampion && (
                             <span>
-                              🌎 Campeão Libertadores: **{hist.libertadoresChampion}**
+                              🌎 Campeão Libertadores: <strong>{hist.libertadoresChampion}</strong>
                               {!!hist.libertadoresEarnings && <span style={{ color: 'var(--accent-green)' }}> ({formatCurrency(hist.libertadoresEarnings)})</span>}
                             </span>
                           )}
                           {hist.seasonTopScorerName && (
                             <span>
-                              🏅 Craque do Ano: **{hist.seasonTopScorerName}** ({hist.seasonTopScorerGoals} gols)
+                              🏅 Craque do Ano: <strong>{hist.seasonTopScorerName}</strong> ({hist.seasonTopScorerGoals} gols)
                             </span>
                           )}
                         </div>
@@ -5005,7 +5005,7 @@ const AppContent: React.FC = () => {
             <span style={{ fontSize: '2.5rem' }}>😠</span>
             <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-gold)' }}>Jogador Insatisfeito</h3>
             <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 20px 0' }}>
-              O jogador **{unhappyPlayer.name}** ({unhappyPlayer.position}) está se sentindo inferior no elenco por não estar jogando e solicitou ser vendido para outro clube!
+              O jogador <strong>{unhappyPlayer.name}</strong> ({unhappyPlayer.position}) está se sentindo inferior no elenco por não estar jogando e solicitou ser vendido para outro clube!
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
@@ -5062,7 +5062,7 @@ const AppContent: React.FC = () => {
             <span style={{ fontSize: '2.5rem' }}>{incomingProposal.buyerClub.league ? '🌍' : '💼'}</span>
             <h3 style={{ fontWeight: 800, marginTop: '8px', color: 'var(--accent-green)' }}>{incomingProposal.buyerClub.league ? 'Proposta do Exterior!' : 'Proposta Recebida!'}</h3>
             <p style={{ fontSize: '0.82rem', color: '#9ca3af', lineHeight: '1.4', margin: '10px 0 16px 0' }}>
-              O **{incomingProposal.buyerClub.name}**{incomingProposal.buyerClub.league ? ` (${incomingProposal.buyerClub.league})` : ''} enviou uma oferta oficial para comprar seu jogador **{incomingProposal.player.name}** ({incomingProposal.player.position}, Rating {incomingProposal.player.rating})!
+              O <strong>{incomingProposal.buyerClub.name}</strong>{incomingProposal.buyerClub.league ? ` (${incomingProposal.buyerClub.league})` : ''} enviou uma oferta oficial para comprar seu jogador <strong>{incomingProposal.player.name}</strong> ({incomingProposal.player.position}, Rating {incomingProposal.player.rating})!
             </p>
 
             {incomingNegResult ? (
