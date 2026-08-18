@@ -163,7 +163,7 @@ O questionário novo da Apple (desde 2024) pergunta por categorias de conteúdo.
 
 ## 7. Screenshots **[Claude gerou rascunhos, você pode usar direto ou polir]**
 
-6 capturas em `docs/loja/screenshots/`, resolução 1320×2868 (iPhone 6.9", o conjunto que a Apple usa como principal hoje). São capturas funcionais de uma carreira nova de verdade rodando no jogo, não peças de marketing — sirvam como estão ou de base pra você aplicar molduras/texto por cima:
+12 capturas em `docs/loja/screenshots/`, resolução 1320×2868 (iPhone 6.9", o conjunto que a Apple usa como principal hoje). São capturas funcionais de carreiras de verdade rodando no jogo, não peças de marketing — sirvam como estão ou de base pra você aplicar molduras/texto por cima:
 
 1. `01-menu.png` — tela inicial
 2. `02-criar-carreira.png` — seleção de clube
@@ -171,8 +171,14 @@ O questionário novo da Apple (desde 2024) pergunta por categorias de conteúdo.
 4. `04-elenco.png` — tática, escalação e campo
 5. `05-mercado-internacional.png` — mercado internacional mostrando jogadores da Premier League, Bundesliga e MLS lado a lado
 6. `06-conquistas.png` — tela de conquistas (aparecem todas travadas por ser carreira nova; uma carreira mais avançada mostraria troféus desbloqueados, o que fica mais bonito pra loja)
+7. `07-serie-a-escritorio.png` — escritório com um clube da Série A (Fluminense)
+8. `08-serie-a-elenco.png` — tática/escalação na Série A
+9. `09-partida-ao-vivo.png` — partida ao vivo com placar e rodada completa do Brasileirão
+10. `10-penalti.png` — modal de pênalti, escolha do batedor
+11. `11-var.png` — modal de revisão do VAR
+12. `12-comprar-jogador.png` — confirmação de compra de um jogador no mercado
 
-Apple pede no mínimo 1 e permite até 10 por tamanho de tela. Essas 6, na ordem, já contam uma história razoável (menu → criar carreira → gerenciar → tática → mercado → conquistas).
+Apple pede no mínimo 1 e permite até 10 por tamanho de tela — então escolha as 10 melhores dessas 12 (ou tire outras) na hora de subir em App Store Connect. Essas contam uma história razoável (menu → criar carreira → gerenciar → tática → mercado → partida ao vivo → pênalti/VAR → conquistas).
 
 ---
 
