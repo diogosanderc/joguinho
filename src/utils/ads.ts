@@ -5,9 +5,13 @@ import { initNativeAds, showInterstitialAd } from './nativeServices';
 // useful again if this ever needs to go back to always-test-ads mode for local development.
 const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-9207064721204036/8667639689';
 
-const MIN_INTERVAL_MS = 4 * 60 * 1000;
+// Show an interstitial once every N played matches instead of after every single one -- much
+// less intrusive than a time-based cooldown, since it doesn't matter how fast or slow the player
+// moves through rounds. Cup/Libertadores ties auto-resolve without an interactive match for
+// non-Premium players (see GameContext), so in practice this only counts league rounds for them.
+const MATCHES_BETWEEN_ADS = 3;
 
-let lastAdShownAt = 0;
+let matchesSinceLastAd = 0;
 let adInFlight = false;
 
 /** Initializes the ads SDK once. Silent no-op outside iOS. */
@@ -16,20 +20,20 @@ export async function initAds(): Promise<void> {
 }
 
 /**
- * Shows a full-screen interstitial ad after a match ends, unless the player has Premium, or
- * an ad was already shown within the last few minutes (avoids stacking ads during weeks with
- * several matches -- league + cup + Libertadores). Never throws, never blocks the game flow.
+ * Shows a full-screen interstitial ad after every Nth match ends, unless the player has Premium.
+ * Never throws, never blocks the game flow.
  */
 export async function maybeShowInterstitialAfterMatch(isPremium: boolean): Promise<void> {
   if (isPremium || adInFlight) return;
-  if (Date.now() - lastAdShownAt < MIN_INTERVAL_MS) return;
+  matchesSinceLastAd++;
+  if (matchesSinceLastAd < MATCHES_BETWEEN_ADS) return;
   adInFlight = true;
   try {
     // npa: non-personalized ads -- no App Tracking Transparency prompt needed.
     const shown = await showInterstitialAd(INTERSTITIAL_AD_UNIT_ID, true);
-    // Only a real impression starts the cooldown: an ad that failed to load (offline, no fill)
+    // Only a real impression resets the counter: an ad that failed to load (offline, no fill)
     // shouldn't cost the player-facing quiet period *and* the next chance to show one.
-    if (shown) lastAdShownAt = Date.now();
+    if (shown) matchesSinceLastAd = 0;
   } finally {
     adInFlight = false;
   }
