@@ -171,6 +171,11 @@ body {
      with. */
   padding-left: calc(env(safe-area-inset-left) + 10px);
   padding-right: calc(env(safe-area-inset-right) + 10px);
+  /* padding-bottom alone (to clear the home indicator) shrinks the flex content box from the
+     bottom only, so align-items:center centers the icons inside that shrunken box -- which
+     sits flush against the top border with all the cushion below. A matching padding-top
+     keeps the icon+label block visually centered instead of hugging the top edge. */
+  padding-top: 10px;
   padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
 }
 
