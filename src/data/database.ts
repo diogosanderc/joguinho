@@ -534,7 +534,6 @@ export const STAR_PLAYERS: Record<string, { name: string; position: PlayerPositi
     { name: "Jefferson Savarino", position: "MEI", rating: 82, age: 29 },
     { name: "Luciano Acosta", position: "MEI", rating: 80, age: 31 },
     { name: "Nonato", position: "MEI", rating: 79, age: 27 },
-    { name: "David Terans", position: "MEI", rating: 78, age: 31 },
     { name: "Ganso", position: "MEI", rating: 77, age: 36 },
     { name: "Alisson", position: "MEI", rating: 76, age: 32 },
     { name: "Kevin Serna", position: "PON", rating: 83, age: 28 },
