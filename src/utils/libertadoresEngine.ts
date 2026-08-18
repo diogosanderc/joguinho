@@ -5,12 +5,11 @@ import { pickShootoutTakers } from './cupEngine';
 
 // Copa Libertadores. 32 clubes: os 4 primeiros do Brasileirão Série A da temporada anterior
 // (vaga automática) + o campeão defensor (se não estiver já entre os 4, bônus de vaga) + os
-// slots restantes sorteados entre TODOS os clubes sul-americanos disponíveis (libertadoresClubs
-// em GameContext, hoje cobrindo Argentina, Bolívia, Chile, Colômbia, Equador, Paraguai, Peru,
-// Uruguai e Venezuela) -- um único sorteio embaralhado sobre o pool inteiro, sem cota fixa por
-// país: como cada país contribui um número de clubes proporcional ao tamanho real da sua liga,
-// isso já pondera naturalmente pelos países com mais clubes, e garante uma composição diferente
-// a cada temporada.
+// slots restantes divididos o mais igualmente possível entre os 9 países sul-americanos
+// disponíveis (libertadoresClubs em GameContext: Argentina, Bolívia, Chile, Colômbia, Equador,
+// Paraguai, Peru, Uruguai e Venezuela) -- 28 vagas / 9 países = 3 fixas por país, com 1 país
+// (sorteado a cada temporada) ganhando uma 4ª vaga extra pra fechar o total em 32. Dentro de
+// cada país, os clubes sorteados também mudam a cada temporada.
 //
 // Fase de grupos: sorteados em 8 grupos de 4 (A-H), turno e returno (6 jogos por clube, 12
 // partidas por grupo). Classificação: pontos, saldo de gols, gols marcados, vitórias, sorteio
@@ -158,8 +157,11 @@ const shuffle = <T,>(arr: T[]): T[] => {
 
 // Splits participants into: the 4 automatic Brazilian qualifiers (+ a possible 5th "defending
 // champion" bonus slot if it's a Brazilian club outside the top 4) and the South American
-// wildcards (drawn from the entire multi-country libertadoresClubs pool, no per-country quota --
-// see the comment above LIBERTADORES_TEAM_COUNT for why a flat shuffle is enough).
+// wildcards, divided as evenly as possible across the 9 countries in libertadoresClubs --
+// each country gets an equal base quota (remainingSlots / countryCount, floored), and since
+// that division rarely lands exactly, the leftover slots go one-per-country to a randomly
+// chosen subset of countries each season (so no country is permanently stuck with fewer than
+// the others). Within each country, which clubs fill its quota is also re-shuffled every season.
 // previousSeasonTopSerieA is the actual previous season's top 4 (tracked by GameContext, same
 // data source Copa do Brasil's seeding already uses); if there's no previous season yet (a
 // brand new career), falls back to the 4 best-reputation Brazilian clubs.
@@ -192,11 +194,20 @@ export const computeLibertadoresParticipants = (
   const guaranteedForeignCount = defendingChampionBonusId ? 1 : 0;
   const remainingSlots = LIBERTADORES_TEAM_COUNT - brazilianClubIds.length - guaranteedForeignCount;
 
-  const pool = shuffle(libertadoresClubs.filter(c => c.id !== defendingChampionBonusId));
+  const pool = libertadoresClubs.filter(c => c.id !== defendingChampionBonusId);
+  const countries = shuffle([...new Set(pool.map(c => c.country))]);
+  const baseQuota = Math.floor(remainingSlots / countries.length);
+  const extraSlotCount = remainingSlots - baseQuota * countries.length;
+  const countriesWithExtraSlot = new Set(countries.slice(0, extraSlotCount));
+
+  const drawnWildcardIds = countries.flatMap(country => {
+    const quota = baseQuota + (countriesWithExtraSlot.has(country) ? 1 : 0);
+    return shuffle(pool.filter(c => c.country === country)).slice(0, quota).map(c => c.id);
+  });
 
   const wildcardClubIds = [
     ...(defendingChampionBonusId ? [defendingChampionBonusId] : []),
-    ...pool.slice(0, remainingSlots).map(c => c.id)
+    ...drawnWildcardIds
   ];
 
   return { brazilianClubIds, defendingChampionBonusId, wildcardClubIds };
