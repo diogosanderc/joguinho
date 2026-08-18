@@ -146,12 +146,13 @@ O plugin nativo já tem `submitScore`/`showLeaderboard` prontos, mas nenhuma tel
 App Store Connect → seu app → **App Privacy**. Com base em como o app realmente funciona hoje:
 
 - **"Does this app collect data?"** → **Yes** (por causa do AdMob e do IAP/Game Center/iCloud, mesmo sem servidor próprio).
-- **Identifiers → Device ID**: coletado, usado pra **Analytics** e **App Functionality** (o AdMob usa isso pra limitar frequência de anúncio e prevenir fraude) — **não vinculado à identidade do usuário**, **não usado pra rastreamento (tracking)**.
+- **Identifiers → Device ID**: coletado (identificador vinculado ao app/dispositivo, não o IDFA — o app não pede ATT e não usa IDFA), usado pra **Analytics** e **App Functionality** (o AdMob usa isso pra limitar frequência de anúncio e prevenir fraude) — **não vinculado à identidade do usuário**, **não usado pra rastreamento (tracking)**.
+- **Usage Data → Advertising Data / Product Interaction**: a tabela oficial do Google pro Mobile Ads SDK também lista "anúncios que o usuário viu" e "interações no app" (ex: toques, visualizações) como coletados pelo SDK — declare como **Analytics**, mesma lógica do Device ID (não vinculado à identidade, sem tracking).
 - **Purchases → Purchase History**: normalmente **não precisa declarar** — a transação inteira (incluindo dados de pagamento) é processada pela StoreKit/Apple, o app só consulta se o direito de compra existe.
 - **Nenhum outro tipo de dado** (nome, e-mail, localização, contatos, saúde, conteúdo do usuário, navegação, etc.) — o app não pede nem acessa nada disso.
 - Confirme na pergunta de **tracking (ATT)**: **Não rastreia** — os anúncios são não-personalizados, sem IDFA.
 
-Isso é a leitura mais precisa possível com base no código, mas a taxonomia exata da Apple muda de vez em quando — vale conferir a [página de orientação do Google pro AdMob](https://support.google.com/admob/answer/13109519) antes de confirmar, já que é a peça mais sujeita a nuance.
+Isso é a leitura mais precisa possível com base no código e na busca mais recente que consegui fazer (a página de suporte do Google ficou bloqueada pro meu acesso direto, então usei busca + a página `developers.google.com/admob/ios/privacy/data-disclosure` indexada). A taxonomia exata da Apple muda de vez em quando — antes de confirmar, abra essa página você mesmo no navegador: [App store data disclosure | iOS | Google for Developers](https://developers.google.com/admob/ios/privacy/data-disclosure). Ela tem a tabela oficial e atualizada com cada tipo de dado que o SDK pode coletar.
 
 ---
 
