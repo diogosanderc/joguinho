@@ -319,14 +319,15 @@ const AppContent: React.FC = () => {
 
   // Market Search & Negotiation states
   const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS' | 'FOREIGN'>('FREE_AGENTS');
-  // A club promoted into Serie A mid-career while the Mercado Internacional tab was already
-  // selected must lose access immediately, not just on the next manual tab switch -- otherwise
-  // a non-Premium user could keep Browse there simply by never touching the dropdown again.
+  // The cached Premium flag seeds isPremium optimistically on mount (see PremiumContext), so a
+  // stale "true" can let a non-Premium device briefly land on Mercado Internacional before the
+  // real StoreKit check resolves to false -- kick them back out the moment that happens instead
+  // of leaving the tab open until the next manual dropdown change.
   useEffect(() => {
-    if (marketViewMode === 'FOREIGN' && userClub?.division === 'A' && !isPremium) {
+    if (marketViewMode === 'FOREIGN' && !isPremium) {
       setMarketViewMode('CLUBS');
     }
-  }, [userClub?.division, isPremium]);
+  }, [isPremium]);
   const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('C');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [foreignBrowseMode, setForeignBrowseMode] = useState<'SAMPLE' | 'BY_CLUB'>('SAMPLE');
@@ -3231,7 +3232,7 @@ const AppContent: React.FC = () => {
                   value={marketViewMode}
                   onChange={(e) => {
                     const mode = e.target.value as typeof marketViewMode;
-                    if (mode === 'FOREIGN' && userClub?.division === 'A' && !isPremium) {
+                    if (mode === 'FOREIGN' && !isPremium) {
                       setPremiumPaywallReason('Mercado Internacional');
                       return;
                     }
@@ -3241,7 +3242,7 @@ const AppContent: React.FC = () => {
                 >
                   <option value="FREE_AGENTS">Jogadores Livres</option>
                   <option value="CLUBS">Jogadores BR</option>
-                  <option value="FOREIGN">{userClub?.division === 'A' && !isPremium ? '🔒 Outras ligas (Premium)' : 'Outras ligas'}</option>
+                  <option value="FOREIGN">{!isPremium ? '🔒 Outras ligas (Premium)' : 'Outras ligas'}</option>
                 </select>
               </div>
 
