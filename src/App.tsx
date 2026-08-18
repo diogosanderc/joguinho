@@ -1731,10 +1731,7 @@ const AppContent: React.FC = () => {
               {(['LENTO', 'MEDIO', 'RAPIDO'] as const).map(mode => (
                 <button
                   key={mode}
-                  onClick={() => {
-                    if (mode === 'MEDIO' && !isPremium) { setPremiumPaywallReason('Velocidade de jogo'); return; }
-                    setSimSpeedMode(mode);
-                  }}
+                  onClick={() => setSimSpeedMode(mode)}
                   style={{
                     fontSize: '0.62rem',
                     padding: '4px 8px',
@@ -1746,7 +1743,7 @@ const AppContent: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  {mode}{mode === 'MEDIO' && !isPremium ? ' 🔒' : ''}
+                  {mode}
                 </button>
               ))}
             </div>
@@ -1760,15 +1757,12 @@ const AppContent: React.FC = () => {
               {isSimPaused ? 'Retomar' : 'Pausar'}
             </button>
             <button
-              onClick={() => {
-                if (!isPremium) { setPremiumPaywallReason('Pular partida'); return; }
-                handleSkipMatch();
-              }}
+              onClick={handleSkipMatch}
               disabled={matchDone}
               className="btn btn-primary"
               style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
             >
-              {!isPremium && <Lock size={12} />} Pular
+              Pular
             </button>
             {!matchDone && (
               <button
