@@ -3,9 +3,9 @@ import { GameProvider, useGame } from './context/GameContext';
 import { PremiumProvider, usePremium } from './context/PremiumContext';
 import { PremiumPaywallModal } from './components/PremiumPaywallModal';
 import type { Sponsor } from './context/GameContext';
-import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, isClassico, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, findFallbackReplacement, EUR_TO_BRL_RATE } from './data/database';
+import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, isClassico, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, findFallbackReplacement } from './data/database';
 import { ACHIEVEMENTS } from './data/achievements';
-import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
+import type { Player, Club, PlayerPosition } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
 // listings throughout the app.
@@ -302,7 +302,11 @@ const AppContent: React.FC = () => {
   const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('C');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [foreignBrowseMode, setForeignBrowseMode] = useState<'SAMPLE' | 'BY_CLUB'>('SAMPLE');
-  const FOREIGN_LEAGUES = ['Premier League', 'Serie A', 'Bundesliga', 'La Liga', 'Ligue 1', 'Saudi Pro League', 'Libertadores'] as const;
+  const FOREIGN_LEAGUES = [
+    'Premier League', 'Serie A', 'Bundesliga', 'La Liga', 'Ligue 1', 'Saudi Pro League',
+    'Liga Argentina', 'Liga Boliviana', 'Liga Chilena', 'Liga Colombiana', 'Liga Equatoriana',
+    'Liga Paraguaia', 'Liga Peruana', 'Liga Uruguaia', 'Liga Venezuelana'
+  ] as const;
   const [selectedForeignLeague, setSelectedForeignLeague] = useState<typeof FOREIGN_LEAGUES[number]>('Premier League');
   const [selectedForeignClub, setSelectedForeignClub] = useState<string>('');
   const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
@@ -3302,30 +3306,21 @@ const AppContent: React.FC = () => {
                 })()}
               </div>
             ) : (() => {
-              // Libertadores clubs are real, persisted state (libertadoresClubs), not part of
-              // the static foreign_players.json pool -- flatten their squads into the same
-              // ForeignPlayer shape so the existing browse/buy UI below needs no branching.
-              const libertadoresAsForeignPlayers: ForeignPlayer[] = libertadoresClubs.flatMap(c =>
-                c.squad.map(p => ({
-                  ...p,
-                  nationality: c.country || '',
-                  originClub: c.name,
-                  league: 'Libertadores',
-                  valueEur: Math.round(p.value / EUR_TO_BRL_RATE)
-                }))
-              );
-              const combinedForeignPool = [...foreignPlayerPool, ...libertadoresAsForeignPlayers];
-
               return (
               <>
-                {/* INTERNATIONAL MARKET -- Premier League, Serie A, Bundesliga, La Liga,
-                    Ligue 1, Saudi Pro League and Libertadores clubs. Foreign signings cost
-                    far more than domestic ones (same rating->value curve as everyone else,
-                    just with ratings that go well past the domestic ~84 ceiling), so this is
-                    really only realistic for a well-established, wealthy club. */}
+                {/* INTERNATIONAL MARKET -- Premier League, Serie A, Bundesliga, La Liga, Ligue 1,
+                    Saudi Pro League, and every South American country's own league (Argentina,
+                    Bolívia, Chile, Colômbia, Equador, Paraguai, Peru, Uruguai, Venezuela).
+                    foreignPlayerPool already tags each player with their real originClub/league,
+                    including the South American ones whose originClub is a real, currently-
+                    competing Libertadores club (see the purchase handler below, which checks
+                    libertadoresClubs directly to route those purchases correctly). Foreign
+                    signings cost far more than domestic ones (same rating->value curve as
+                    everyone else, just with ratings that go well past the domestic ~84 ceiling),
+                    so this is really only realistic for a well-established, wealthy club. */}
                 <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Mercado Internacional</div>
                 <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '-8px 0 12px' }}>
-                  Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Liga Saudita, Libertadores). Custam bem mais caro que o mercado nacional.
+                  Jogadores de ligas estrangeiras (Premier League, Serie A, Bundesliga, La Liga, Ligue 1, Liga Saudita, e as ligas nacionais da América do Sul). Custam bem mais caro que o mercado nacional.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '12px' }}>
@@ -3363,7 +3358,7 @@ const AppContent: React.FC = () => {
                         style={marketSelectStyle}
                       >
                         <option value="" disabled>Escolha um clube...</option>
-                        {[...new Set(combinedForeignPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
+                        {[...new Set(foreignPlayerPool.filter(p => p.league === selectedForeignLeague).map(p => p.originClub))]
                           .sort((a, b) => a.localeCompare(b))
                           .map(clubName => (
                             <option key={clubName} value={clubName}>{clubName}</option>
@@ -3382,7 +3377,7 @@ const AppContent: React.FC = () => {
                   )}
                   {(foreignBrowseMode === 'SAMPLE'
                     ? foreignMarketPlayers
-                    : combinedForeignPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
+                    : foreignPlayerPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
                   )
                     .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
                     .sort(byPosition)
@@ -3403,9 +3398,16 @@ const AppContent: React.FC = () => {
                                 clubName: `${player.originClub} (${player.league})`,
                                 price: player.value,
                                 onConfirm: () => {
-                                  if (player.league === 'Libertadores') {
-                                    const sourceClub = libertadoresClubs.find(c => c.name === player.originClub);
-                                    if (sourceClub) buyLibertadoresPlayer(player, sourceClub.id);
+                                  // A player whose originClub is a real, currently-competing
+                                  // Libertadores club must come out of that club's actual squad
+                                  // (buyLibertadoresPlayer) rather than just being marked "bought"
+                                  // from a static flavor-only pool (buyForeignPlayer) -- checking
+                                  // libertadoresClubs directly (instead of a league name) means
+                                  // this keeps working no matter what each country's league is
+                                  // called.
+                                  const sourceClub = libertadoresClubs.find(c => c.name === player.originClub);
+                                  if (sourceClub) {
+                                    buyLibertadoresPlayer(player, sourceClub.id);
                                   } else {
                                     buyForeignPlayer(player);
                                   }
