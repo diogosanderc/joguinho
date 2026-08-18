@@ -16,7 +16,7 @@ export const MUNDIAL_EUROPEAN_COUNTRIES = ['Inglaterra', 'Espanha', 'Itália', '
 
 // Reaching the final (i.e. winning the semifinal) already pays out -- the champion prize is the
 // real target, matching what the user asked for: R$250M / ~US$50M for winning it all.
-export const MUNDIAL_FINALIST_PRIZE = 20_000_000;
+export const MUNDIAL_FINALIST_PRIZE = 100_000_000;
 export const MUNDIAL_CHAMPION_PRIZE = 250_000_000;
 
 export type MundialPhase = 'SEMIFINAL' | 'FINAL';
