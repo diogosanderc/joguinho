@@ -319,6 +319,14 @@ const AppContent: React.FC = () => {
 
   // Market Search & Negotiation states
   const [marketViewMode, setMarketViewMode] = useState<'FREE_AGENTS' | 'CLUBS' | 'FOREIGN'>('FREE_AGENTS');
+  // A club promoted into Serie A mid-career while the Mercado Internacional tab was already
+  // selected must lose access immediately, not just on the next manual tab switch -- otherwise
+  // a non-Premium user could keep Browse there simply by never touching the dropdown again.
+  useEffect(() => {
+    if (marketViewMode === 'FOREIGN' && userClub?.division === 'A' && !isPremium) {
+      setMarketViewMode('CLUBS');
+    }
+  }, [userClub?.division, isPremium]);
   const [selectedSearchDiv, setSelectedSearchDiv] = useState<'A' | 'B' | 'C'>('C');
   const [selectedSearchClubId, setSelectedSearchClubId] = useState<string>('');
   const [foreignBrowseMode, setForeignBrowseMode] = useState<'SAMPLE' | 'BY_CLUB'>('SAMPLE');
@@ -3221,12 +3229,19 @@ const AppContent: React.FC = () => {
                 <label style={marketSelectLabelStyle}>Fonte</label>
                 <select
                   value={marketViewMode}
-                  onChange={(e) => setMarketViewMode(e.target.value as typeof marketViewMode)}
+                  onChange={(e) => {
+                    const mode = e.target.value as typeof marketViewMode;
+                    if (mode === 'FOREIGN' && userClub?.division === 'A' && !isPremium) {
+                      setPremiumPaywallReason('Mercado Internacional');
+                      return;
+                    }
+                    setMarketViewMode(mode);
+                  }}
                   style={marketSelectStyle}
                 >
                   <option value="FREE_AGENTS">Jogadores Livres</option>
                   <option value="CLUBS">Jogadores BR</option>
-                  <option value="FOREIGN">Outras ligas</option>
+                  <option value="FOREIGN">{userClub?.division === 'A' && !isPremium ? '🔒 Outras ligas (Premium)' : 'Outras ligas'}</option>
                 </select>
               </div>
 
