@@ -2,6 +2,15 @@
 
 Guia de tudo que falta pra submeter o app na App Store. Itens marcados **[Claude]** já estão prontos no repositório; itens **[Você]** exigem acesso à sua conta Apple Developer / App Store Connect / GitHub e precisam ser feitos manualmente no seu Mac.
 
+> ⚠️ **Antes de testar QUALQUER mudança no Xcode:** a pasta `ios/App/App/public` (onde fica o JS/CSS compilado que o Xcode empacota) está no `.gitignore` — ela nunca é commitada nem enviada pro GitHub. Um `git pull` sozinho **não atualiza o app**, mesmo que o código-fonte já tenha sido corrigido e enviado. Sempre rode, no seu Mac, depois de puxar qualquer mudança:
+> ```
+> git pull origin claude/tudo-bem-upw55v
+> npm install
+> npm run build
+> npx cap sync ios
+> ```
+> Só depois disso abra/rode no Xcode. Esse passo é repetido toda vez, não só na submissão final (ver seção 9).
+
 ---
 
 ## 1. Hospedar as páginas de privacidade e suporte **[Você]**
@@ -177,7 +186,7 @@ Apple pede no mínimo 1 e permite até 10 por tamanho de tela. Essas 6, na ordem
 
 ## 9. O que só dá pra fazer no seu Mac **[Você]**
 
-1. `git pull` a branch mais recente, `npm install`, `npm run build`, `npx cap sync ios`.
+1. `git pull` a branch mais recente, `npm install`, `npm run build`, `npx cap sync ios` (ver aviso no topo do documento — isso vale pra toda mudança de código, não só pra este passo final).
 2. Abrir no Xcode, conferir que o `PrivacyInfo.xcprivacy` aparece no navegador de arquivos do projeto (deve aparecer automaticamente, já registrado no `.pbxproj`).
 3. **Product → Archive**. Se o Xcode acusar alguma "Required Reason API" faltando (raro, mas pode acontecer por causa de alguma dependência que eu não consigo auditar sem compilar), me avise qual categoria ele aponta que eu ajusto o manifesto.
 4. Enviar pro App Store Connect via Xcode Organizer (ou Transporter).
