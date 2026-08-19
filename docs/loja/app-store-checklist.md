@@ -164,7 +164,7 @@ O questionário novo da Apple (desde 2024) pergunta por categorias de conteúdo.
 
 ## 7. Screenshots **[Claude gerou e já curou os 10, você pode usar direto ou polir]**
 
-10 capturas em `docs/loja/screenshots/`, já numeradas na ordem final de upload, resolução 1320×2868 (iPhone 6.9", o conjunto que a Apple usa como principal hoje). Apple permite no máximo 10 por tamanho de tela e os 2 primeiros são os que mais pesam na conversão, por isso a ordem começa pelas telas de maior impacto visual (ação ao vivo, pênalti, VAR) antes das telas de configuração:
+10 capturas em `docs/loja/screenshots/`, já numeradas na ordem final de upload, resolução 1284×2778 (a categoria "iPhone Tela de 6,5 pol." é a única exigida em App Store Connect pra este app). Apple permite no máximo 10 por tamanho de tela e os 2 primeiros são os que mais pesam na conversão, por isso a ordem começa pelas telas de maior impacto visual (ação ao vivo, pênalti, VAR) antes das telas de configuração:
 
 1. `01-partida-ao-vivo.png` — partida ao vivo, placar e rodada completa do Brasileirão
 2. `02-penalti.png` — modal de pênalti, escolha do batedor
