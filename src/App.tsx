@@ -998,15 +998,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleSkipMatch = () => {
-    if (!currentMatchResult) return;
-    setSimMinute(90);
-    setSimScoreHome(currentMatchResult.homeScore);
-    setSimScoreAway(currentMatchResult.awayScore);
-    setSimEvents(currentMatchResult.events);
-    setMatchDone(true);
-  };
-
   // Reset the live-match clock/score/flags SYNCHRONOUSLY at the moment the user starts a match,
   // batched in the same click as nextRound()/startCupMatch(). The [gameState, currentMatch]
   // effect below also resets these, but that runs across two commits -- there's a first commit
@@ -1801,14 +1792,6 @@ const AppContent: React.FC = () => {
             >
               {isSimPaused ? 'Retomar' : 'Pausar'}
             </button>
-            <button
-              onClick={handleSkipMatch}
-              disabled={matchDone}
-              className="btn btn-primary"
-              style={{ padding: '4px 10px', fontSize: '0.7rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
-            >
-              Pular
-            </button>
             {!matchDone && (
               <button
                 onClick={() => { setMidMatchSubModal(true); setIsSimPaused(true); }}
@@ -2383,7 +2366,7 @@ const AppContent: React.FC = () => {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
-            {isSacked ? 'Propostas de Recomeço (Série C)' : 'Propostas Disponíveis'}
+            {isSacked ? 'Propostas de Recomeço' : 'Propostas Disponíveis'}
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>

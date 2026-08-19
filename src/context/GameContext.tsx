@@ -1803,7 +1803,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check Board Confidence / Sacking (Immediate or Warning)
     let nextOffers = offers;
     let nextGameState = gameState;
-    const userConfidence = finalClubs.find(c => c.id === userClubId)!.confidence;
+    const userClubBeforeSack = finalClubs.find(c => c.id === userClubId)!;
+    const userConfidence = userClubBeforeSack.confidence;
 
     if (userConfidence <= 0) {
       // SACKED!
@@ -1813,17 +1814,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         text: `Você foi DEMITIDO! A diretoria perdeu totalmente a confiança no seu trabalho após os últimos resultados.`,
         type: 'BOARD'
       });
-      
-      // Generate immediate job offers from Série C clubs (lower tier)
-      const cClubs = finalClubs.filter(c => c.division === 'C' && c.id !== userClubId);
+
+      // Restart offers come from a division below the one the manager just got fired from --
+      // Série A drops to B, Série B (or already C) drops to C, since there's nowhere lower.
+      const restartDiv: 'B' | 'C' = userClubBeforeSack.division === 'A' ? 'B' : 'C';
+      const restartClubs = finalClubs.filter(c => c.division === restartDiv && c.id !== userClubId);
       const generatedOffers: JobOffer[] = [];
       for (let i = 0; i < 3; i++) {
-        const target = cClubs[Math.floor(Math.random() * cClubs.length)];
+        const target = restartClubs[Math.floor(Math.random() * restartClubs.length)];
         if (target && !generatedOffers.some(o => o.clubId === target.id)) {
           generatedOffers.push({
             clubId: target.id,
             clubName: target.name,
-            division: 'C',
+            division: restartDiv,
             salaryBonus: 0
           });
         }
