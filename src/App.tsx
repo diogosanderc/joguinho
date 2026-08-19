@@ -576,12 +576,21 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (userClub && starters.length > 0) {
       let changed = false;
+      // Tracks replacements already handed out earlier in this same pass -- without it, two
+      // starters going unavailable at once (e.g. two players injured/suspended together) could
+      // both independently pick the same bench player as their replacement, since checking only
+      // against the ORIGINAL `starters` array doesn't see a pick made moments earlier in this
+      // very map(), leaving that player fielded twice and someone else's slot empty.
+      const usedReplacementIds = new Set<string>();
       const nextS = starters.map(p => {
         const found = userClub.squad.find(s => s.id === p.id);
         if (!found || !isPlayerAvailable(found)) {
           changed = true;
-          const replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && !starters.some(x => x.id === s.id));
-          return replacement || userClub.squad.find(s => isPlayerAvailable(s) && !starters.some(x => x.id === s.id)) || p;
+          const isFree = (s: Player) => !starters.some(x => x.id === s.id) && !usedReplacementIds.has(s.id);
+          const replacement = userClub.squad.find(s => s.position === p.position && isPlayerAvailable(s) && isFree(s))
+            || userClub.squad.find(s => isPlayerAvailable(s) && isFree(s));
+          if (replacement) usedReplacementIds.add(replacement.id);
+          return replacement || p;
         }
         if (found.rating !== p.rating || found.energy !== p.energy) {
           changed = true;
