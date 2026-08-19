@@ -5042,9 +5042,11 @@ const AppContent: React.FC = () => {
               {sponsorAlert.kind === 'SIGNED' ? 'Novo Patrocínio!' : 'Patrocínio Encerrado'}
             </h3>
             <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', margin: '12px 0 20px 0' }}>
-              {sponsorAlert.kind === 'SIGNED'
-                ? `Contrato de Patrocínio ${sponsorAlert.sponsorType === 'MASTER' ? 'Master' : sponsorAlert.sponsorType === 'COSTAS' ? 'Costas' : 'Mangas'} assinado com a **${sponsorAlert.sponsorName}**!`
-                : `O contrato de Patrocínio ${sponsorAlert.sponsorType === 'MASTER' ? 'Master' : sponsorAlert.sponsorType === 'COSTAS' ? 'Costas' : 'Mangas'} com a **${sponsorAlert.sponsorName}** chegou ao fim. Procure um novo patrocinador na aba Finanças.`}
+              {sponsorAlert.kind === 'SIGNED' ? (
+                <>Contrato de Patrocínio {sponsorAlert.sponsorType === 'MASTER' ? 'Master' : sponsorAlert.sponsorType === 'COSTAS' ? 'Costas' : 'Mangas'} assinado com a <strong>{sponsorAlert.sponsorName}</strong>!</>
+              ) : (
+                <>O contrato de Patrocínio {sponsorAlert.sponsorType === 'MASTER' ? 'Master' : sponsorAlert.sponsorType === 'COSTAS' ? 'Costas' : 'Mangas'} com a <strong>{sponsorAlert.sponsorName}</strong> chegou ao fim. Procure um novo patrocinador na aba Finanças.</>
+              )}
             </p>
             <button className="btn btn-primary" onClick={dismissSponsorAlert}>
               OK
