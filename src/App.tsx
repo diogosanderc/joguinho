@@ -2383,7 +2383,7 @@ const AppContent: React.FC = () => {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
-            {isSacked ? 'Propostas de Recomeço (Série D)' : 'Propostas Disponíveis'}
+            {isSacked ? 'Propostas de Recomeço (Série C)' : 'Propostas Disponíveis'}
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
