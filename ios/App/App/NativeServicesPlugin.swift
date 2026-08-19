@@ -3,6 +3,7 @@ import Capacitor
 import GameKit
 import StoreKit
 import GoogleMobileAds
+import UserMessagingPlatform
 
 private let premiumProductId = "com.diogosander.retrofoot.premium"
 
@@ -239,9 +240,38 @@ public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Ads (Google Mobile Ads SDK, used directly -- not through @capacitor-community/admob,
     // whose only Capacitor-6-compatible release points at an unpinned, since-drifted SDK branch)
 
+    // Google's User Messaging Platform (UMP) SDK -- ships bundled with GoogleMobileAds and is
+    // required by Google's own AdMob policy before requesting ads, so that users in the
+    // EEA/UK/Switzerland get a consent form when one applies. The app only ever requests
+    // non-personalized ads regardless of the outcome (see showInterstitialAd's npa flag), but
+    // the consent gathering step itself is still mandatory -- it's what determines whether a
+    // regulated user needs to see the message in the first place, not something this app can
+    // opt out of by already defaulting to non-personalized.
     @objc func initAds(_ call: CAPPluginCall) {
-        MobileAds.shared.start { _ in
-            call.resolve()
+        let parameters = UMPRequestParameters()
+        parameters.tagForUnderAgeOfConsent = false
+
+        UMPConsentInformation.sharedInstance.requestConsentInfoUpdate(with: parameters) { [weak self] requestError in
+            guard let self = self else { return }
+            if let requestError = requestError {
+                // Consent status couldn't be determined (e.g. offline) -- fall back to starting
+                // the ads SDK anyway rather than blocking the app on a network hiccup; ads stay
+                // non-personalized either way.
+                print("UMP requestConsentInfoUpdate failed: \(requestError.localizedDescription)")
+                MobileAds.shared.start { _ in call.resolve() }
+                return
+            }
+
+            guard let vc = self.bridge?.viewController else {
+                MobileAds.shared.start { _ in call.resolve() }
+                return
+            }
+            UMPConsentForm.loadAndPresentIfRequired(from: vc) { loadError in
+                if let loadError = loadError {
+                    print("UMP loadAndPresentIfRequired failed: \(loadError.localizedDescription)")
+                }
+                MobileAds.shared.start { _ in call.resolve() }
+            }
         }
     }
 
