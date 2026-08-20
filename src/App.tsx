@@ -62,7 +62,7 @@ import {
 // Shared styling for the Mercado tab's filter dropdowns (source/position/league/club selects) --
 // a single consistent look instead of each one hand-rolling its own inline style object.
 const PERSONALITY_ICON: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> = {
-  LIDER: '🧢', TEMPERAMENTAL: '🌶️', DECISIVO: '🃏'
+  LIDER: '🎖️', TEMPERAMENTAL: '🟨', DECISIVO: '🥶'
 };
 const PERSONALITY_LABEL: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> = {
   LIDER: 'Líder: dá um pequeno bônus de força ao time quando titular',
@@ -119,7 +119,7 @@ const AppContent: React.FC = () => {
     schedule, marketPlayers, offers, news, history, careerStats, stadiumUpgrade, vipBoxUpgrade, medicalDeptUpgrade, youthAcademyUpgrade, activeSponsors,
     currentMatch, currentMatchResult, cupState, startCupMatch, cupDrawReveal, dismissCupDrawReveal, championCelebration, dismissChampionCelebration, libertadoresState, startLibertadoresMatch, libertadoresDrawReveal, dismissLibertadoresDrawReveal, mundialClubs, mundialState, startMundialMatch, mundialDrawReveal, dismissMundialDrawReveal, sponsorAlert, dismissSponsorAlert, premiumCompetitionAlert, dismissPremiumCompetitionAlert, penaltyShootout, takePenaltyShootoutKick, finalizePenaltyShootout, foreignMarketPlayers, foreignPlayerPool, boughtForeignIds, buyForeignPlayer, libertadoresClubs, buyLibertadoresPlayer, currentSlot, getFreeSlot, startGame, nextRound, buyPlayer, sellPlayer, attemptSellPlayer, retirePlayer,
     upgradeStadium, buildVipBoxes, upgradeVipBoxes, upgradeMedicalDept, upgradeYouthAcademy, requestLoan, payOffLoanEarly, renegotiateLoanAction, signSponsor, acceptJobOffer, stayAtClub, resetGame, setGameState, clearCurrentMatch, resimulateMidMatch, resolveMidMatchPenalty,
-    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, cheatFinances, cheatWinLibertadores, resolvePlayerDissatisfaction,
+    makeBidForPlayer, buyPlayerFromClub, manualSave, updateTicketPrice, updateVipPrice, renewContract, acceptIncomingProposal, loadGame, cancelSponsor, resolvePlayerDissatisfaction,
     formerClubName, requestResignation, simulateUnemployedRound, acceptMidSeasonJobOffer
   } = useGame();
 
@@ -1246,7 +1246,8 @@ const AppContent: React.FC = () => {
         loadGame(saveData, slot);
       }
       alert(`Save importado com sucesso para o Slot 0${slot}!`);
-    } catch {
+    } catch (e) {
+      console.warn('handleImportFile failed', e);
       alert('Não foi possível importar esse arquivo. Verifique se é um arquivo de save válido do Retrofoot 2026.');
     }
   };
@@ -1373,7 +1374,7 @@ const AppContent: React.FC = () => {
           <input
             ref={importFileInputRef}
             type="file"
-            accept="application/json"
+            accept="application/json,.json"
             style={{ display: 'none' }}
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -2422,21 +2423,8 @@ const AppContent: React.FC = () => {
       {/* HEADER STATUS */}
       <div className="header-bar">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div 
+          <div
             className="club-pill"
-            onDoubleClick={() => {
-              const code = prompt('Digite o código de trapaça (Cheat Code):');
-              if (code === 'querosermilionario') {
-                cheatFinances();
-                alert('Trapaça ativada! R$ 1.000.000.000 (1 Bilhão) adicionados ao caixa do clube!');
-              } else if (code === 'campeaolibertadores') {
-                cheatWinLibertadores();
-                alert('Trapaça ativada! Seu time foi declarado campeão da Libertadores -- o Mundial de Clubes deve começar agora.');
-              } else if (code !== null) {
-                alert('Código incorreto!');
-              }
-            }}
-            style={{ cursor: 'pointer', userSelect: 'none' }}
           >
             <span className="club-badge-mini" style={{ backgroundColor: userClub.primaryColor, border: `1px solid ${userClub.secondaryColor}` }} />
             <span>{userClub.name}</span>
@@ -3142,13 +3130,15 @@ const AppContent: React.FC = () => {
                           </button>
                           <button
                             onClick={() => {
+                              if (player.contractLocked) return;
                               if (confirm(`Aposentar ${player.name}? Ele encerra a carreira e sai do jogo definitivamente -- essa ação não pode ser desfeita.`)) {
                                 retirePlayer(player);
                                 setSelectedManagePlayerId(null);
                               }
                             }}
+                            disabled={player.contractLocked}
                             className="btn btn-secondary"
-                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', minWidth: '100px' }}
+                            style={{ flex: 1, padding: '6px', fontSize: '0.72rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', color: player.contractLocked ? '#6b7280' : '#9ca3af', minWidth: '100px', cursor: player.contractLocked ? 'not-allowed' : 'pointer' }}
                           >
                             🎽 Aposentar
                           </button>
@@ -3319,6 +3309,7 @@ const AppContent: React.FC = () => {
                       style={marketSelectStyle}
                     >
                       <option value="" disabled>Escolha um clube...</option>
+                      <option value="ALL">Todos os Clubes</option>
                       {clubs
                         .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
                         .sort((a, b) => a.name.localeCompare(b.name))
@@ -3330,9 +3321,58 @@ const AppContent: React.FC = () => {
                 </div>
 
                 {(() => {
+                  if (selectedSearchClubId === 'ALL') {
+                    const allPlayers = clubs
+                      .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
+                      .flatMap(c => c.squad.map(player => ({ player, club: c })))
+                      .filter(({ player }) => marketPosFilter === 'ALL' || player.position === marketPosFilter)
+                      .sort((a, b) => b.player.rating - a.player.rating);
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+                        <div className="card-title">Todos os Clubes da Série {selectedSearchDiv}</div>
+                        {allPlayers.map(({ player, club }) => (
+                          <div key={player.id} className="player-row">
+                            <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                              <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{club.name} • {player.age} anos • Valor: {formatCurrency(player.value)}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="rating-badge">{player.rating}</span>
+                              {player.contractLocked ? (
+                                <span style={{ fontSize: '0.7rem', color: '#9ca3af', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  🔒 1 ano
+                                </span>
+                              ) : (
+                                <button
+                                  className="btn btn-primary"
+                                  style={{ padding: '6px 10px', fontSize: '0.75rem', width: 'auto', borderRadius: '8px' }}
+                                  onClick={() => {
+                                    setNegotiatingPlayer(player);
+                                    setNegotiatingClubId(club.id);
+                                    setOfferAmount(player.value);
+                                    setNegotiationStage('OFFER');
+                                    setNegotiationResult(null);
+                                  }}
+                                >
+                                  Negociar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {allPlayers.length === 0 && (
+                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>Nenhum jogador encontrado com a posição filtrada.</p>
+                        )}
+                      </div>
+                    );
+                  }
+
                   const searchedClub = clubs.find(c => c.id === selectedSearchClubId);
                   if (!searchedClub) return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Selecione um clube para visualizar o elenco.</p>;
-                  
+
                   const filteredSquad = searchedClub.squad
                     .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
                     .sort(byPosition);
@@ -3347,7 +3387,7 @@ const AppContent: React.FC = () => {
                             <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                             <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{player.age} anos • Valor: {formatCurrency(player.value)}</span>
                           </div>
-                          
+
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span className="rating-badge">{player.rating}</span>
                             {player.contractLocked ? (
@@ -3953,6 +3993,64 @@ const AppContent: React.FC = () => {
               })()}
             </div>
 
+            {/* Sponsors */}
+            <div className="card">
+              <div className="card-title"><DollarSign size={18} color="var(--accent-green)" /> Contratos de Patrocínio (Anual)</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(['MASTER', 'COSTAS', 'MANGAS'] as const).map(type => {
+                  const active = activeSponsors[type];
+                  const offer = sponsorProposals.find(sp => sp.type === type);
+
+                  return (
+                    <div
+                      key={type}
+                      style={{ padding: '12px', background: '#121316', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', fontSize: '0.85rem' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontWeight: 700 }}>
+                        <span style={{ color: '#9ca3af' }}>{type === 'MASTER' ? 'Patrocínio Master' : type === 'COSTAS' ? 'Patrocínio Costas' : 'Patrocínio Mangas'}</span>
+                        {active ? (
+                          <span style={{ color: 'var(--accent-green)' }}>Ativo ({active.contractWeeks}s)</span>
+                        ) : (
+                          <span style={{ color: 'var(--accent-gold)' }}>Disponível</span>
+                        )}
+                      </div>
+
+                      {active ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span>{active.name}</span>
+                            <span style={{ color: '#9ca3af' }}>+{formatCurrency(active.weeklyPayment)}/sem</span>
+                          </div>
+                          <button
+                            onClick={() => cancelSponsor(type)}
+                            className="btn btn-danger"
+                            style={{ padding: '3px 8px', width: 'auto', borderRadius: '6px', fontSize: '0.7rem', background: 'rgba(255, 23, 68, 0.08)', border: '1px solid rgba(255, 23, 68, 0.2)', color: 'var(--accent-red)' }}
+                          >
+                            Rescindir
+                          </button>
+                        </div>
+                      ) : offer ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>
+                            <span>{offer.name}</span>
+                            <span style={{ color: '#9ca3af' }}>Luvas: {formatCurrency(offer.signingBonus)} • {formatCurrency(offer.weeklyPayment)}/sem</span>
+                          </div>
+                          <button
+                            onClick={() => signSponsor(offer)}
+                            className="btn btn-primary"
+                            style={{ padding: '4px 10px', width: 'auto', borderRadius: '6px', fontSize: '0.75rem' }}
+                          >
+                            Assinar
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Departamento Médico */}
             <div className="card">
               <div className="card-title"><Shield size={18} color="var(--accent-green)" /> Departamento Médico</div>
@@ -4206,63 +4304,6 @@ const AppContent: React.FC = () => {
               })()}
             </div>
 
-            {/* Sponsors */}
-            <div className="card">
-              <div className="card-title"><DollarSign size={18} color="var(--accent-green)" /> Contratos de Patrocínio (Anual)</div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {(['MASTER', 'COSTAS', 'MANGAS'] as const).map(type => {
-                  const active = activeSponsors[type];
-                  const offer = sponsorProposals.find(sp => sp.type === type);
-                  
-                  return (
-                    <div 
-                      key={type}
-                      style={{ padding: '12px', background: '#121316', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', fontSize: '0.85rem' }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontWeight: 700 }}>
-                        <span style={{ color: '#9ca3af' }}>{type === 'MASTER' ? 'Patrocínio Master' : type === 'COSTAS' ? 'Patrocínio Costas' : 'Patrocínio Mangas'}</span>
-                        {active ? (
-                          <span style={{ color: 'var(--accent-green)' }}>Ativo ({active.contractWeeks}s)</span>
-                        ) : (
-                          <span style={{ color: 'var(--accent-gold)' }}>Disponível</span>
-                        )}
-                      </div>
-
-                      {active ? (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span>{active.name}</span>
-                            <span style={{ color: '#9ca3af' }}>+{formatCurrency(active.weeklyPayment)}/sem</span>
-                          </div>
-                          <button
-                            onClick={() => cancelSponsor(type)}
-                            className="btn btn-danger"
-                            style={{ padding: '3px 8px', width: 'auto', borderRadius: '6px', fontSize: '0.7rem', background: 'rgba(255, 23, 68, 0.08)', border: '1px solid rgba(255, 23, 68, 0.2)', color: 'var(--accent-red)' }}
-                          >
-                            Rescindir
-                          </button>
-                        </div>
-                      ) : offer ? (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>
-                            <span>{offer.name}</span>
-                            <span style={{ color: '#9ca3af' }}>Luvas: {formatCurrency(offer.signingBonus)} • {formatCurrency(offer.weeklyPayment)}/sem</span>
-                          </div>
-                          <button 
-                            onClick={() => signSponsor(offer)}
-                            className="btn btn-primary"
-                            style={{ padding: '4px 10px', width: 'auto', borderRadius: '6px', fontSize: '0.75rem' }}
-                          >
-                            Assinar
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </>
         )}
 
@@ -5464,7 +5505,7 @@ const AppContent: React.FC = () => {
             <input
               ref={importFileInputRef}
               type="file"
-              accept="application/json"
+              accept="application/json,.json"
               style={{ display: 'none' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];

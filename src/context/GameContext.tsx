@@ -311,8 +311,6 @@ interface GameContextType {
   resolvePlayerDissatisfaction: (playerId: string) => void;
   loadGame: (saveData: any, slot: number) => void;
   cancelSponsor: (type: 'MASTER' | 'COSTAS' | 'MANGAS') => void;
-  cheatFinances: () => void;
-  cheatWinLibertadores: () => void;
 }
 
 // --- Squad replenishment (used by endSeason for both `clubs` and `libertadoresClubs`) ---
@@ -2624,7 +2622,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: sortSquad([...club.squad, { ...player, purchasePrice: player.value }])
+          squad: sortSquad([...club.squad, { ...player, purchasePrice: player.value, contractLocked: true, contractLockYears: 1 }])
         };
       }
       return club;
@@ -2672,7 +2670,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: sortSquad([...club.squad, { ...basePlayer, purchasePrice: player.value }])
+          squad: sortSquad([...club.squad, { ...basePlayer, purchasePrice: player.value, contractLocked: true, contractLockYears: 1 }])
         };
       }
       return club;
@@ -2719,7 +2717,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...club,
           finances: club.finances - player.value,
-          squad: sortSquad([...club.squad, { ...player, contractLocked: false, purchasePrice: player.value }])
+          squad: sortSquad([...club.squad, { ...player, contractLocked: true, contractLockYears: 1, purchasePrice: player.value }])
         };
       }
       return club;
@@ -2917,7 +2915,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (club.id === userClubId) {
         // A winning bid can exceed the player's listed value -- his stored value should reflect
         // what was actually paid right away, not the pre-negotiation market price.
-        const newPlayer = { ...player, contractLocked: true, value: pricePaid, purchasePrice: pricePaid };
+        const newPlayer = { ...player, contractLocked: true, contractLockYears: 1, value: pricePaid, purchasePrice: pricePaid };
         return {
           ...club,
           finances: club.finances - pricePaid,
@@ -5044,32 +5042,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMundialState(data.mundialState ?? null);
   };
 
-  const cheatFinances = () => {
-    if (!userClubId) return;
-    setClubs(prev => prev.map(c => {
-      if (c.id !== userClubId) return c;
-      return { ...c, finances: c.finances + 1000000000 };
-    }));
-  };
-
-  // Debug-only: declares the user's own club the Libertadores champion on the spot (bumping
-  // careerStats.libertadoresWon and running the exact same triggerMundial() the real title win
-  // uses) so the Mundial de Clubes ladder can be tested in seconds instead of needing an actual
-  // Libertadores campaign to finish. Never touches libertadoresState/bracket -- purely a shortcut
-  // to the "you just won" moment.
-  const cheatWinLibertadores = () => {
-    if (!userClubId) return;
-    const pushNews = (item: NewsItem) => setNews(prev => [...prev, item]);
-    setCareerStats({ ...careerStatsRef.current, libertadoresWon: careerStatsRef.current.libertadoresWon + 1 });
-    setClubs(triggerMundial(clubs, pushNews));
-    pushNews({
-      id: `cheat_libertadores_${Date.now()}`,
-      week: currentRound,
-      text: `[TRAPAÇA] Seu time foi declarado campeão da Libertadores!`,
-      type: 'BOARD'
-    });
-  };
-
   return (
     <GameContext.Provider value={{
       gameState,
@@ -5159,9 +5131,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       renewContract,
       acceptIncomingProposal,
       loadGame,
-      cancelSponsor,
-      cheatFinances,
-      cheatWinLibertadores
+      cancelSponsor
     }}>
       {children}
     </GameContext.Provider>
