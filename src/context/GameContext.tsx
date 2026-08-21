@@ -2703,6 +2703,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const buyLibertadoresPlayer = (player: Player, sourceClubId: string) => {
     if (!userClub) return;
 
+    // Guards against buying the same listing twice -- e.g. a stale confirmation dialog, or a
+    // double-tap before the market list re-renders without him. player.id here is his id in the
+    // static foreignPlayerPool listing (not necessarily the same id as his entry in the real
+    // libertadoresClubs squad below), so boughtForeignIds is the reliable source of truth for
+    // "has this exact listing already been bought."
+    if (boughtForeignIds.includes(player.id)) return;
+
     if (userClub.finances < player.value) {
       alert('Finanças insuficientes para contratar este jogador.');
       return;
@@ -2736,6 +2743,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setClubs(updatedClubs);
     setLibertadoresClubs(updatedLibertadoresClubs);
+    // Same bookkeeping buyForeignPlayer does for its pool -- otherwise this exact listing stays
+    // visible and "buyable" in the Mercado Internacional list forever, inviting repeat purchases.
+    setForeignMarketPlayers(foreignMarketPlayers.filter(p => p.id !== player.id));
+    setBoughtForeignIds([...boughtForeignIds, player.id]);
 
     setNews(prev => [...prev, {
       id: `buy_libertadores_${Date.now()}`,
