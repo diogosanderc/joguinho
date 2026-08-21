@@ -62,7 +62,7 @@ import {
 // Shared styling for the Mercado tab's filter dropdowns (source/position/league/club selects) --
 // a single consistent look instead of each one hand-rolling its own inline style object.
 const PERSONALITY_ICON: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> = {
-  LIDER: '🎖️', TEMPERAMENTAL: '🟨', DECISIVO: '🥶'
+  LIDER: '🎖️', TEMPERAMENTAL: '😠', DECISIVO: '🥶'
 };
 const PERSONALITY_LABEL: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> = {
   LIDER: 'Líder: dá um pequeno bônus de força ao time quando titular',
