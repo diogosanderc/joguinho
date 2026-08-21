@@ -2463,6 +2463,7 @@ const AppContent: React.FC = () => {
               {news.slice().reverse().map((n) => (
                 <div
                   key={n.id}
+                  onClick={n.linkTab !== undefined ? () => setActiveTab(n.linkTab!) : undefined}
                   style={{
                     padding: '10px 14px',
                     borderRadius: '12px',
@@ -2470,14 +2471,17 @@ const AppContent: React.FC = () => {
                     borderLeft: `3px solid ${n.importance === 'HIGH' ? 'var(--accent-gold)' : n.type === 'BOARD' ? 'var(--accent-red)' : n.type === 'TRANSFER' ? 'var(--accent-blue)' : n.type === 'OFFER' ? 'var(--accent-gold)' : 'var(--accent-gray)'}`,
                     border: n.importance === 'HIGH' ? '1px solid rgba(255, 193, 7, 0.25)' : undefined,
                     fontSize: '0.8rem',
-                    lineHeight: '1.4'
+                    lineHeight: '1.4',
+                    cursor: n.linkTab !== undefined ? 'pointer' : 'default'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: n.importance === 'HIGH' ? 'var(--accent-gold)' : '#6b7280', marginBottom: '2px', fontWeight: 700 }}>
                     <span>{n.importance === 'HIGH' ? '🚨 ÚLTIMA HORA' : n.type.toUpperCase()}</span>
                     <span>RODADA {n.week}</span>
                   </div>
-                  <span style={{ color: n.importance === 'HIGH' ? '#fff' : '#d1d5db', fontWeight: n.importance === 'HIGH' ? 600 : 400 }}>{n.text}</span>
+                  <span style={{ color: n.importance === 'HIGH' ? '#fff' : '#d1d5db', fontWeight: n.importance === 'HIGH' ? 600 : 400 }}>
+                    {n.text}{n.linkTab !== undefined ? ' →' : ''}
+                  </span>
                 </div>
               ))}
             </div>

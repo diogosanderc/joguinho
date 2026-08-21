@@ -190,6 +190,7 @@ export interface NewsItem {
   text: string;
   type: 'INFO' | 'TRANSFER' | 'MATCH' | 'BOARD' | 'OFFER';
   importance?: 'HIGH'; // marks a "breaking news" item for distinct feed styling -- absent means normal
+  linkTab?: number; // tapping the card jumps to this bottom-nav tab index (e.g. 3 = Finanças)
 }
 
 export interface HistoryRecord {
@@ -793,7 +794,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const chosenClub = updatedClubs.find(c => c.id === chosenClubId);
     const initialNews: NewsItem[] = [
-      { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${chosenClub?.name}. Boa sorte na Série ${chosenClub?.division}!`, type: 'BOARD' }
+      { id: '1', week: 0, text: `Bem-vindo ao futebol brasileiro, ${name}! Você assumiu o ${chosenClub?.name}. Boa sorte na Série ${chosenClub?.division}!`, type: 'BOARD' },
+      { id: '2', week: 0, text: `O departamento comercial do ${chosenClub?.name} já tem 3 propostas de patrocínio esperando sua análise. Toque aqui para ver em Finanças.`, type: 'INFO', linkTab: 3 }
     ];
     setNews(initialNews);
     
@@ -3413,7 +3415,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDefendingLibertadoresChampionId(null); // consumed for this draw
 
     const nextNews: NewsItem[] = [
-      { id: `job_accept_${Date.now()}`, week: 0, text: `Nova Era! ${managerName} assumiu oficialmente o comando técnico do ${newClub.name}! Boa sorte na Série ${newClub.division}!`, type: 'BOARD' }
+      { id: `job_accept_${Date.now()}`, week: 0, text: `Nova Era! ${managerName} assumiu oficialmente o comando técnico do ${newClub.name}! Boa sorte na Série ${newClub.division}!`, type: 'BOARD' },
+      { id: `job_accept_sponsors_${Date.now()}`, week: 0, text: `O departamento comercial do ${newClub.name} já tem 3 propostas de patrocínio esperando sua análise. Toque aqui para ver em Finanças.`, type: 'INFO', linkTab: 3 }
     ];
     const bankEvent = getBankEventForYear(currentYear + 1);
     if (bankEvent.label) {
