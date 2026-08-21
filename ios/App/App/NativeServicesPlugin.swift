@@ -248,10 +248,10 @@ public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
     // regulated user needs to see the message in the first place, not something this app can
     // opt out of by already defaulting to non-personalized.
     @objc func initAds(_ call: CAPPluginCall) {
-        let parameters = UMPRequestParameters()
-        parameters.tagForUnderAgeOfConsent = false
+        let parameters = RequestParameters()
+        parameters.isTaggedForUnderAgeOfConsent = false
 
-        UMPConsentInformation.sharedInstance.requestConsentInfoUpdate(with: parameters) { [weak self] requestError in
+        ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { [weak self] requestError in
             guard let self = self else { return }
             if let requestError = requestError {
                 // Consent status couldn't be determined (e.g. offline) -- fall back to starting
@@ -266,7 +266,7 @@ public class NativeServicesPlugin: CAPPlugin, CAPBridgedPlugin {
                 MobileAds.shared.start { _ in call.resolve() }
                 return
             }
-            UMPConsentForm.loadAndPresentIfRequired(from: vc) { loadError in
+            ConsentForm.loadAndPresentIfRequired(from: vc) { loadError in
                 if let loadError = loadError {
                     print("UMP loadAndPresentIfRequired failed: \(loadError.localizedDescription)")
                 }
