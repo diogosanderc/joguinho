@@ -3971,6 +3971,11 @@ const AppContent: React.FC = () => {
                         </div>
                       ) : null;
                     })()}
+                    {(userClub.loans ?? []).length > 0 ? (
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        💰 Você já tem um empréstimo em aberto. Quite-o (veja abaixo) antes de solicitar um novo.
+                      </div>
+                    ) : (
                     <>
                         <div style={{ marginBottom: '10px' }}>
                           <span className="stat-label">Valor Solicitado</span>
@@ -4041,6 +4046,7 @@ const AppContent: React.FC = () => {
                           💰 Solicitar Empréstimo
                         </button>
                       </>
+                    )}
 
                     {(userClub.loans ?? []).length > 0 && (
                       <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

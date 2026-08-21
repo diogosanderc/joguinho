@@ -3239,6 +3239,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const requestLoan = (amount: number, totalRounds: number, purpose: string) => {
     if (!userClub || !userClubId) return;
 
+    if ((userClub.loans ?? []).length > 0) {
+      alert('Você já tem um empréstimo em aberto. Quite-o (ou espere ele terminar) antes de solicitar outro.');
+      return;
+    }
+
     const score = userClub.financialScore ?? 70;
 
     const bankEvent = getBankEventForYear(currentYear);
