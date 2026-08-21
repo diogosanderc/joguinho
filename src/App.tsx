@@ -3982,7 +3982,7 @@ const AppContent: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span>{active.name}</span>
-                            <span style={{ color: '#9ca3af' }}>+{formatCurrency(active.weeklyPayment)}/sem</span>
+                            <span style={{ color: '#9ca3af' }}>+{formatCurrency(active.weeklyPayment * 38)}/anual</span>
                           </div>
                           <button
                             onClick={() => cancelSponsor(type)}
@@ -3996,7 +3996,7 @@ const AppContent: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>
                             <span>{offer.name}</span>
-                            <span style={{ color: '#9ca3af' }}>Luvas: {formatCurrency(offer.signingBonus)} • {formatCurrency(offer.weeklyPayment)}/sem</span>
+                            <span style={{ color: '#9ca3af' }}>Luvas: {formatCurrency(offer.signingBonus)} • {formatCurrency(offer.weeklyPayment * 38)}/anual</span>
                           </div>
                           <button
                             onClick={() => signSponsor(offer)}
