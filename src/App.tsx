@@ -5,7 +5,7 @@ import { PremiumPaywallModal } from './components/PremiumPaywallModal';
 import type { Sponsor } from './context/GameContext';
 import { CLUB_DEFINITIONS, formatCurrency, isPlayerAvailable, isClassico, FOREIGN_CLUBS, VIP_BASE_PRICE_BY_DIV, VIP_BASE_INCOME_BY_DIV, VIP_BOX_BASE_CAPACITY, VIP_BOX_MAX_CAPACITY, VIP_SEAT_COST_BY_DIV, MEDICAL_DEPT_LEVEL_NAMES, MEDICAL_DEPT_REDUCTION_BY_LEVEL, MEDICAL_DEPT_COST_BY_LEVEL_DIV, YOUTH_ACADEMY_INTERVAL_BY_LEVEL, findFallbackReplacement } from './data/database';
 import { ACHIEVEMENTS } from './data/achievements';
-import type { Player, Club, PlayerPosition } from './data/database';
+import type { Player, Club, PlayerPosition, ForeignPlayer } from './data/database';
 
 // GOL, ZAG, LD, LE, VOL, MEI, PON, CA -- the standard position order used to sort market/squad
 // listings throughout the app.
@@ -238,6 +238,7 @@ const AppContent: React.FC = () => {
 
   // Market filter states
   const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | PlayerPosition>('ALL');
+  const [marketSearchQuery, setMarketSearchQuery] = useState('');
 
   // Bank loan request form state
   const [loanAmountIdx, setLoanAmountIdx] = useState(2); // default R$ 20M
@@ -3263,7 +3264,19 @@ const AppContent: React.FC = () => {
             {/* Filters -- all dropdowns instead of button grids, laid out two per row so the
                 actual player list starts much closer to the top instead of after a wall of
                 buttons. */}
-            <div className="card" style={{ padding: '10px', marginBottom: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="card" style={{ padding: '10px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={marketSelectLabelStyle}>Buscar jogador pelo nome</label>
+                <input
+                  type="text"
+                  value={marketSearchQuery}
+                  onChange={(e) => setMarketSearchQuery(e.target.value)}
+                  placeholder="Ex: Messi..."
+                  style={marketSelectStyle}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={marketSelectLabelStyle}>Fonte</label>
                 <select
@@ -3296,9 +3309,122 @@ const AppContent: React.FC = () => {
                   ))}
                 </select>
               </div>
+              </div>
             </div>
 
-            {marketViewMode === 'FREE_AGENTS' ? (
+            {marketSearchQuery.trim().length >= 2 ? (() => {
+              const q = marketSearchQuery.trim().toLowerCase();
+              const matchesPos = (pos: PlayerPosition) => marketPosFilter === 'ALL' || pos === marketPosFilter;
+
+              type SearchHit =
+                | { source: 'FREE'; key: string; player: Player }
+                | { source: 'CLUB'; key: string; player: Player; clubName: string; clubDivision: 'A' | 'B' | 'C'; clubId: string }
+                | { source: 'FOREIGN'; key: string; player: ForeignPlayer };
+
+              const hits: SearchHit[] = [];
+
+              marketPlayers.forEach(p => {
+                if (matchesPos(p.position) && p.name.toLowerCase().includes(q)) {
+                  hits.push({ source: 'FREE', key: `free_${p.id}`, player: p });
+                }
+              });
+
+              clubs.forEach(c => {
+                if (c.id === userClubId) return;
+                c.squad.forEach(p => {
+                  if (matchesPos(p.position) && p.name.toLowerCase().includes(q)) {
+                    hits.push({ source: 'CLUB', key: `club_${p.id}`, player: p, clubName: c.name, clubDivision: c.division as 'A' | 'B' | 'C', clubId: c.id });
+                  }
+                });
+              });
+
+              if (isPremium) {
+                foreignPlayerPool.forEach(p => {
+                  if (boughtForeignIds.includes(p.id)) return;
+                  if (matchesPos(p.position) && p.name.toLowerCase().includes(q)) {
+                    hits.push({ source: 'FOREIGN', key: `foreign_${p.id}`, player: p });
+                  }
+                });
+              }
+
+              hits.sort((a, b) => b.player.rating - a.player.rating);
+              const shown = hits.slice(0, 40);
+
+              return (
+                <>
+                  <div className="card-title"><Users size={18} color="var(--accent-green)" /> Busca: "{marketSearchQuery.trim()}" ({hits.length}{hits.length > shown.length ? `, mostrando ${shown.length}` : ''})</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+                    {shown.length === 0 && (
+                      <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>
+                        Nenhum jogador encontrado{!isPremium ? ' (Mercado Internacional exige Premium)' : ''}.
+                      </p>
+                    )}
+                    {shown.map(hit => {
+                      const player = hit.player;
+                      const originLabel = hit.source === 'FREE'
+                        ? 'Sem Clube (Livre)'
+                        : hit.source === 'CLUB'
+                        ? `${hit.clubName} (Série ${hit.clubDivision})`
+                        : `${hit.player.originClub} (${hit.player.league})`;
+                      const locked = hit.source === 'CLUB' && player.contractLocked;
+
+                      return (
+                        <div key={hit.key} className="player-row">
+                          <span className={`pos-badge ${player.position}`}>{player.position}</span>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{originLabel}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span className="rating-badge">{player.rating}</span>
+                            {locked ? (
+                              <span style={{ fontSize: '0.7rem', color: '#9ca3af', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px' }}>🔒 1 ano</span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if (hit.source === 'FREE') {
+                                    setPurchaseConfirmData({
+                                      player,
+                                      clubName: 'Sem Clube (Livre)',
+                                      price: player.value,
+                                      onConfirm: () => buyPlayer(player)
+                                    });
+                                  } else if (hit.source === 'CLUB') {
+                                    setNegotiatingPlayer(player);
+                                    setNegotiatingClubId(hit.clubId);
+                                    setOfferAmount(player.value);
+                                    setNegotiationStage('OFFER');
+                                    setNegotiationResult(null);
+                                  } else {
+                                    setPurchaseConfirmData({
+                                      player,
+                                      clubName: `${hit.player.originClub} (${hit.player.league})`,
+                                      price: player.value,
+                                      onConfirm: () => {
+                                        const sourceClub = libertadoresClubs.find(c => c.name === hit.player.originClub);
+                                        if (sourceClub) {
+                                          buyLibertadoresPlayer(hit.player, sourceClub.id);
+                                        } else {
+                                          buyForeignPlayer(hit.player);
+                                        }
+                                      }
+                                    });
+                                  }
+                                }}
+                                className="btn btn-primary"
+                                style={{ padding: '6px 12px', width: 'auto', borderRadius: '8px', fontSize: '0.8rem' }}
+                              >
+                                {hit.source === 'CLUB' ? 'Negociar' : formatCurrency(player.value)}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })() : marketViewMode === 'FREE_AGENTS' ? (
               <>
                 {/* BUY LIST */}
                 <div className="card-title"><TrendingUp size={18} color="var(--accent-green)" /> Comprar Jogadores (Transferências)</div>
