@@ -1161,17 +1161,17 @@ const AppContent: React.FC = () => {
 
   // Top scorers calculation by division
   const getTopScorers = () => {
-    const list: { name: string; club: string; division: string; goals: number }[] = [];
+    const list: { player: Player; club: Club }[] = [];
     clubs.forEach(c => {
       if (c.division === standingsTab) {
         c.squad.forEach(p => {
           if (p.goals > 0) {
-            list.push({ name: p.name, club: c.name, division: c.division, goals: p.goals });
+            list.push({ player: p, club: c });
           }
         });
       }
     });
-    return list.sort((a, b) => b.goals - a.goals).slice(0, 10);
+    return list.sort((a, b) => b.player.goals - a.player.goals).slice(0, 10);
   };
 
   const topScorers = getTopScorers();
@@ -3543,226 +3543,6 @@ const AppContent: React.FC = () => {
               );
             })()}
 
-            {/* NEGOTIATION MODAL */}
-            {negotiatingPlayer && (
-              <div className="modal-overlay">
-                <div className="modal-content" style={{ maxWidth: '380px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <h3 style={{ fontWeight: 800 }}>Negociar Contratação</h3>
-                    <button 
-                      onClick={() => { setNegotiatingPlayer(null); setNegotiationResult(null); }} 
-                      style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer' }}
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  {negotiationStage === 'OFFER' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div className="player-row" style={{ background: 'rgba(255,255,255,0.02)', border: 'none', padding: '10px' }}>
-                        <span className={`pos-badge ${negotiatingPlayer.position}`}>{negotiatingPlayer.position}</span>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{negotiatingPlayer.isStar ? '⭐ ' : ''}{negotiatingPlayer.name}</span>
-                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{negotiatingPlayer.age} anos • Força: {negotiatingPlayer.rating}</span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#9ca3af' }}>
-                        <div>
-                          <span>Valor de Mercado: </span>
-                          <span style={{ fontWeight: 700, color: 'white' }}>{formatCurrency(negotiatingPlayer.value)}</span>
-                        </div>
-                        <div>
-                          <span>Caixa Disponível: </span>
-                          <span style={{ fontWeight: 700, color: (userClub?.finances || 0) < 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>{formatCurrency(userClub?.finances || 0)}</span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Sua Oferta:</label>
-
-                        {/* Fine adjustment: +/- 5% of market value per tap, no typing needed */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            onClick={() => setOfferAmount(prev => Math.max(0, prev - Math.max(1000, Math.round(negotiatingPlayer.value * 0.05))))}
-                            className="btn btn-secondary"
-                            style={{ width: '44px', height: '44px', padding: 0, fontSize: '1.2rem', fontWeight: 800 }}
-                          >
-                            −
-                          </button>
-                          <div style={{ flex: 1, textAlign: 'center', fontSize: '1.15rem', fontWeight: 800, color: 'var(--accent-gold)' }}>
-                            {formatCurrency(offerAmount)}
-                          </div>
-                          <button
-                            onClick={() => setOfferAmount(prev => prev + Math.max(1000, Math.round(negotiatingPlayer.value * 0.05)))}
-                            className="btn btn-secondary"
-                            style={{ width: '44px', height: '44px', padding: 0, fontSize: '1.2rem', fontWeight: 800 }}
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        {/* Quick presets as a % of market value */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                          {[0.9, 1.0, 1.1, 1.2, 1.3, 1.5].map(mult => (
-                            <button
-                              key={mult}
-                              onClick={() => setOfferAmount(Math.round(negotiatingPlayer.value * mult))}
-                              className="btn btn-secondary"
-                              style={{
-                                padding: '8px 0',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                background: offerAmount === Math.round(negotiatingPlayer.value * mult) ? 'rgba(255, 193, 7, 0.15)' : undefined,
-                                border: offerAmount === Math.round(negotiatingPlayer.value * mult) ? '1px solid var(--accent-gold)' : undefined,
-                                color: offerAmount === Math.round(negotiatingPlayer.value * mult) ? 'var(--accent-gold)' : undefined
-                              }}
-                            >
-                              {Math.round(mult * 100)}%
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                          const res = makeBidForPlayer(negotiatingPlayer, negotiatingClubId, offerAmount);
-                          setNegotiationResult(res);
-                          setNegotiationStage('RESULT');
-                        }}
-                      >
-                        Enviar Proposta
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center', padding: '10px 0' }}>
-                      {negotiationResult?.status === 'ACCEPTED' && (
-                        <>
-                          <div style={{ fontSize: '2.5rem' }}>🎉</div>
-                          <h4 style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Proposta Aceita!</h4>
-                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
-                            O clube e o jogador aceitaram a sua oferta de <strong>{formatCurrency(offerAmount)}</strong>! O contrato de 1 ano foi assinado.
-                          </p>
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => {
-                              const sellerClubName = clubs.find(c => c.id === negotiatingClubId)?.name || 'Outro Clube';
-                              setPurchaseConfirmData({
-                                player: negotiatingPlayer,
-                                clubName: sellerClubName,
-                                price: offerAmount,
-                                onConfirm: () => {
-                                  buyPlayerFromClub(negotiatingPlayer, negotiatingClubId, offerAmount);
-                                  setNegotiatingPlayer(null);
-                                  setNegotiationResult(null);
-                                }
-                              });
-                            }}
-                          >
-                            Finalizar Contratação
-                          </button>
-                        </>
-                      )}
-
-                      {negotiationResult?.status === 'REJECTED' && (
-                        <>
-                          <div style={{ fontSize: '2.5rem' }}>❌</div>
-                          <h4 style={{ color: 'var(--accent-red)', fontWeight: 700 }}>Proposta Recusada!</h4>
-                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
-                            O clube e o jogador recusaram sua oferta de <strong>{formatCurrency(offerAmount)}</strong> por estar abaixo do valor de mercado. Eles consideraram a oferta inaceitável.
-                          </p>
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => {
-                              setNegotiatingPlayer(null);
-                              setNegotiationResult(null);
-                            }}
-                          >
-                            Fechar
-                          </button>
-                        </>
-                      )}
-
-                      {negotiationResult?.status === 'COUNTER' && (
-                        <>
-                          <div style={{ fontSize: '2.5rem' }}>🤝</div>
-                          <h4 style={{ color: 'var(--accent-gold)', fontWeight: 700 }}>Contraproposta Recebida!</h4>
-                          <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
-                            O clube recusou sua oferta inicial de <strong>{formatCurrency(offerAmount)}</strong>, mas fez uma contraproposta de <strong>{formatCurrency(negotiationResult.counterAmount || 0)}</strong> para fechar negócio hoje.
-                          </p>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              className="btn btn-primary"
-                              onClick={() => {
-                                const sellerClubName = clubs.find(c => c.id === negotiatingClubId)?.name || 'Outro Clube';
-                                const counterPrice = negotiationResult.counterAmount || 0;
-                                setPurchaseConfirmData({
-                                  player: negotiatingPlayer,
-                                  clubName: sellerClubName,
-                                  price: counterPrice,
-                                  onConfirm: () => {
-                                    buyPlayerFromClub(negotiatingPlayer, negotiatingClubId, counterPrice);
-                                    setNegotiatingPlayer(null);
-                                    setNegotiationResult(null);
-                                  }
-                                });
-                              }}
-                              style={{ flex: 1 }}
-                            >
-                              Aceitar ({formatCurrency(negotiationResult.counterAmount || 0)})
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setNegotiatingPlayer(null);
-                                setNegotiationResult(null);
-                              }}
-                              style={{ flex: 1 }}
-                            >
-                              Recusar
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-
-
-            {/* PURCHASE CONFIRMATION MODAL */}
-            {purchaseConfirmData && (
-              <div className="modal-overlay" style={{ zIndex: 1100 }}>
-                <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
-                  <h3 style={{ fontWeight: 800, marginBottom: '12px' }}>Confirmar Contratação</h3>
-                  <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', marginBottom: '20px' }}>
-                    Tem certeza que deseja comprar o jogador <strong>{purchaseConfirmData.player.name}</strong> ({purchaseConfirmData.player.position}), do time <strong>{purchaseConfirmData.clubName}</strong>, por <strong>{formatCurrency(purchaseConfirmData.price)}</strong>?
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      className="btn btn-primary"
-                      style={{ flex: 1 }}
-                      onClick={() => {
-                        purchaseConfirmData.onConfirm();
-                        setPurchaseConfirmData(null);
-                      }}
-                    >
-                      Sim, Comprar
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ flex: 1 }}
-                      onClick={() => setPurchaseConfirmData(null)}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -4545,18 +4325,37 @@ const AppContent: React.FC = () => {
                     {topScorers.length === 0 ? (
                       <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Nenhum gol marcado ainda nesta temporada nesta série.</p>
                     ) : (
-                      topScorers.map((sc, idx) => (
-                        <div 
-                          key={idx}
-                          style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#121316', borderRadius: '12px' }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{idx + 1}. {sc.name}</span>
-                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{sc.club} (Série {sc.division})</span>
+                      topScorers.map(({ player, club }, idx) => {
+                        const isOwnPlayer = club.id === userClubId;
+                        const unavailable = isOwnPlayer || player.contractLocked;
+                        return (
+                          <div
+                            key={player.id}
+                            onClick={() => {
+                              if (isOwnPlayer) return;
+                              if (player.contractLocked) {
+                                alert(`${player.name} está com o contrato trancado e não pode ser negociado agora.`);
+                                return;
+                              }
+                              setNegotiatingPlayer(player);
+                              setNegotiatingClubId(club.id);
+                              setOfferAmount(player.value);
+                              setNegotiationStage('OFFER');
+                              setNegotiationResult(null);
+                            }}
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#121316', borderRadius: '12px', cursor: unavailable ? 'default' : 'pointer' }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{idx + 1}. {player.name}</span>
+                              <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                                {club.name} (Série {club.division})
+                                {isOwnPlayer ? ' • Seu jogador' : player.contractLocked ? ' • 🔒 Indisponível' : ` • ${formatCurrency(player.value)}`}
+                              </span>
+                            </div>
+                            <span style={{ fontWeight: 800, color: 'var(--accent-green)', display: 'flex', alignItems: 'center' }}>⚽ {player.goals}</span>
                           </div>
-                          <span style={{ fontWeight: 800, color: 'var(--accent-green)', display: 'flex', alignItems: 'center' }}>⚽ {sc.goals}</span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -5325,6 +5124,227 @@ const AppContent: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* NEGOTIATION MODAL */}
+      {negotiatingPlayer && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '380px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontWeight: 800 }}>Negociar Contratação</h3>
+              <button 
+                onClick={() => { setNegotiatingPlayer(null); setNegotiationResult(null); }} 
+                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {negotiationStage === 'OFFER' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div className="player-row" style={{ background: 'rgba(255,255,255,0.02)', border: 'none', padding: '10px' }}>
+                  <span className={`pos-badge ${negotiatingPlayer.position}`}>{negotiatingPlayer.position}</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{negotiatingPlayer.isStar ? '⭐ ' : ''}{negotiatingPlayer.name}</span>
+                    <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{negotiatingPlayer.age} anos • Força: {negotiatingPlayer.rating}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#9ca3af' }}>
+                  <div>
+                    <span>Valor de Mercado: </span>
+                    <span style={{ fontWeight: 700, color: 'white' }}>{formatCurrency(negotiatingPlayer.value)}</span>
+                  </div>
+                  <div>
+                    <span>Caixa Disponível: </span>
+                    <span style={{ fontWeight: 700, color: (userClub?.finances || 0) < 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>{formatCurrency(userClub?.finances || 0)}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Sua Oferta:</label>
+
+                  {/* Fine adjustment: +/- 5% of market value per tap, no typing needed */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => setOfferAmount(prev => Math.max(0, prev - Math.max(1000, Math.round(negotiatingPlayer.value * 0.05))))}
+                      className="btn btn-secondary"
+                      style={{ width: '44px', height: '44px', padding: 0, fontSize: '1.2rem', fontWeight: 800 }}
+                    >
+                      −
+                    </button>
+                    <div style={{ flex: 1, textAlign: 'center', fontSize: '1.15rem', fontWeight: 800, color: 'var(--accent-gold)' }}>
+                      {formatCurrency(offerAmount)}
+                    </div>
+                    <button
+                      onClick={() => setOfferAmount(prev => prev + Math.max(1000, Math.round(negotiatingPlayer.value * 0.05)))}
+                      className="btn btn-secondary"
+                      style={{ width: '44px', height: '44px', padding: 0, fontSize: '1.2rem', fontWeight: 800 }}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Quick presets as a % of market value */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                    {[0.9, 1.0, 1.1, 1.2, 1.3, 1.5].map(mult => (
+                      <button
+                        key={mult}
+                        onClick={() => setOfferAmount(Math.round(negotiatingPlayer.value * mult))}
+                        className="btn btn-secondary"
+                        style={{
+                          padding: '8px 0',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          background: offerAmount === Math.round(negotiatingPlayer.value * mult) ? 'rgba(255, 193, 7, 0.15)' : undefined,
+                          border: offerAmount === Math.round(negotiatingPlayer.value * mult) ? '1px solid var(--accent-gold)' : undefined,
+                          color: offerAmount === Math.round(negotiatingPlayer.value * mult) ? 'var(--accent-gold)' : undefined
+                        }}
+                      >
+                        {Math.round(mult * 100)}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const res = makeBidForPlayer(negotiatingPlayer, negotiatingClubId, offerAmount);
+                    setNegotiationResult(res);
+                    setNegotiationStage('RESULT');
+                  }}
+                >
+                  Enviar Proposta
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center', padding: '10px 0' }}>
+                {negotiationResult?.status === 'ACCEPTED' && (
+                  <>
+                    <div style={{ fontSize: '2.5rem' }}>🎉</div>
+                    <h4 style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Proposta Aceita!</h4>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                      O clube e o jogador aceitaram a sua oferta de <strong>{formatCurrency(offerAmount)}</strong>! O contrato de 1 ano foi assinado.
+                    </p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => {
+                        const sellerClubName = clubs.find(c => c.id === negotiatingClubId)?.name || 'Outro Clube';
+                        setPurchaseConfirmData({
+                          player: negotiatingPlayer,
+                          clubName: sellerClubName,
+                          price: offerAmount,
+                          onConfirm: () => {
+                            buyPlayerFromClub(negotiatingPlayer, negotiatingClubId, offerAmount);
+                            setNegotiatingPlayer(null);
+                            setNegotiationResult(null);
+                          }
+                        });
+                      }}
+                    >
+                      Finalizar Contratação
+                    </button>
+                  </>
+                )}
+
+                {negotiationResult?.status === 'REJECTED' && (
+                  <>
+                    <div style={{ fontSize: '2.5rem' }}>❌</div>
+                    <h4 style={{ color: 'var(--accent-red)', fontWeight: 700 }}>Proposta Recusada!</h4>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                      O clube e o jogador recusaram sua oferta de <strong>{formatCurrency(offerAmount)}</strong> por estar abaixo do valor de mercado. Eles consideraram a oferta inaceitável.
+                    </p>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setNegotiatingPlayer(null);
+                        setNegotiationResult(null);
+                      }}
+                    >
+                      Fechar
+                    </button>
+                  </>
+                )}
+
+                {negotiationResult?.status === 'COUNTER' && (
+                  <>
+                    <div style={{ fontSize: '2.5rem' }}>🤝</div>
+                    <h4 style={{ color: 'var(--accent-gold)', fontWeight: 700 }}>Contraproposta Recebida!</h4>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                      O clube recusou sua oferta inicial de <strong>{formatCurrency(offerAmount)}</strong>, mas fez uma contraproposta de <strong>{formatCurrency(negotiationResult.counterAmount || 0)}</strong> para fechar negócio hoje.
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                          const sellerClubName = clubs.find(c => c.id === negotiatingClubId)?.name || 'Outro Clube';
+                          const counterPrice = negotiationResult.counterAmount || 0;
+                          setPurchaseConfirmData({
+                            player: negotiatingPlayer,
+                            clubName: sellerClubName,
+                            price: counterPrice,
+                            onConfirm: () => {
+                              buyPlayerFromClub(negotiatingPlayer, negotiatingClubId, counterPrice);
+                              setNegotiatingPlayer(null);
+                              setNegotiationResult(null);
+                            }
+                          });
+                        }}
+                        style={{ flex: 1 }}
+                      >
+                        Aceitar ({formatCurrency(negotiationResult.counterAmount || 0)})
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          setNegotiatingPlayer(null);
+                          setNegotiationResult(null);
+                        }}
+                        style={{ flex: 1 }}
+                      >
+                        Recusar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+
+      {/* PURCHASE CONFIRMATION MODAL */}
+      {purchaseConfirmData && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center' }}>
+            <h3 style={{ fontWeight: 800, marginBottom: '12px' }}>Confirmar Contratação</h3>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: '1.5', marginBottom: '20px' }}>
+              Tem certeza que deseja comprar o jogador <strong>{purchaseConfirmData.player.name}</strong> ({purchaseConfirmData.player.position}), do time <strong>{purchaseConfirmData.clubName}</strong>, por <strong>{formatCurrency(purchaseConfirmData.price)}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  purchaseConfirmData.onConfirm();
+                  setPurchaseConfirmData(null);
+                }}
+              >
+                Sim, Comprar
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
+                onClick={() => setPurchaseConfirmData(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DISCRETE SAVE SLOTS OVERLAY MODAL */}
       {/* SETTINGS MODAL -- gear icon in the header opens this instead of the old row of 4
