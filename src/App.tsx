@@ -70,6 +70,33 @@ const PERSONALITY_LABEL: Record<'LIDER' | 'TEMPERAMENTAL' | 'DECISIVO', string> 
   DECISIVO: 'Decisivo: rende mais em finais e mata-matas'
 };
 
+// Fictional sponsor brands offered for the Master/Costas/Mangas jersey slots -- picked
+// deterministically per club+round (not Math.random()) so the offer doesn't change name every
+// time this component re-renders while the user sits on the Finanças tab, but still varies
+// week to week and across different careers/clubs.
+const SPONSOR_BRAND_NAMES = [
+  'BetMax', 'GolBet', 'Aposta10', 'PayFut',
+  'BancoNova', 'CashPix', 'CredNow',
+  'Cerveja Real', 'Gelada Premium',
+  'VoltEnergia', 'LuzForte Energia',
+  'ConectaTel', 'FalaMais Telecom',
+  'SeguraVida Seguros', 'ProtegeMax Seguros',
+  'RotaExpress Logística', 'EntregaJá',
+  'TurboMotors', 'SaúdePlena', 'MegaVarejo'
+];
+
+const hashSeed = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+};
+
+const pickSponsorBrand = (seed: string, exclude: string[] = []): string => {
+  const pool = SPONSOR_BRAND_NAMES.filter(n => !exclude.includes(n));
+  const options = pool.length > 0 ? pool : SPONSOR_BRAND_NAMES;
+  return options[hashSeed(seed) % options.length];
+};
+
 // Potencial oculto: never shown as a flat number until the player is well-scouted (enough
 // games started) -- narrows from "observando" to a range to the exact hidden ceiling.
 const getPotentialDisplay = (player: Player): string | null => {
@@ -650,10 +677,15 @@ const AppContent: React.FC = () => {
         mangasSigningBonus = Math.round(rep * rep * 70 * finalMultiplier);
       }
 
+      const seedBase = `${userClub.id}_${currentRound}`;
+      const masterBrand = pickSponsorBrand(`${seedBase}_MASTER`);
+      const costasBrand = pickSponsorBrand(`${seedBase}_COSTAS`, [masterBrand]);
+      const mangasBrand = pickSponsorBrand(`${seedBase}_MANGAS`, [masterBrand, costasBrand]);
+
       const sponsors: Sponsor[] = [
         {
           id: 'sp_master',
-          name: 'PixBet Master',
+          name: `${masterBrand} Master`,
           type: 'MASTER',
           signingBonus: masterSigningBonus,
           weeklyPayment: Math.round(rep * 120 * finalMultiplier),
@@ -661,7 +693,7 @@ const AppContent: React.FC = () => {
         },
         {
           id: 'sp_costas',
-          name: 'SuperBet Costas',
+          name: `${costasBrand} Costas`,
           type: 'COSTAS',
           signingBonus: costasSigningBonus,
           weeklyPayment: Math.round(rep * 60 * finalMultiplier),
@@ -669,7 +701,7 @@ const AppContent: React.FC = () => {
         },
         {
           id: 'sp_mangas',
-          name: 'CredFácil Mangas',
+          name: `${mangasBrand} Mangas`,
           type: 'MANGAS',
           signingBonus: mangasSigningBonus,
           weeklyPayment: Math.round(rep * 30 * finalMultiplier),
