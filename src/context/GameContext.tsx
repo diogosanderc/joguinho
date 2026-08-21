@@ -343,6 +343,8 @@ const generateYouthPlayer = (clubId: string, position: PlayerPosition, clubReput
   };
 };
 
+const SQUAD_POSITION_ORDER: Record<PlayerPosition, number> = { GOL: 0, ZAG: 1, LD: 2, LE: 3, VOL: 4, MEI: 5, PON: 6, CA: 7 };
+
 const replenishSquad = (squad: Player[], clubId: string, clubReputation: number, isForeignClub: boolean): Player[] => {
   if (squad.length >= YOUTH_TARGET_SQUAD_SIZE) return squad;
   const positions: PlayerPosition[] = ['GOL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'PON', 'CA'];
@@ -352,7 +354,9 @@ const replenishSquad = (squad: Player[], clubId: string, clubReputation: number,
     counts.sort((a, b) => a.count - b.count);
     next.push(generateYouthPlayer(clubId, counts[0].pos, clubReputation, isForeignClub));
   }
-  return next;
+  // New youth signings are appended above -- re-sort by position so they slot into their proper
+  // spot in the squad list instead of trailing at the end regardless of position (GOL, ZAG...).
+  return next.sort((a, b) => SQUAD_POSITION_ORDER[a.position] - SQUAD_POSITION_ORDER[b.position]);
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
