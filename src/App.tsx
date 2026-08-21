@@ -3045,6 +3045,7 @@ const AppContent: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{player.isStar ? '⭐ ' : ''}{player.name}</span>
                           {player.personality && <span style={{ fontSize: '0.75rem' }} title={PERSONALITY_LABEL[player.personality]}>{PERSONALITY_ICON[player.personality]}</span>}
+                          {player.goals > 0 && <span title={`${player.goals} gol(s) na temporada`} style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--accent-gold)' }}>⚽ {player.goals}</span>}
                           {player.yellowCards > 0 && <span title={`${player.yellowCards} cartão(ões) amarelo(s) na temporada`} style={{ fontSize: '0.72rem' }}>🟨{player.yellowCards > 1 ? ` x${player.yellowCards}` : ''}</span>}
                           {player.redCards > 0 && <span title={`${player.redCards} cartão(ões) vermelho(s) na temporada`} style={{ fontSize: '0.72rem' }}>🟥{player.redCards > 1 ? ` x${player.redCards}` : ''}</span>}
                           <ConditionBadge trend={player.performanceTrend} />
