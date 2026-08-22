@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { usePremium } from '../context/PremiumContext';
 
-const PREMIUM_PRICE_LABEL = 'R$ 9,99';
+const PREMIUM_PRICE_LABEL = 'R$ 9,90';
 
 const PREMIUM_PERKS = [
   'Remove os anúncios completamente',

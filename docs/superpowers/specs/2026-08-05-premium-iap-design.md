@@ -3,7 +3,7 @@
 ## Contexto
 
 O usuário pretende publicar o Retrofoot 2026 na App Store e monetizar com uma compra
-única "Premium" (R$ 9,99, via `StoreKit`) que libera de uma vez um conjunto de recursos
+única "Premium" (R$ 9,90, via `StoreKit`) que libera de uma vez um conjunto de recursos
 hoje disponíveis livremente. Não há anúncios implementados ainda (fora de escopo aqui);
 não há compras separadas por item — é uma única trava, um único produto.
 
@@ -113,7 +113,7 @@ do plugin, nunca só o cache.
 - **`PremiumPaywallModal`** (novo componente, reaproveitado em todos os pontos de
   bloqueio): recebe uma prop `reason: string` (ex: `"Série A"`, `"Departamento Médico"`,
   `"Libertadores"`) pra customizar o título/descrição. Conteúdo fixo: lista do que o
-  Premium libera, preço (R$ 9,99), botão "Desbloquear Premium" (chama `purchase()`), link
+  Premium libera, preço (R$ 9,90), botão "Desbloquear Premium" (chama `purchase()`), link
   "Restaurar compra" (chama `restore()` — exigido pela Apple pra IAP não-consumível).
   Usa as classes `modal-overlay`/`modal-content` já existentes no app.
 

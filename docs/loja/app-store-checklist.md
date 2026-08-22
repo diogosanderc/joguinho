@@ -105,7 +105,7 @@ App Store Connect → seu app → **Recursos → Compras via app** → criar uma
 | ID do produto (Product ID) | `com.diogosander.retrofoot.premium` — **precisa ser exatamente esse**, já é o que está hardcoded no `NativeServicesPlugin.swift` |
 | Nome de referência | Retrofoot Premium |
 | Nome exibido pro usuário | Retrofoot Premium |
-| Preço | R$ 9,99 (ou o tier equivalente que a Apple mapear — esse valor já está no texto do paywall dentro do app) |
+| Preço | R$ 9,90 (ou o tier equivalente que a Apple mapear — esse valor já está no texto do paywall dentro do app) |
 | Descrição | "Remove os anúncios e libera Série A/B, negociações com clubes grandes, Departamento Médico, Categoria de Base, Copa do Brasil, Libertadores, Mundial de Clubes, Seleção Brasileira e 4 slots de save." |
 | Screenshot de revisão | print da tela de paywall do app (`PremiumPaywallModal`) |
 
