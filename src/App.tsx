@@ -3292,8 +3292,8 @@ const AppContent: React.FC = () => {
                   style={marketSelectStyle}
                 >
                   <option value="FREE_AGENTS">Jogadores Livres</option>
-                  <option value="CLUBS">Jogadores BR</option>
-                  <option value="FOREIGN">{!isPremium ? '🔒 Outras ligas (Premium)' : 'Outras ligas'}</option>
+                  <option value="CLUBS">Jogadores de Clubes</option>
+                  <option value="FOREIGN">{!isPremium ? '🔒 Jogadores de Outras Ligas (Premium)' : 'Jogadores de Outras Ligas'}</option>
                 </select>
               </div>
 
