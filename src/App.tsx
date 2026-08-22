@@ -1810,9 +1810,8 @@ const AppContent: React.FC = () => {
                 const minutesText = gs.map(g => `${g.minute}'${g.isPenalty ? ' (P)' : g.isHeader ? ' (C)' : ''}`).join(', ');
                 const isOwnGoalScorer = gs[0].clubId === userClubId;
                 return (
-                  <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '9px', height: '9px', borderRadius: '50%', flexShrink: 0, background: isOwnGoalScorer ? 'var(--accent-green)' : '#ffffff', boxShadow: '0 0 0 1px rgba(255,255,255,0.15)' }} />
-                    {name} {minutesText}
+                  <span key={name} style={{ fontWeight: isOwnGoalScorer ? 800 : 400 }}>
+                    ⚽ {name} {minutesText}
                   </span>
                 );
               });
