@@ -239,6 +239,20 @@ const AppContent: React.FC = () => {
   // Market filter states
   const [marketPosFilter, setMarketPosFilter] = useState<'ALL' | PlayerPosition>('ALL');
   const [marketSearchQuery, setMarketSearchQuery] = useState('');
+  const [marketSortBy, setMarketSortBy] = useState<'DEFAULT' | 'RATING_DESC' | 'RATING_ASC' | 'PRICE_ASC' | 'PRICE_DESC'>('DEFAULT');
+  const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
+  // Shared by every Mercado list: a price-ceiling predicate for the "Preço máximo" slider, and a
+  // comparator honoring the "Ordenar por" choice (falls back to whatever comparator the caller
+  // passes in as `fallback` when set to DEFAULT, since each list's natural default order differs).
+  const marketPriceOk = (value: number) => marketMaxPrice === null || value <= marketMaxPrice;
+  const marketSortComparator = <T,>(getPlayer: (item: T) => Player, fallback: (a: T, b: T) => number) => (a: T, b: T): number => {
+    const pa = getPlayer(a), pb = getPlayer(b);
+    if (marketSortBy === 'RATING_DESC') return pb.rating - pa.rating;
+    if (marketSortBy === 'RATING_ASC') return pa.rating - pb.rating;
+    if (marketSortBy === 'PRICE_ASC') return pa.value - pb.value;
+    if (marketSortBy === 'PRICE_DESC') return pb.value - pa.value;
+    return fallback(a, b);
+  };
 
   // Bank loan request form state
   const [loanAmountIdx, setLoanAmountIdx] = useState(2); // default R$ 20M
@@ -3310,6 +3324,59 @@ const AppContent: React.FC = () => {
                 </select>
               </div>
               </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={marketSelectLabelStyle}>Ordenar por</label>
+                <select
+                  value={marketSortBy}
+                  onChange={(e) => setMarketSortBy(e.target.value as typeof marketSortBy)}
+                  style={marketSelectStyle}
+                >
+                  <option value="DEFAULT">Padrão (posição)</option>
+                  <option value="RATING_DESC">Força (maior primeiro)</option>
+                  <option value="RATING_ASC">Força (menor primeiro)</option>
+                  <option value="PRICE_ASC">Preço (menor primeiro)</option>
+                  <option value="PRICE_DESC">Preço (maior primeiro)</option>
+                </select>
+              </div>
+
+              {(() => {
+                // Covers even the priciest visible players (billion-real European superstars)
+                // when Outras Ligas is in play; a much tighter range otherwise so the slider
+                // isn't mostly dead space for the domestic market's much cheaper prices.
+                const sliderMax = (marketViewMode === 'FOREIGN' || (marketSearchQuery.trim().length >= 2 && isPremium)) ? 1_500_000_000 : 50_000_000;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={marketSelectLabelStyle}>Preço máximo</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="range"
+                        min={0}
+                        max={sliderMax}
+                        step={Math.max(1, Math.round(sliderMax / 200))}
+                        value={marketMaxPrice ?? sliderMax}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setMarketMaxPrice(v >= sliderMax ? null : v);
+                        }}
+                        style={{ flex: 1, accentColor: 'var(--accent-green)' }}
+                      />
+                      <span style={{ fontWeight: 800, color: 'var(--accent-gold)', fontSize: '0.78rem', whiteSpace: 'nowrap', minWidth: '76px', textAlign: 'right' }}>
+                        {marketMaxPrice === null ? 'Sem limite' : formatCurrency(marketMaxPrice)}
+                      </span>
+                    </div>
+                    {userClub && (
+                      <button
+                        onClick={() => setMarketMaxPrice(userClub.finances)}
+                        className="btn btn-secondary"
+                        style={{ marginTop: '2px', padding: '8px', fontSize: '0.72rem', borderRadius: '8px' }}
+                      >
+                        💰 Só o que eu posso pagar ({formatCurrency(userClub.finances)})
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {marketSearchQuery.trim().length >= 2 ? (() => {
@@ -3347,12 +3414,13 @@ const AppContent: React.FC = () => {
                 });
               }
 
-              hits.sort((a, b) => b.player.rating - a.player.rating);
-              const shown = hits.slice(0, 40);
+              const priceFilteredHits = hits.filter(h => marketPriceOk(h.player.value));
+              priceFilteredHits.sort(marketSortComparator(h => h.player, (a, b) => b.player.rating - a.player.rating));
+              const shown = priceFilteredHits.slice(0, 40);
 
               return (
                 <>
-                  <div className="card-title"><Users size={18} color="var(--accent-green)" /> Busca: "{marketSearchQuery.trim()}" ({hits.length}{hits.length > shown.length ? `, mostrando ${shown.length}` : ''})</div>
+                  <div className="card-title"><Users size={18} color="var(--accent-green)" /> Busca: "{marketSearchQuery.trim()}" ({priceFilteredHits.length}{priceFilteredHits.length > shown.length ? `, mostrando ${shown.length}` : ''})</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                     {shown.length === 0 && (
                       <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', padding: '10px' }}>
@@ -3431,9 +3499,9 @@ const AppContent: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                   {marketPlayers
                     .filter(p => {
-                      return marketPosFilter === 'ALL' || p.position === marketPosFilter;
+                      return (marketPosFilter === 'ALL' || p.position === marketPosFilter) && marketPriceOk(p.value);
                     })
-                    .sort(byPosition)
+                    .sort(marketSortComparator(p => p, byPosition))
                     .map(player => (
                       <div key={player.id} className="player-row">
                         <span className={`pos-badge ${player.position}`}>{player.position}</span>
@@ -3507,8 +3575,8 @@ const AppContent: React.FC = () => {
                     const allPlayers = clubs
                       .filter(c => c.division === selectedSearchDiv && c.id !== userClubId)
                       .flatMap(c => c.squad.map(player => ({ player, club: c })))
-                      .filter(({ player }) => marketPosFilter === 'ALL' || player.position === marketPosFilter)
-                      .sort((a, b) => b.player.rating - a.player.rating);
+                      .filter(({ player }) => (marketPosFilter === 'ALL' || player.position === marketPosFilter) && marketPriceOk(player.value))
+                      .sort(marketSortComparator(x => x.player, (a, b) => b.player.rating - a.player.rating));
 
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
@@ -3556,8 +3624,8 @@ const AppContent: React.FC = () => {
                   if (!searchedClub) return <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>Selecione um clube para visualizar o elenco.</p>;
 
                   const filteredSquad = searchedClub.squad
-                    .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
-                    .sort(byPosition);
+                    .filter(p => (marketPosFilter === 'ALL' || p.position === marketPosFilter) && marketPriceOk(p.value))
+                    .sort(marketSortComparator(p => p, byPosition));
 
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
@@ -3676,8 +3744,8 @@ const AppContent: React.FC = () => {
                     ? foreignMarketPlayers
                     : foreignPlayerPool.filter(p => p.originClub === selectedForeignClub && !boughtForeignIds.includes(p.id))
                   )
-                    .filter(p => marketPosFilter === 'ALL' || p.position === marketPosFilter)
-                    .sort(byPosition)
+                    .filter(p => (marketPosFilter === 'ALL' || p.position === marketPosFilter) && marketPriceOk(p.value))
+                    .sort(marketSortComparator(p => p, byPosition))
                     .map(player => (
                       <div key={player.id} className="player-row">
                         <span className={`pos-badge ${player.position}`}>{player.position}</span>
